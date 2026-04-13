@@ -230,6 +230,32 @@ body.dark .course-card {
 body.dark .contact-card button {
     background: #555;
 }
+    /* ================= EDUCATION ================= */
+
+.edu-item {
+    margin-bottom: 20px;
+}
+
+.edu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.edu-header h3 {
+    margin: 0;
+}
+
+.edu-date {
+    font-size: 14px;
+    color: #777;
+}
+
+/* DARK MODE */
+body.dark .edu-date {
+    color: #aaa;
+}
 </style>
 </head>
 
@@ -256,6 +282,7 @@ body.dark .contact-card button {
 <!-- NAVBAR -->
 <div class="navbar">
     <a href="#about">About</a>
+    <a href="#education">Education</a>
     <a href="#research">Research</a>
     <a href="#experience">Experience</a>
     <a href="#courses">Courses</a>
@@ -272,6 +299,28 @@ body.dark .contact-card button {
         Reinforcement Learning, including offline RL,regret analysis & sample complexity.
         I am also interested in LLM alignment and RLHF.And more recently,GenAI.
     </p>
+</div>
+
+<! --EDUCATION-->
+    <div class="section" id="education">
+    <h2>Education</h2>
+
+    <div class="edu-item">
+        <div class="edu-header">
+            <h3>M.Tech (Research), Computer Science & Engineering</h3>
+            <span class="edu-date">2023 – Present</span>
+        </div>
+        <p>Indian Institute of Science (IISc), Bangalore</p>
+    </div>
+
+    <div class="edu-item">
+        <div class="edu-header">
+            <h3>B.Tech, Computer Science & Engineering</h3>
+            <span class="edu-date">2015 – 2019</span>
+        </div>
+        <p>Govt. College of Engineering & Ceramic Technology, Kolkata</p>
+    </div>
+
 </div>
 
 <!-- RESEARCH -->
