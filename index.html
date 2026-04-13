@@ -161,7 +161,33 @@ body.dark .timeline {
 body.dark .meta {
     color: #aaa;
 }
+/* ================= COURSES ================= */
 
+.course-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.course-card {
+    background: #ffffff;
+    padding: 15px 18px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.course-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+}
+
+/* DARK MODE */
+body.dark .course-card {
+    background: #1e1e1e;
+}
 </style>
 </head>
 
@@ -190,6 +216,7 @@ body.dark .meta {
     <a href="#about">About</a>
     <a href="#research">Research</a>
     <a href="#experience">Experience</a>
+    <a href="#courses">Courses</a>
     <a href="#projects">Projects</a>
     <a href="#publications">Publications</a>
     <a href="#contact">Contact</a>
@@ -249,6 +276,23 @@ body.dark .meta {
             <p class="meta">Aug 2022 – Nov 2022 · Bengaluru, India</p>
             <p>Worked at Centre for Neuroscience (CNS), IISc.</p>
         </div>
+
+    </div>
+</div>
+<div class="section" id="courses">
+    <h2> Graduate Courses at IISc</h2>
+
+    <div class="course-grid">
+
+        <div class="course-card">Machine Learning</div>
+        <div class="course-card">Computational Methods of Optimization</div>
+        <div class="course-card">Stochastic Models & Applications</div>
+        <div class="course-card">Reinforcement Learning</div>
+        <div class="course-card">Measure Theoretic Probability</div>
+        <div class="course-card">Topics in Stochastic Optimization</div>
+        <div class="course-card">Statistical Learning Theory</div>
+        <div class="course-card">Stochastic Processes & Queueing Theory</div>
+        <div class="course-card">Online Optimization & Control</div>
 
     </div>
 </div>
