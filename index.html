@@ -116,6 +116,51 @@ h2 {
     border-radius: 8px;
     cursor: pointer;
 }
+    /* ================= EXPERIENCE ================= */
+
+.timeline {
+    border-left: 3px solid #ddd;
+    padding-left: 20px;
+}
+
+.timeline-item {
+    margin-bottom: 25px;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -11px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    background: #3498db;
+    border-radius: 50%;
+}
+
+.timeline-item h3 {
+    margin: 0;
+}
+
+.meta {
+    font-size: 14px;
+    color: #777;
+}
+
+.desc {
+    font-size: 14px;
+    color: #555;
+}
+
+/* DARK MODE */
+body.dark .timeline {
+    border-left: 3px solid #444;
+}
+
+body.dark .meta {
+    color: #aaa;
+}
 
 </style>
 </head>
@@ -168,6 +213,40 @@ h2 {
         <li>POMDPs</li>
         <li>RLHF & LLM alignment</li>
     </ul>
+</div>
+<!-- EXPERIENCE -->
+<div class="section" id="experience">
+    <h2>Professional Experience</h2>
+
+    <div class="timeline">
+
+        <div class="timeline-item">
+            <h3>Junior Research Fellow</h3>
+            <p class="meta">Dec 2022 – Present · Bengaluru, India</p>
+            <p>Working in Statistics and Machine Learning.</p>
+        </div>
+
+        <div class="timeline-item">
+            <h3>Teaching Assistant</h3>
+            <p class="meta">Jan 2025 – Apr 2026</p>
+            <ul>
+                <li>E0 270 Machine Learning</li>
+                <li>E0 232 Probability and Statistics</li>
+                <li>E0 331 Optimization for Machine Learning</li>
+                <li>E1 213 Pattern Recognition & Neural Networks</li>
+            </ul>
+            <p class="desc">
+                Responsibilities: Conducting tutorials, invigilation, preparing assignments and exam papers.
+            </p>
+        </div>
+
+        <div class="timeline-item">
+            <h3>Junior Research Fellow (CNS, IISc)</h3>
+            <p class="meta">Aug 2022 – Nov 2022 · Bengaluru, India</p>
+            <p>Worked at Centre for Neuroscience (CNS), IISc.</p>
+        </div>
+
+    </div>
 </div>
 
 <!-- PROJECTS -->
@@ -249,6 +328,9 @@ h2 {
     </p>
     <p>Location: Bangalore, India</p>
 </div>
+    <div class="footer">
+        © 2026 Soumyadeep Roy
+    </div>
 
 <script>
 function toggleDark() {
