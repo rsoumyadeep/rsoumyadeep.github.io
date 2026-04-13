@@ -188,6 +188,24 @@ body.dark .meta {
 body.dark .course-card {
     background: #1e1e1e;
 }
+
+    /* ===== SCROLL ANIMATION ===== */
+.section {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease;
+}
+
+.section.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===== NAVBAR ACTIVE LINK ===== */
+.navbar a.active {
+    color: #4da6ff;
+    border-bottom: 2px solid #4da6ff;
+}
 </style>
 </head>
 
@@ -385,6 +403,6 @@ function toggleDark() {
     document.body.classList.toggle("dark");
 }
 </script>
-
+<script src="script.js"></script>
 </body>
 </html>
