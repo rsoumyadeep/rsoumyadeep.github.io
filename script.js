@@ -13,6 +13,12 @@ function revealSections() {
     });
 }
 
+function copyAddress() {
+    const text = document.getElementById("address-text").innerText;
+    navigator.clipboard.writeText(text);
+    alert("Address copied!");
+}
+
 window.addEventListener("scroll", revealSections);
 window.addEventListener("load", revealSections);
 
