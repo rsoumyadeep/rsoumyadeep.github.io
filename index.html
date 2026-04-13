@@ -206,6 +206,30 @@ body.dark .course-card {
     color: #4da6ff;
     border-bottom: 2px solid #4da6ff;
 }
+/* ===== CONTACT SECTION ===== */
+
+.contact-card {
+    line-height: 1.6;
+}
+
+.contact-card button {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #3498db;
+    color: white;
+    cursor: pointer;
+}
+
+.contact-card button:hover {
+    background: #2980b9;
+}
+
+/* DARK MODE */
+body.dark .contact-card button {
+    background: #555;
+}
 </style>
 </head>
 
@@ -384,25 +408,42 @@ body.dark .course-card {
 <!-- CONTACT -->
 <div class="section" id="contact">
     <h2>Contact</h2>
-    <p>
-        Institutional Email: 
-        <a href="mailto:rsoumyadeep@iisc.ac.in">rsoumyadeep@iisc.ac.in</a>
-    </p>
-    <p>
-        Personal Email: 
-        <a href="mailto:soumyadeeproy0162@gmail.com">soumyadeeproy0162@gmail.com</a>
-    </p>
-    <p>
-        <b>Mailing Address:</b><br>
-        Department of Computer Science & Automation (CSA)<br>
-        Indian Institute of Science<br>
-        Bangalore – 560012<br>
-        Karnataka, India
-    </p>
-</div>
-    <div class="footer">
-        © 2026 Soumyadeep Roy
+
+    <div class="contact-card">
+
+        <p>
+            📧 <b>Institutional Email:</b><br>
+            <a href="mailto:rsoumyadeep@iisc.ac.in">rsoumyadeep@iisc.ac.in</a>
+        </p>
+
+        <p>
+            📧 <b>Personal Email:</b><br>
+            <a href="mailto:soumyadeeproy0162@gmail.com">soumyadeeproy0162@gmail.com</a>
+        </p>
+
+        <p>
+            📍 <b>Mailing Address:</b><br>
+            <span id="address-text">
+                Department of Computer Science & Automation (CSA)<br>
+                Indian Institute of Science<br>
+                Bangalore – 560012<br>
+                Karnataka, India
+            </span>
+        </p>
+
+        <button onclick="copyAddress()">📋 Copy Address</button>
+
+        <p>
+            <a href="https://maps.app.goo.gl/5sdcW1apYhsZDzpN7" target="_blank">
+                🌍 View CSA on Google Maps
+            </a>
+        </p>
+
     </div>
+</div>
+<div class="footer">
+    © 2026 Soumyadeep Roy
+</div>
 
 <script>
 function toggleDark() {
