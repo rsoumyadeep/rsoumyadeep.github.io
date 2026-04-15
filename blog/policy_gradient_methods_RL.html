@@ -201,7 +201,7 @@
     background: var(--bg); padding: 0 0.5rem;
     font-size: 0.65rem; letter-spacing: 0.15em; color: var(--accent); text-transform: uppercase;
   }
-  .math-block .eq { color: #a5f3fc; line-height: 2; }
+  .math-block .eq { color: #0f172a; line-height: 2; }
   .math-block .comment { color: var(--muted); font-size: 0.8rem; }
 
   /* ACCORDION */
@@ -389,9 +389,9 @@
   .reveal.visible { opacity: 1; transform: none; }
 
   /* CODE snippet */
-  .code-block {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+.code-block {
+  background: #ffffff;                 /* cleaner than grey */
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   overflow: hidden;
   margin: 1.5rem 0;
@@ -402,8 +402,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.6rem 1rem;
-  background: #eef2f7;                 /* changed */
-  border-bottom: 1px solid #e2e8f0;    /* changed */
+  background: #f1f5f9;
+  border-bottom: 1px solid #d1d5db;
 }
 
 .code-dots {
@@ -422,27 +422,27 @@
 .code-dots span:nth-child(3) { background: #28c840; }
 
 .code-lang {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.7rem;
-  color: #64748b;                      /* changed */
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #475569;
 }
 
 .code-body {
   padding: 1.25rem 1.5rem;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.8rem;
-  line-height: 1.9;
+  font-family: monospace;
+  font-size: 0.9rem;                  /* 🔥 bigger = readable */
+  line-height: 1.8;
   overflow-x: auto;
-  color: #0f172a;                      /* VERY IMPORTANT */
+  color: #111827;                     /* 🔥 strong contrast */
 }
 
-/* ✅ Light theme syntax highlighting */
-.code-body .kw  { color: #7c3aed; }    /* keywords */
-.code-body .fn  { color: #2563eb; }    /* functions */
-.code-body .str { color: #16a34a; }    /* strings */
-.code-body .cm  { color: #64748b; font-style: italic; } /* comments */
-.code-body .num { color: #f59e0b; }    /* numbers */
-.code-body .var { color: #0f172a; }    /* variables */
+/* Clean high-contrast colors */
+.code-body .kw  { color: #6d28d9; font-weight: 600; }
+.code-body .fn  { color: #1d4ed8; }
+.code-body .str { color: #15803d; }
+.code-body .cm  { color: #6b7280; font-style: italic; }
+.code-body .num { color: #b45309; }
+.code-body .var { color: #111827; }
 
   /* TIMELINE */
   .timeline { position: relative; padding-left: 2rem; }
