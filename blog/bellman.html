@@ -1,109 +1,455 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bellman Equation</title>
-
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
-<style>
-body {
-    max-width: 750px;
-    margin: auto;
-    padding: 40px 20px;
-    font-family: Georgia, serif;
-    line-height: 1.8;
-    background: #fafafa;
-    color: #2c3e50;
-}
-
-/* TITLE */
-h1 {
-    font-size: 36px;
-    margin-bottom: 10px;
-}
-
-/* META */
-.meta {
-    color: #777;
-    font-size: 14px;
-    margin-bottom: 30px;
-}
-
-/* HEADINGS */
-h2 {
-    margin-top: 40px;
-}
-
-/* LINKS */
-a {
-    color: #1a73e8;
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-/* CODE BLOCK */
-code {
-    background: #eee;
-    padding: 2px 6px;
-    border-radius: 5px;
-}
-
-/* BACK BUTTON */
-.back {
-    display: inline-block;
-    margin-bottom: 25px;
-    font-size: 14px;
-}
-
-/* NAVIGATION */
-.post-nav {
-    margin-top: 50px;
-    display: flex;
-    justify-content: space-between;
-    font-size: 14px;
-}
-
-/* DARK MODE */
-body.dark {
-    background: #121212;
-    color: #e0e0e0;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bellman Equation in Reinforcement Learning</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax for beautiful KaTeX-style rendering -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&amp;family=Space+Grotesk:wght@500&amp;display=swap');
+        
+        :root {
+            --tw-color-bg: #f8fafc;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #f8fafc, #e2e8f0);
+        }
+        
+        .math-container {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .section-header {
+            position: relative;
+        }
+        
+        .section-header::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 64px;
+            height: 3px;
+            background: linear-gradient(to right, #0ea5e9, #22d3ee);
+            border-radius: 9999px;
+        }
+        
+        .equation {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05);
+        }
+        
+        .katex {
+            font-size: 1.15em !important;
+        }
+    </style>
 </head>
+<body class="text-slate-900 font-sans">
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <div class="w-9 h-9 bg-gradient-to-br from-sky-400 to-cyan-400 rounded-2xl flex items-center justify-center text-white text-xl font-bold">RL</div>
+                <h1 class="text-2xl font-semibold tracking-tight" style="font-family: 'Space Grotesk', sans-serif;">Bellman Equation</h1>
+                <span class="text-sm font-medium bg-slate-100 text-slate-600 px-3 py-1 rounded-3xl">Reinforcement Learning</span>
+            </div>
+            <div class="flex items-center gap-x-8 text-sm font-medium">
+                <a href="#intuition" class="hover:text-sky-600 transition-colors">Intuition</a>
+                <a href="#derivation" class="hover:text-sky-600 transition-colors">Derivation</a>
+                <a href="#usage" class="hover:text-sky-600 transition-colors">Usage in RL</a>
+                <a href="#hjb" class="hover:text-sky-600 transition-colors">HJB Connection</a>
+                <a href="#summary" class="hover:text-sky-600 transition-colors">Summary</a>
+            </div>
+            <div class="text-xs px-4 py-2 bg-slate-900 text-white rounded-3xl flex items-center gap-x-1.5">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                Interactive Guide
+            </div>
+        </div>
+    </nav>
 
-<body>
+    <div class="max-w-6xl mx-auto px-8 py-12">
+        
+        <!-- Hero -->
+        <div class="text-center mb-16">
+            <div class="inline-flex items-center gap-x-2 bg-white text-slate-700 text-sm font-medium px-6 py-3 rounded-3xl shadow-sm mb-6">
+                <span>From intuition to optimal control</span>
+                <span class="text-sky-500">•</span>
+                <span class="text-cyan-500">Bellman Equation</span>
+            </div>
+            <h1 class="text-6xl font-bold tracking-tighter mb-4" style="font-family: 'Space Grotesk', sans-serif;">
+                The Bellman Equation:<br>Recursive Magic in RL
+            </h1>
+            <p class="text-xl text-slate-600 max-w-2xl mx-auto">
+                The single equation that makes reinforcement learning possible. 
+                Understand the intuition, see the math, and discover why it powers every modern RL algorithm.
+            </p>
+            <div class="flex justify-center gap-x-4 mt-8">
+                <a href="#intuition" 
+                   class="bg-sky-600 hover:bg-sky-700 text-white px-8 py-4 rounded-3xl font-semibold flex items-center gap-x-2 transition-all active:scale-95">
+                    Start with Intuition
+                    <span class="text-xl">↓</span>
+                </a>
+                <a href="#hjb" 
+                   class="border border-slate-300 hover:border-slate-400 bg-white px-8 py-4 rounded-3xl font-semibold flex items-center gap-x-2 transition-all">
+                    Jump to HJB Connection
+                </a>
+            </div>
+        </div>
 
-<a href="notes.html" class="back">← Back to Notes</a>
+        <!-- Intuition Section -->
+        <section id="intuition" class="mb-20 scroll-mt-20">
+            <div class="flex items-baseline gap-x-4 mb-8">
+                <span class="text-5xl font-bold text-sky-200">01</span>
+                <div>
+                    <h2 class="section-header text-4xl font-semibold">Intuition: Why recursion beats brute force</h2>
+                    <p class="text-slate-500 mt-1">The core idea that turned optimal decision-making into an efficient algorithm</p>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-10">
+                <div class="bg-white rounded-3xl shadow-sm p-8">
+                    <h3 class="text-2xl font-semibold mb-6">The problem RL solves</h3>
+                    <p class="text-slate-600 leading-relaxed mb-6">
+                        An agent lives in an environment. At every step it chooses an action, receives a reward, and moves to a new state. 
+                        Its goal? Maximize the <strong>total discounted future reward</strong> over its entire lifetime.
+                    </p>
+                    <div class="flex items-center gap-x-8 text-sm">
+                        <div class="flex-1">
+                            <div class="text-emerald-600 font-medium mb-1">Good future = high value</div>
+                            <div class="h-2 bg-emerald-100 rounded-full">
+                                <div class="h-2 w-4/5 bg-emerald-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-amber-600 font-medium mb-1">Bad future = low value</div>
+                            <div class="h-2 bg-amber-100 rounded-full">
+                                <div class="h-2 w-1/3 bg-amber-500 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-8 text-slate-500 text-sm">
+                        Calculating the total reward for every possible sequence of actions is impossible — the number of paths explodes exponentially.
+                    </p>
+                </div>
+                
+                <div class="bg-white rounded-3xl shadow-sm p-8">
+                    <h3 class="text-2xl font-semibold mb-6">Bellman’s brilliant insight</h3>
+                    <p class="text-slate-600 leading-relaxed">
+                        Instead of looking at the entire future, just ask:
+                    </p>
+                    <div class="my-8 p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center text-xl italic">
+                        “What is the best I can get right now <span class="font-semibold">plus</span> the best I can expect from tomorrow?”
+                    </div>
+                    <p class="text-slate-600">
+                        This recursive decomposition is exactly what the <strong>Bellman Equation</strong> formalizes. It turns an infinite-horizon problem into a simple one-step lookahead.
+                    </p>
+                    <div class="mt-6 flex items-center text-sky-600 text-sm font-medium">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent to-sky-300"></div>
+                        <span class="mx-4">Recursive optimality = dynamic programming</span>
+                        <div class="flex-1 h-px bg-gradient-to-l from-transparent to-sky-300"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-12 bg-gradient-to-r from-white to-slate-50 border border-slate-100 rounded-3xl p-8 text-center">
+                <p class="text-lg max-w-xl mx-auto">
+                    <span class="font-semibold">Intuition in one sentence:</span><br>
+                    The optimal value of being in a state today is the immediate reward plus the discounted optimal value of wherever you go tomorrow.
+                </p>
+            </div>
+        </section>
 
-<h1>Understanding the Bellman Equation</h1>
-<p class="meta">April 2026 · Reinforcement Learning</p>
+        <!-- Derivation Section -->
+        <section id="derivation" class="mb-20 scroll-mt-20">
+            <div class="flex items-baseline gap-x-4 mb-8">
+                <span class="text-5xl font-bold text-sky-200">02</span>
+                <div>
+                    <h2 class="section-header text-4xl font-semibold">Derivation: From definition to equation</h2>
+                    <p class="text-slate-500 mt-1">Step-by-step from return to Bellman optimality</p>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-3xl shadow-sm p-10">
+                <h3 class="text-2xl font-semibold mb-6">1. The return (total future reward)</h3>
+                <div class="equation math-container mb-8">
+                    \[
+                    G_t = r_{t+1} + \gamma r_{t+2} + \gamma^2 r_{t+3} + \cdots = \sum_{k=0}^{\infty} \gamma^k r_{t+k+1}
+                    \]
+                </div>
+                <p class="text-slate-600 mb-8">
+                    <span class="font-medium">γ ∈ (0,1)</span> is the discount factor. It makes far-future rewards less important.
+                </p>
+                
+                <h3 class="text-2xl font-semibold mb-6">2. State-value function under a policy π</h3>
+                <div class="equation math-container mb-8">
+                    \[
+                    V^\pi(s) \triangleq \mathbb{E}_\pi \left[ G_t \mid s_t = s \right]
+                    \]
+                </div>
+                <p class="text-slate-600 mb-8">
+                    This is the expected return if we start in state <span class="font-semibold">s</span> and always follow policy π.
+                </p>
+                
+                <h3 class="text-2xl font-semibold mb-6">3. One-step unrolling (Bellman Expectation Equation)</h3>
+                <p class="text-slate-600 mb-4">Split the return into immediate reward + discounted future return:</p>
+                <div class="equation math-container mb-8">
+                    \[
+                    V^\pi(s) = \mathbb{E}_\pi \left[ r_{t+1} + \gamma G_{t+1} \mid s_t = s \right]
+                    \]
+                </div>
+                <p class="text-slate-600 mb-8">
+                    Taking the expectation over the next state and reward (using the transition probabilities of the MDP), we get the <strong>Bellman Expectation Equation</strong>:
+                </p>
+                <div class="equation math-container mb-8">
+                    \[
+                    V^\pi(s) = \sum_{a} \pi(a|s) \sum_{s',r} p(s',r \mid s,a) \left[ r + \gamma V^\pi(s') \right]
+                    \]
+                </div>
+                
+                <div class="border-l-4 border-sky-400 pl-6 py-2 mb-10 text-slate-600">
+                    This is a <strong>fixed-point equation</strong>. The value of today depends only on the values of tomorrow.
+                </div>
+                
+                <h3 class="text-2xl font-semibold mb-6">4. Optimal policy → Bellman Optimality Equation</h3>
+                <p class="text-slate-600 mb-4">The best possible value function V* satisfies:</p>
+                <div class="equation math-container">
+                    \[
+                    V^*(s) = \max_a \sum_{s',r} p(s',r \mid s,a) \left[ r + \gamma V^*(s') \right]
+                    \]
+                </div>
+                <p class="text-xs text-slate-500 mt-4 text-center">or in compact expectation form</p>
+                <div class="equation math-container mt-2">
+                    \[
+                    V^*(s) = \max_a \mathbb{E} \left[ r + \gamma V^*(s') \mid s, a \right]
+                    \]
+                </div>
+                
+                <div class="mt-10 grid grid-cols-2 gap-6">
+                    <div class="bg-slate-50 rounded-2xl p-6">
+                        <strong>Q-function version (most used in practice):</strong><br>
+                        <div class="equation math-container text-base mt-4">
+                            \[
+                            Q^*(s,a) = \mathbb{E} \left[ r + \gamma \max_{a'} Q^*(s',a') \mid s,a \right]
+                            \]
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 rounded-2xl p-6 text-slate-600 text-sm flex items-center">
+                        The optimal policy is simply <span class="font-mono bg-white px-2 py-1 rounded-lg mx-1">\(\pi^*(s) = \arg\max_a Q^*(s,a)\)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-<p>
-The Bellman equation defines the value of a state recursively.
+        <!-- Usage in RL Section -->
+        <section id="usage" class="mb-20 scroll-mt-20">
+            <div class="flex items-baseline gap-x-4 mb-8">
+                <span class="text-5xl font-bold text-sky-200">03</span>
+                <div>
+                    <h2 class="section-header text-4xl font-semibold">Where &amp; how it is used in RL</h2>
+                    <p class="text-slate-500 mt-1">From classic algorithms to deep RL — the Bellman equation is everywhere</p>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Card 1 -->
+                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-sky-600 text-sm font-medium mb-3">Dynamic Programming</div>
+                    <h4 class="font-semibold text-xl mb-2">Value Iteration</h4>
+                    <p class="text-slate-600 text-sm mb-6">
+                        Repeatedly apply the Bellman optimality backup until convergence:
+                    </p>
+                    <div class="font-mono text-xs bg-slate-100 p-4 rounded-2xl mb-6">
+                        V<sub>new</sub>(s) ← max<sub>a</sub> E [ r + γ V(s′) | s,a ]
+                    </div>
+                    <p class="text-xs text-slate-500">Converges to V* → extract optimal policy</p>
+                </div>
+                
+                <!-- Card 2 -->
+                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-sky-600 text-sm font-medium mb-3">Model-free methods</div>
+                    <h4 class="font-semibold text-xl mb-2">Q-Learning</h4>
+                    <p class="text-slate-600 text-sm mb-6">
+                        The famous TD update is a sampled version of the Bellman optimality equation:
+                    </p>
+                    <div class="equation math-container text-base mb-6">
+                        \[
+                        Q(s,a) \leftarrow Q(s,a) + \alpha \left[ r + \gamma \max_{a'} Q(s',a') - Q(s,a) \right]
+                        \]
+                    </div>
+                    <p class="text-xs text-slate-500">No model needed — learns directly from experience</p>
+                </div>
+                
+                <!-- Card 3 -->
+                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-sky-600 text-sm font-medium mb-3">Deep RL &amp; Policy Gradients</div>
+                    <h4 class="font-semibold text-xl mb-2">Actor-Critic &amp; DQN</h4>
+                    <p class="text-slate-600 text-sm mb-6">
+                        Neural networks approximate V* or Q*. The loss function is usually the <strong>Bellman error</strong>:
+                    </p>
+                    <div class="equation math-container text-base">
+                        \[
+                        \mathcal{L}(\theta) = \mathbb{E} \left[ \left( r + \gamma \max Q_{\theta^-}(s',a') - Q_\theta(s,a) \right)^2 \right]
+                        \]
+                    </div>
+                    <p class="text-xs text-slate-500 mt-6">Target network stabilizes training</p>
+                </div>
+            </div>
+            
+            <div class="mt-12 text-center text-slate-500 text-sm max-w-md mx-auto">
+                Every major RL algorithm (SARSA, PPO, SAC, DDPG, TD3, …) is either directly solving or approximating the Bellman equation.
+            </div>
+        </section>
+
+        <!-- HJB Connection Section -->
+        <section id="hjb" class="mb-20 scroll-mt-20">
+            <div class="flex items-baseline gap-x-4 mb-8">
+                <span class="text-5xl font-bold text-sky-200">04</span>
+                <div>
+                    <h2 class="section-header text-4xl font-semibold">Connection to the Hamilton-Jacobi-Bellman (HJB) Equation</h2>
+                    <p class="text-slate-500 mt-1">The continuous-state/action/time counterpart</p>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-3xl p-10">
+                <div class="flex flex-col md:flex-row gap-12">
+                    <div class="md:w-2/5">
+                        <div class="text-amber-600 uppercase text-xs tracking-widest mb-2">Correction</div>
+                        <h3 class="text-2xl font-semibold mb-3">It’s the <span class="text-amber-600">Hamilton-Jacobi-Bellman (HJB)</span> equation</h3>
+                        <p class="text-slate-600">
+                            You were almost right — it is indeed the continuous version of the Bellman equation, but the standard name is 
+                            <strong>Hamilton–Jacobi–Bellman</strong> (HJB) equation.
+                        </p>
+                        <p class="mt-4 text-sm text-slate-500">
+                            It arises in <strong>optimal control theory</strong> for continuous-time dynamical systems with continuous states and actions.
+                        </p>
+                    </div>
+                    
+                    <div class="flex-1">
+                        <h4 class="font-medium mb-4">How the discrete Bellman becomes the HJB (limit as Δt → 0)</h4>
+                        
+                        <div class="equation math-container mb-8">
+                            Discrete Bellman (small time step Δt):<br>
+                            \[
+                            V(s) = \max_u \Big[ r(s,u)\Delta t + (1 - \rho\Delta t) \mathbb{E}[V(s + f(s,u)\Delta t)] \Big]
+                            \]
+                        </div>
+                        
+                        <div class="flex justify-center my-6 text-3xl text-slate-300">↓ Taylor expansion + limit</div>
+                        
+                        <div class="equation math-container bg-gradient-to-r from-amber-50 to-white border border-amber-200 rounded-3xl p-8">
+                            <strong>HJB equation</strong> (infinite-horizon discounted case):
+                            \[
+                            \rho V(x) = \min_u \left[ l(x,u) + \nabla_x V(x)^\top f(x,u) \right]
+                            \]
+                            where:<br>
+                            • \( \rho \): discount rate<br>
+                            • \( l(x,u) \): instantaneous cost/reward<br>
+                            • \( f(x,u) \): continuous dynamics<br>
+                            • \( \nabla_x V(x) \): gradient of the value function
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-10 border-t border-slate-100 pt-8 text-sm text-slate-500 grid md:grid-cols-2 gap-8">
+                    <div>
+                        <strong>When to use HJB?</strong><br>
+                        Continuous-time control problems (robotics, autonomous driving, finance). Solved analytically only in low dimensions; otherwise approximated numerically.
+                    </div>
+                    <div>
+                        <strong>How RL connects to HJB</strong><br>
+                        Modern continuous-control RL algorithms (DDPG, SAC, TD3) are essentially learning neural-network approximations to the solution of the HJB equation — without ever writing the PDE explicitly.
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl px-5 py-4 flex items-start gap-3">
+                    <span class="text-xl leading-none mt-px">💡</span>
+                    <div>
+                        The Bellman equation is the discrete-time version. The HJB equation is its continuous-time counterpart. 
+                        Deep RL bridges both worlds by using function approximators to solve the Bellman equation in high-dimensional continuous spaces.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary -->
+        <section id="summary" class="bg-slate-900 text-white rounded-3xl px-12 py-12">
+            <div class="max-w-2xl mx-auto text-center">
+                <h2 class="text-4xl font-semibold mb-8">Key Takeaways</h2>
+                <div class="grid md:grid-cols-3 gap-8 text-left">
+                    <div class="border border-white/10 rounded-2xl p-6">
+                        <div class="text-sky-400 text-2xl mb-3">1</div>
+                        <p class="font-medium">Recursion is the key</p>
+                        <p class="text-slate-400 text-sm mt-2">Bellman equation decomposes infinite future into one-step lookahead.</p>
+                    </div>
+                    <div class="border border-white/10 rounded-2xl p-6">
+                        <div class="text-sky-400 text-2xl mb-3">2</div>
+                        <p class="font-medium">It’s the foundation</p>
+                        <p class="text-slate-400 text-sm mt-2">Value iteration, Q-learning, deep Q-networks, actor-critic — all rest on it.</p>
+                    </div>
+                    <div class="border border-white/10 rounded-2xl p-6">
+                        <div class="text-sky-400 text-2xl mb-3">3</div>
+                        <p class="font-medium">Continuous world = HJB</p>
+                        <p class="text-slate-400 text-sm mt-2">Hamilton-Jacobi-Bellman equation is the continuous-time generalization.</p>
+                    </div>
+                </div>
+                <p class="mt-12 text-slate-400 text-sm">
+                    Copy this HTML file, open it in any browser, and you have a complete, beautiful, self-contained educational page.<br>
+                    No external dependencies except the two CDNs (Tailwind + MathJax).
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white py-8 border-t text-center text-xs text-slate-400">
+        <p style="margin-top:12px;font-size:11px;color:var(--muted)">
+  © <span id="year"></span> Soumyadeep Roy
 </p>
+    </footer>
 
-<h2>Mathematical Form</h2>
-
-<p>
-$$
-V(s) = \max_a \left[ R(s,a) + \gamma \mathbb{E}[V(s')] \right]
-$$
-</p>
-
-<h2>Intuition</h2>
-<p>
-It decomposes a complex decision problem into smaller subproblems.
-</p>
-
-<div class="post-nav">
-    <a href="#">← Previous</a>
-    <a href="notes.html">Back to Notes</a>
-</div>
-
+    <!-- Tailwind script initialization -->
+    <script>
+          document.getElementById("year").textContent = new Date().getFullYear();
+        document.addEventListener('DOMContentLoaded', () => {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        configUser: userConfig,
+                        theme: {
+                            extend: {
+                                colors: {
+                                    'rl-primary': '#0ea5e9'
+                                }
+                            }
+                        }
+                    }
+                },
+                theme: {
+                    extend: {}
+                }
+            }
+        })
+        
+        // Make MathJax render immediately when loaded
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        }
+        
+        console.log('%c✅ Bellman Equation HTML ready! Math renders automatically.', 'color:#0ea5e9; font-weight:600')
+    </script>
 </body>
 </html>
