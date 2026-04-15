@@ -198,41 +198,83 @@ window.addEventListener('scroll',()=>{
 
 // trajectory
 
-  const t = document.getElementById('traj');
-const ctx = t.getContext('2d');
-t.height = 200;
+const canvas = document.getElementById('traj');
+const ctx = canvas.getContext('2d');
 
-function drawTrajectory(){
-  ctx.clearRect(0,0,t.width,t.height);
+canvas.width = 900;
+canvas.height = 300;
+
+ctx.font = "14px Inter";
+ctx.lineWidth = 2;
+
+function drawAdvancedTrajectory(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
   let states = ["s0","s1","s2","s3"];
-  let rewards = [1, -1, 2];
+  let x = 100;
 
-  let x = 50;
+  let totalReturn = 0;
 
   for(let i=0;i<states.length;i++){
+
     // draw state
     ctx.beginPath();
-    ctx.arc(x,100,20,0,2*Math.PI);
+    ctx.arc(x,120,25,0,2*Math.PI);
+    ctx.strokeStyle = "#1e3a8a";
     ctx.stroke();
-    ctx.fillText(states[i], x-10, 140);
+    ctx.fillText(states[i], x-10, 160);
 
-    // draw arrow + reward
+    // policy distribution (3 actions)
+    let probs = [Math.random(), Math.random(), Math.random()];
+    let sum = probs.reduce((a,b)=>a+b);
+    probs = probs.map(p=>p/sum);
+
+    // draw bars
+    probs.forEach((p,j)=>{
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillRect(x-40 + j*30, 200, 20, -p*60);
+      ctx.fillText("a"+j, x-40 + j*30, 220);
+    });
+
+    // sample action
+    let sampled = probs.indexOf(Math.max(...probs));
+
+    // highlight sampled action
+    ctx.fillStyle = "#ef4444";
+    ctx.fillRect(x-40 + sampled*30, 200, 20, -probs[sampled]*60);
+
+    // reward
     if(i < states.length-1){
+      let reward = Math.floor(Math.random()*3 - 1);
+      totalReturn += reward;
+
+      ctx.fillStyle = "#059669";
+      ctx.fillText("r=" + reward, x+20, 100);
+
+      // arrow
       ctx.beginPath();
-      ctx.moveTo(x+20,100);
-      ctx.lineTo(x+80,100);
+      ctx.moveTo(x+25,120);
+      ctx.lineTo(x+100,120);
       ctx.stroke();
 
-      ctx.fillText("a"+i, x+35, 85);
-      ctx.fillText("r="+rewards[i], x+30, 120);
+      // action label
+      ctx.fillText("a"+sampled, x+40, 140);
     }
 
-    x += 100;
+    x += 150;
   }
+
+  // total return
+  ctx.fillStyle = "#7c3aed";
+  ctx.font = "16px Inter";
+  ctx.fillText("Total Return G = " + totalReturn, 350, 260);
 }
 
-setInterval(drawTrajectory, 1000);
+// animate
+setInterval(drawAdvancedTrajectory, 1500);
+
+  
 // policy
 const p=document.getElementById('policyCanvas'); const pctx=p.getContext('2d'); p.height=200;
 setInterval(()=>{ pctx.clearRect(0,0,p.width,p.height); let probs=[Math.random(),Math.random(),Math.random()]; let s=probs.reduce((a,b)=>a+b); probs=probs.map(x=>x/s); probs.forEach((v,i)=>{ pctx.fillRect(i*120+50,200-v*150,50,v*150); }); },1000);
