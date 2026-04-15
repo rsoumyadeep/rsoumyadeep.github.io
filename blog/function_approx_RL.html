@@ -178,8 +178,7 @@
 <section id="hero">
   <div class="hero-grid"></div>
   <div class="container">
-    <div class="hero-badge"><span class="badge-dot"></span> Reinforcement Learning </div>
-    <h1 class="hero-title">Function Approximation<br><span class="line2">in Reinforcement Learning</span></h1>
+     <h1 class="hero-title">Function Approximation<br><span class="line2">in Reinforcement Learning</span></h1>
     <p class="hero-sub">From tabular methods to deep neural networks — a rigorous, interactive exploration of value function approximation, policy approximation, and the theory behind them.</p>
     <div class="hero-nav">
       <a class="nav-pill" href="#motivation">Why Approximate?</a>
@@ -616,7 +615,11 @@
   </div>
 </section>
 
-<footer><div class="container"><p>Function Approximation in RL · <span>Interactive Reference</span> · PhD-level Study</p><p style="margin-top:8px;font-size:11px">Sutton & Barto · Mnih et al. · Schulman et al. · Haarnoja et al. · Tsitsiklis & Van Roy</p></div></footer>
+<footer>
+  <p style="margin-top:12px;font-size:11px;color:var(--muted)">
+  © <span id="year"></span> Soumyadeep Roy
+</p>
+</footer>
 
 <script>
 // ===== CURSOR =====
@@ -907,6 +910,7 @@ document.getElementById('complexity').addEventListener('input',drawBV);
 // ===== INIT =====
 setTimeout(()=>{drawApprox();drawPolyBasis();drawFourier();drawRBF();drawTiling();drawNN();drawBV();drawLambda();},200);
 window.addEventListener('resize',()=>{drawApprox();drawNN();drawBV();drawLambda();});
+  document.getElementById("year").textContent = new Date().getFullYear();
 </script>
 </body>
 </html>
