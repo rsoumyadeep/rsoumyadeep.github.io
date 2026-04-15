@@ -197,9 +197,42 @@ window.addEventListener('scroll',()=>{
 });
 
 // trajectory
-const t=document.getElementById('traj'); const tctx=t.getContext('2d'); t.height=200;
-setInterval(()=>{ tctx.clearRect(0,0,t.width,t.height); let x=20; for(let i=0;i<5;i++){ tctx.fillRect(x,100,30,30); x+=120;} },1000);
 
+  const t = document.getElementById('traj');
+const ctx = t.getContext('2d');
+t.height = 200;
+
+function drawTrajectory(){
+  ctx.clearRect(0,0,t.width,t.height);
+
+  let states = ["s0","s1","s2","s3"];
+  let rewards = [1, -1, 2];
+
+  let x = 50;
+
+  for(let i=0;i<states.length;i++){
+    // draw state
+    ctx.beginPath();
+    ctx.arc(x,100,20,0,2*Math.PI);
+    ctx.stroke();
+    ctx.fillText(states[i], x-10, 140);
+
+    // draw arrow + reward
+    if(i < states.length-1){
+      ctx.beginPath();
+      ctx.moveTo(x+20,100);
+      ctx.lineTo(x+80,100);
+      ctx.stroke();
+
+      ctx.fillText("a"+i, x+35, 85);
+      ctx.fillText("r="+rewards[i], x+30, 120);
+    }
+
+    x += 100;
+  }
+}
+
+setInterval(drawTrajectory, 1000);
 // policy
 const p=document.getElementById('policyCanvas'); const pctx=p.getContext('2d'); p.height=200;
 setInterval(()=>{ pctx.clearRect(0,0,p.width,p.height); let probs=[Math.random(),Math.random(),Math.random()]; let s=probs.reduce((a,b)=>a+b); probs=probs.map(x=>x/s); probs.forEach((v,i)=>{ pctx.fillRect(i*120+50,200-v*150,50,v*150); }); },1000);
