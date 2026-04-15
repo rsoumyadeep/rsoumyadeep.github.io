@@ -1,1 +1,186 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Policy Gradient Methods | Distill-Style Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(120deg, #020617, #0f172a);
+  color: #e2e8f0;
+}
+.container {
+  max-width: 950px;
+  margin: auto;
+  padding: 40px 20px;
+}
+h1, h2 { color: #38bdf8; }
+.card {
+  background: rgba(255,255,255,0.05);
+  padding: 24px;
+  border-radius: 16px;
+  margin: 24px 0;
+  transition: all 0.3s ease;
+}
+.card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.5);} 
+.code { background:#020617; padding:15px; border-radius:10px; font-family:monospace; overflow-x:auto; }
+canvas { width:100%; margin-top:15px; }
+.slider { width:100%; }
+.fade { opacity:0; transform:translateY(20px); transition:0.8s; }
+.fade.visible { opacity:1; transform:translateY(0); }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Policy Gradient Methods</h1>
+<p><em>Intuition → Visualization → Theory → Practice → RLHF</em></p>
+
+<!-- TRAJECTORY VISUALIZATION -->
+<div class="card fade">
+<h2>🎮 Trajectory Visualization</h2>
+<p>Agent interacts with environment: state → action → reward</p>
+<canvas id="traj"></canvas>
+</div>
+
+<!-- INTUITION -->
+<div class="card fade">
+<h2>🚀 Core Intuition</h2>
+<p>We directly optimize the policy by increasing probability of good actions.</p>
+<canvas id="policy"></canvas>
+</div>
+
+<!-- OBJECTIVE -->
+<div class="card fade">
+<h2>🎯 Objective</h2>
+\[
+J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[R(\tau)]
+\]
+</div>
+
+<!-- DERIVATION -->
+<div class="card fade">
+<h2>📐 Policy Gradient Theorem</h2>
+\[
+\nabla_\theta J = \mathbb{E}[\nabla_\theta \log \pi_\theta(a|s) R]
+\]
+</div>
+
+<!-- VARIANCE SLIDER -->
+<div class="card fade">
+<h2>⚡ Variance Reduction (Interactive)</h2>
+<p>Adjust baseline:</p>
+<input type="range" min="0" max="1" step="0.01" value="0.5" id="slider" class="slider">
+<canvas id="variance"></canvas>
+</div>
+
+<!-- ENTROPY -->
+<div class="card fade">
+<h2>🌪 Entropy Regularization</h2>
+<p>Encourages exploration:</p>
+\[
+J(\theta) = \mathbb{E}[R] + \beta H(\pi_\theta)
+\]
+<p>Entropy prevents premature convergence.</p>
+</div>
+
+<!-- PPO -->
+<div class="card fade">
+<h2>🔥 PPO</h2>
+\[
+L^{CLIP} = \mathbb{E}[\min(r_t A_t, clip(r_t,1-\epsilon,1+\epsilon)A_t)]
+\]
+</div>
+
+<!-- RLHF -->
+<div class="card fade">
+<h2>🤖 Connection to RLHF</h2>
+<ul>
+<li>Policy = language model</li>
+<li>Reward = human preference model</li>
+<li>Optimization = PPO</li>
+</ul>
+<p>This is exactly how modern LLMs are aligned.</p>
+</div>
+
+<!-- CODE -->
+<div class="card fade">
+<h2>💻 Minimal PyTorch</h2>
+<div class="code">
+loss = -(log_probs * advantages).mean()
+loss.backward()
+optimizer.step()
+</div>
+</div>
+
+</div>
+
+<script>
+// fade animation
+const f = document.querySelectorAll('.fade');
+window.addEventListener('scroll',()=>{
+ f.forEach(el=>{
+  if(el.getBoundingClientRect().top < window.innerHeight-50){ el.classList.add('visible'); }
+ });
+});
+
+// trajectory animation
+const t = document.getElementById('traj');
+const tctx = t.getContext('2d');
+t.height=200;
+function drawTraj(){
+ tctx.clearRect(0,0,t.width,t.height);
+ let x=20;
+ for(let i=0;i<5;i++){
+  tctx.fillStyle='#38bdf8';
+  tctx.fillRect(x,100,30,30);
+  tctx.fillText('s'+i,x,140);
+  x+=120;
+ }
+}
+setInterval(drawTraj,1000);
+
+// policy bars
+const p = document.getElementById('policy');
+const pctx = p.getContext('2d');
+p.height=200;
+function drawPolicy(){
+ pctx.clearRect(0,0,p.width,p.height);
+ let probs=[Math.random(),Math.random(),Math.random()];
+ let s=probs.reduce((a,b)=>a+b);
+ probs=probs.map(x=>x/s);
+ probs.forEach((v,i)=>{
+  pctx.fillStyle='#38bdf8';
+  pctx.fillRect(i*120+50,200-v*150,50,v*150);
+ });
+}
+setInterval(drawPolicy,1000);
+
+// variance demo
+const v=document.getElementById('variance');
+const vctx=v.getContext('2d');
+v.height=200;
+const slider=document.getElementById('slider');
+function drawVar(){
+ vctx.clearRect(0,0,v.width,v.height);
+ let b=slider.value;
+ for(let i=0;i<10;i++){
+  let r=Math.random();
+  let val=r-b;
+  vctx.fillRect(i*80+20,100,10,val*100);
+ }
+}
+slider.oninput=drawVar;
+setInterval(drawVar,1000);
+</script>
+
+</body>
+</html>
