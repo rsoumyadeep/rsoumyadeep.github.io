@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="dark scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="An Interactive Guide to Offline Reinforcement Learning - History, Theory, Algorithms &amp; Hands-on Demo">
+    <meta name="description" content="Complete Interactive Guide to Offline Reinforcement Learning - History, Theory, Algorithms &amp; Hands-on Demo">
     <title>OfflineRL • Learn from the Past</title>
     <!-- Tailwind CSS CDN (for beautiful, modern styling) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -29,7 +29,7 @@
         
         /* Hero gradient animation */
         .hero-bg {
-            background: linear-gradient(90deg, #f8fafc, #eef2f7, #f8fafc);
+            background: linear-gradient(90deg, #0a0a2a, #001122, #0a0a2a);
             background-size: 400% 400%;
             animation: gradientShift 25s ease infinite;
         }
@@ -76,7 +76,7 @@
         
         /* Navbar glass effect */
         .glass {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(10, 10, 42, 0.85);
             backdrop-filter: blur(16px);
         }
         
@@ -89,7 +89,7 @@
         }
     </style>
 </head>
-<body class="tailwind-ready bg-white text-gray-900 font-sans">
+<body class="tailwind-ready bg-[#05050f] text-white font-sans">
     <!-- NAVBAR -->
     <nav class="glass fixed top-0 left-0 right-0 z-50 border-b border-white/10">
         <div class="max-w-screen-2xl mx-auto px-8 py-5 flex items-center justify-between">
@@ -586,13 +586,11 @@
     </section>
 
     <!-- FOOTER -->
-    <footer class="bg-black py-12 border-t border-white/10">
-        <div class="max-w-screen-2xl mx-auto px-8 text-center text-gray-400 text-sm">
-            Fully self-contained HTML educational experience • Built as a single offline file<br>
-            Covers everything you need to know about Offline Reinforcement Learning<br>
-            <span class="text-cyan-400">Copy this code into a .html file and open it in any browser — no internet required after loading</span>
-        </div>
-    </footer>
+<footer class="bg-black py-12 border-t border-white/10">
+    <div class="max-w-screen-2xl mx-auto px-8 text-center text-gray-400 text-sm">
+        © <span id="year"></span> Soumyadeep Roy
+    </div>
+</footer>
 
     <!-- ALGORITHM MODAL -->
     <div onclick="if(event.target.id === 'modal'){hideModal()}" 
@@ -606,6 +604,7 @@
     </div>
 
     <script>
+        document.getElementById("year").textContent = new Date().getFullYear();
         /**
          * Main script for the complete Offline RL educational HTML
          * Everything is self-contained except the two CDNs (Tailwind + KaTeX)
