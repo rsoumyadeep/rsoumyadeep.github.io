@@ -1,1 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An Interactive Guide to Offline Reinforcement Learning - History, Theory, Algorithms &amp; Hands-on Demo">
+    <title>OfflineRL • Learn from the Past</title>
+    <!-- Tailwind CSS CDN (for beautiful, modern styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX CDN for beautiful math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&amp;family=Space+Grotesk:wght@500&amp;display=swap');
+        
+        :root {
+            --tw-color-primary: #00f5ff;
+        }
+        
+        * {
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        
+        .tailwind-ready * {
+            transition-duration: 300ms;
+        }
+        
+        /* Hero gradient animation */
+        .hero-bg {
+            background: linear-gradient(90deg, #0a0a2a, #001122, #0a0a2a);
+            background-size: 400% 400%;
+            animation: gradientShift 25s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Neon glow */
+        .neon-text {
+            text-shadow: 
+                0 0 10px #00f5ff,
+                0 0 20px #00f5ff,
+                0 0 40px #00f5ff;
+        }
+        
+        /* Card hover lift */
+        .card-hover {
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-12px) scale(1.03);
+            box-shadow: 25px 25px 50px -12px rgb(0 245 255 / 0.3);
+        }
+        
+        /* Section fade-in */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+        
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Timeline dot pulse */
+        .timeline-dot {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Navbar glass effect */
+        .glass {
+            background: rgba(10, 10, 42, 0.85);
+            backdrop-filter: blur(16px);
+        }
+        
+        /* Math container */
+        .katex-display {
+            background: #111827;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+        }
+    </style>
+</head>
+<body class="tailwind-ready bg-[#05050f] text-white font-sans">
+    <!-- NAVBAR -->
+    <nav class="glass fixed top-0 left-0 right-0 z-50 border-b border-white/10">
+        <div class="max-w-screen-2xl mx-auto px-8 py-5 flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-x-3">
+                <div class="w-9 h-9 bg-cyan-400 rounded-2xl flex items-center justify-center text-[#05050f] font-bold text-2xl rotate-12">📦</div>
+                <h1 class="text-3xl font-semibold tracking-[-1px]" style="font-family: 'Space Grotesk', sans-serif;">
+                    OfflineRL
+                </h1>
+                <span class="px-3 py-0.5 text-xs font-medium bg-cyan-400/10 text-cyan-400 rounded-3xl border border-cyan-400/30">v2026</span>
+            </div>
 
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex items-center gap-x-8 text-sm font-medium">
+                <a onclick="navigateToSection('intro')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>📖</span> Introduction
+                </a>
+                <a onclick="navigateToSection('history')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>🕰️</span> History
+                </a>
+                <a onclick="navigateToSection('theory')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>🔬</span> Theory
+                </a>
+                <a onclick="navigateToSection('algorithms')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>⚡</span> Algorithms
+                </a>
+                <a onclick="navigateToSection('challenges')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>🚧</span> Challenges
+                </a>
+                <a onclick="navigateToSection('apps')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>🌍</span> Applications
+                </a>
+                <a onclick="navigateToSection('demo')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>🧪</span> Interactive Lab
+                </a>
+                <a onclick="navigateToSection('quiz')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
+                    <span>❓</span> Test Yourself
+                </a>
+            </div>
+
+            <!-- Right side -->
+            <div class="flex items-center gap-x-4">
+                <button onclick="toggleDarkMode()" 
+                        class="w-10 h-10 flex items-center justify-center rounded-2xl border border-white/20 hover:border-cyan-400 hover:text-cyan-400">
+                    <span id="theme-icon" class="text-xl">☀️</span>
+                </button>
+                
+                <!-- Mobile menu toggle -->
+                <button onclick="toggleMobileMenu()" 
+                        class="md:hidden w-10 h-10 flex items-center justify-center text-2xl">
+                    ☰
+                </button>
+                
+                <a href="#" onclick="downloadHTML()" 
+                   class="hidden sm:flex items-center gap-x-2 px-6 py-3 bg-white text-[#05050f] font-semibold rounded-3xl hover:bg-cyan-400 hover:text-[#05050f]">
+                    <span>↓</span>
+                    <span class="text-sm">Save Offline</span>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden px-8 pb-8 border-t border-white/10 bg-[#05050f]">
+            <div class="flex flex-col gap-y-4 pt-6 text-lg font-medium">
+                <a onclick="navigateToSection('intro');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">📖 Introduction</a>
+                <a onclick="navigateToSection('history');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🕰️ Historical Context</a>
+                <a onclick="navigateToSection('theory');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🔬 Theoretical Underpinnings</a>
+                <a onclick="navigateToSection('algorithms');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">⚡ Key Algorithms</a>
+                <a onclick="navigateToSection('challenges');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🚧 Challenges &amp; Limitations</a>
+                <a onclick="navigateToSection('apps');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🌍 Real-World Applications</a>
+                <a onclick="navigateToSection('demo');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🧪 Interactive Lab</a>
+                <a onclick="navigateToSection('quiz');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">❓ Quick Quiz</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <header id="intro" class="hero-bg min-h-screen pt-20 flex items-center relative overflow-hidden">
+        <!-- Particle Canvas -->
+        <canvas id="particle-canvas" class="absolute inset-0 pointer-events-none z-0"></canvas>
+        
+        <div class="max-w-screen-2xl mx-auto px-8 grid md:grid-cols-2 gap-16 items-center relative z-10">
+            <div class="space-y-8">
+                <div class="inline-flex items-center gap-x-2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-3xl text-cyan-400 text-sm font-medium border border-cyan-400/30">
+                    <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                    OFFLINE REINFORCEMENT LEARNING
+                </div>
+                
+                <h1 class="text-7xl md:text-8xl font-bold leading-none tracking-[-3px] neon-text" style="font-family: 'Space Grotesk', sans-serif;">
+                    Learn from<br>the <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Past</span>
+                </h1>
+                
+                <p class="text-2xl text-gray-300 max-w-lg">
+                    Master policies from fixed, static datasets.<br>
+                    No dangerous exploration. No live environment.<br>
+                    Pure offline RL — safe, scalable, powerful.
+                </p>
+                
+                <div class="flex items-center gap-x-4">
+                    <button onclick="navigateToSection('demo')" 
+                            class="px-10 py-5 bg-gradient-to-r from-cyan-400 to-purple-400 text-[#05050f] font-semibold text-xl rounded-3xl hover:scale-105 flex items-center gap-x-3 shadow-2xl shadow-cyan-400/50">
+                        <span>Launch Interactive Lab</span>
+                        <span class="text-3xl">🧪</span>
+                    </button>
+                    
+                    <button onclick="navigateToSection('history')" 
+                            class="px-8 py-5 border-2 border-white/40 hover:border-cyan-400 text-lg font-medium rounded-3xl flex items-center gap-x-2">
+                        Explore 30+ years of history →
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-x-8 text-sm">
+                    <div class="flex -space-x-4">
+                        <div class="w-8 h-8 bg-purple-500 rounded-2xl flex items-center justify-center text-xs ring-2 ring-[#05050f]">BCQ</div>
+                        <div class="w-8 h-8 bg-cyan-400 rounded-2xl flex items-center justify-center text-xs ring-2 ring-[#05050f]">CQL</div>
+                        <div class="w-8 h-8 bg-pink-500 rounded-2xl flex items-center justify-center text-xs ring-2 ring-[#05050f]">BEAR</div>
+                    </div>
+                    <p class="text-gray-400">Featured in NeurIPS, ICML, ICLR since 2018</p>
+                </div>
+            </div>
+            
+            <!-- Visual hero -->
+            <div class="hidden md:flex justify-center relative">
+                <div class="w-96 h-96 bg-gradient-to-br from-cyan-400/10 to-purple-400/10 rounded-[4rem] rotate-12 flex items-center justify-center border border-white/10 shadow-2xl relative">
+                    <!-- Animated RL agent SVG -->
+                    <svg width="280" height="280" viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-[spin_25s_linear_infinite]">
+                        <!-- Grid background -->
+                        <rect x="20" y="20" width="240" height="240" rx="20" stroke="#00f5ff" stroke-opacity="0.15" stroke-width="8"/>
+                        <!-- State nodes -->
+                        <circle cx="70" cy="70" r="18" fill="#00f5ff" fill-opacity="0.8"/>
+                        <circle cx="210" cy="70" r="18" fill="#00f5ff" fill-opacity="0.8"/>
+                        <circle cx="70" cy="210" r="18" fill="#00f5ff" fill-opacity="0.8"/>
+                        <circle cx="210" cy="210" r="18" fill="#00f5ff" fill-opacity="0.8"/>
+                        <!-- Agent -->
+                        <g>
+                            <rect x="125" y="125" width="30" height="30" rx="6" fill="#111827"/>
+                            <circle cx="140" cy="140" r="12" fill="#00f5ff"/>
+                            <!-- Arrow showing offline data flow -->
+                            <path d="M80 140 L110 140" stroke="#00f5ff" stroke-width="8" stroke-linecap="round"/>
+                            <polygon points="110,130 130,140 110,150" fill="#00f5ff"/>
+                        </g>
+                        <!-- Data tapes -->
+                        <rect x="40" y="40" width="200" height="12" rx="2" fill="#a5f3fc" fill-opacity="0.3" transform="rotate(-12 40 46)"/>
+                        <rect x="40" y="228" width="200" height="12" rx="2" fill="#a5f3fc" fill-opacity="0.3" transform="rotate(12 40 234)"/>
+                    </svg>
+                    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
+                        <div class="text-cyan-400 text-sm font-mono flex items-center justify-center gap-x-1">
+                            <div class="animate-pulse">●</div>
+                            FIXED DATASET
+                        </div>
+                        <p class="text-2xl font-semibold">No interaction needed</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scroll indicator -->
+        <div class="absolute bottom-10 left-1/2 flex flex-col items-center gap-y-2 text-cyan-400">
+            <div class="text-xs tracking-[3px] font-medium">SCROLL FOR DEEP DIVE</div>
+            <div class="w-6 h-10 border border-cyan-400 rounded-3xl flex items-center justify-center">
+                <div class="w-1.5 h-3 bg-cyan-400 rounded-full animate-bounce"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- WHAT IS OFFLINE RL -->
+    <section class="max-w-screen-2xl mx-auto px-8 py-24">
+        <div class="grid md:grid-cols-12 gap-16">
+            <div class="md:col-span-5">
+                <span class="px-4 py-1 bg-cyan-400/10 text-cyan-400 rounded-3xl text-sm">CORE CONCEPT</span>
+                <h2 class="text-5xl font-semibold mt-4 leading-tight">What is Offline Reinforcement Learning?</h2>
+                <p class="mt-6 text-xl text-gray-300">
+                    Offline RL (also called Batch RL) trains an agent using a <strong>static dataset</strong> of previously collected transitions — no new interactions with the environment are allowed.
+                </p>
+                
+                <div class="mt-10 flex items-center gap-x-8">
+                    <div class="flex-1 bg-white/5 rounded-3xl p-6">
+                        <div class="text-emerald-400 text-sm mb-2">✅ ONLINE RL</div>
+                        <p class="text-2xl font-medium">Agent explores and learns <span class="text-white">live</span> in the real environment</p>
+                        <ul class="mt-4 space-y-2 text-gray-400">
+                            <li class="flex items-center gap-x-2">• Dangerous / expensive trials</li>
+                            <li class="flex items-center gap-x-2">• Requires real-time simulation</li>
+                        </ul>
+                    </div>
+                    <div class="flex-1 bg-gradient-to-br from-cyan-400/10 to-purple-400/10 rounded-3xl p-6 border border-cyan-400">
+                        <div class="text-cyan-400 text-sm mb-2">📦 OFFLINE RL</div>
+                        <p class="text-2xl font-medium">Agent learns from <span class="text-white">pre-recorded logs</span> only</p>
+                        <ul class="mt-4 space-y-2 text-gray-400">
+                            <li class="flex items-center gap-x-2">• Safe &amp; cheap</li>
+                            <li class="flex items-center gap-x-2">• Works with massive logged data</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="md:col-span-7">
+                <div class="grid grid-cols-3 gap-4">
+                    <div onclick="this.classList.toggle('ring-4');this.classList.toggle('ring-cyan-400')" 
+                         class="card-hover bg-white/5 p-6 rounded-3xl cursor-pointer hover:ring-4 hover:ring-cyan-400">
+                        <div class="text-4xl mb-4">📊</div>
+                        <h4 class="font-semibold text-xl">Fixed Dataset D</h4>
+                        <p class="text-gray-400 mt-2">Trajectories collected by any behavior policy (human, random, old agent)</p>
+                    </div>
+                    <div onclick="this.classList.toggle('ring-4');this.classList.toggle('ring-cyan-400')" 
+                         class="card-hover bg-white/5 p-6 rounded-3xl cursor-pointer hover:ring-4 hover:ring-cyan-400">
+                        <div class="text-4xl mb-4">🧠</div>
+                        <h4 class="font-semibold text-xl">Policy π</h4>
+                        <p class="text-gray-400 mt-2">Learned without ever touching the real MDP again</p>
+                    </div>
+                    <div onclick="this.classList.toggle('ring-4');this.classList.toggle('ring-cyan-400')" 
+                         class="card-hover bg-white/5 p-6 rounded-3xl cursor-pointer hover:ring-4 hover:ring-cyan-400">
+                        <div class="text-4xl mb-4">🚫</div>
+                        <h4 class="font-semibold text-xl">No Exploration</h4>
+                        <p class="text-gray-400 mt-2">Only exploitation of the data you already have</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HISTORY SECTION -->
+    <section id="history" class="bg-[#0a0a1f] py-24">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <div class="flex justify-between items-end mb-12">
+                <div>
+                    <span class="text-purple-400">🕰️ TIMELINE</span>
+                    <h2 class="text-5xl font-semibold mt-2">Historical Context &amp; Evolution</h2>
+                </div>
+                <p class="max-w-md text-gray-400">From early batch methods to modern deep offline RL</p>
+            </div>
+            
+            <!-- Timeline -->
+            <div class="relative">
+                <div class="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent"></div>
+                
+                <div class="space-y-16 relative">
+                    <!-- 1990s -->
+                    <div class="grid md:grid-cols-12 items-center gap-8">
+                        <div class="md:col-span-5 text-right">
+                            <div class="inline-flex items-center gap-x-2 text-sm font-mono bg-white/10 px-5 py-2 rounded-3xl">1990 — 2005</div>
+                            <h3 class="text-3xl font-semibold mt-3">Birth of Batch RL</h3>
+                            <p class="text-gray-400">Early dynamic programming and approximate value iteration on fixed datasets. Pioneered by Bertsekas &amp; Tsitsiklis in neuro-dynamic programming.</p>
+                        </div>
+                        <div class="md:col-span-2 flex justify-center">
+                            <div class="timeline-dot w-6 h-6 bg-purple-400 rounded-full flex items-center justify-center ring-8 ring-purple-400/30 text-xs">📼</div>
+                        </div>
+                        <div class="md:col-span-5 bg-white/5 rounded-3xl p-8 text-sm leading-relaxed">
+                            First theoretical foundations. Least-Squares Policy Iteration (2003) showed offline methods could converge without interaction.
+                        </div>
+                    </div>
+                    
+                    <!-- 2010s -->
+                    <div class="grid md:grid-cols-12 items-center gap-8">
+                        <div class="md:col-span-5 bg-white/5 rounded-3xl p-8 text-sm leading-relaxed order-2 md:order-1">
+                            Rise of deep learning + RL. DQN (2015) was online-only. Researchers realized real-world data (robot logs, healthcare records) is abundant but interaction is impossible.
+                        </div>
+                        <div class="md:col-span-2 flex justify-center order-1 md:order-2">
+                            <div class="timeline-dot w-6 h-6 bg-cyan-400 rounded-full flex items-center justify-center ring-8 ring-cyan-400/30 text-xs">🌐</div>
+                        </div>
+                        <div class="md:col-span-5 order-3">
+                            <div class="inline-flex items-center gap-x-2 text-sm font-mono bg-white/10 px-5 py-2 rounded-3xl">2018 — 2020</div>
+                            <h3 class="text-3xl font-semibold mt-3">Deep Offline RL Explosion</h3>
+                            <p class="text-gray-400">BCQ (Fujimoto 2018), BEAR (Kumar 2019), CQL (Kumar 2020) — modern deep offline algorithms that finally beat behavior cloning.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 2021+ -->
+                    <div class="grid md:grid-cols-12 items-center gap-8">
+                        <div class="md:col-span-5 text-right">
+                            <div class="inline-flex items-center gap-x-2 text-sm font-mono bg-white/10 px-5 py-2 rounded-3xl">2021 — Today</div>
+                            <h3 class="text-3xl font-semibold mt-3">Maturity &amp; Scaling</h3>
+                            <p class="text-gray-400">Diffusion policies, model-based offline RL, and large-scale foundation models for RL. Offline RL is now production-ready for robotics, healthcare &amp; recommendation systems.</p>
+                        </div>
+                        <div class="md:col-span-2 flex justify-center">
+                            <div class="timeline-dot w-6 h-6 bg-pink-400 rounded-full flex items-center justify-center ring-8 ring-pink-400/30 text-xs">🚀</div>
+                        </div>
+                        <div class="md:col-span-5 bg-white/5 rounded-3xl p-8">
+                            Key insight: Offline RL bridges supervised learning and RL, unlocking massive logged datasets.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- THEORETICAL UNDERPINNINGS -->
+    <section id="theory" class="max-w-screen-2xl mx-auto px-8 py-24">
+        <h2 class="text-5xl font-semibold text-center mb-4">Theoretical Underpinnings</h2>
+        <p class="text-center text-gray-400 max-w-2xl mx-auto mb-16">Built on the same foundations as classic RL but with critical new constraints</p>
+        
+        <div class="grid lg:grid-cols-2 gap-12">
+            <!-- MDP -->
+            <div class="card-hover bg-gradient-to-br from-[#111827] to-[#1f2937] rounded-3xl p-8">
+                <h3 class="text-2xl font-semibold mb-6 flex items-center gap-x-3"><span class="text-4xl">📐</span> Markov Decision Process (MDP)</h3>
+                <div class="katex-display">
+                    <span class="math block text-center text-xl mb-6">(\mathcal{M} = \langle S, A, P, R, \gamma \rangle)</span>
+                </div>
+                <ul class="space-y-4 text-gray-300">
+                    <li><strong>S</strong> – State space</li>
+                    <li><strong>A</strong> – Action space</li>
+                    <li><strong>P(s′|s,a)</strong> – Unknown transition dynamics (never sampled again)</li>
+                    <li><strong>R(s,a)</strong> – Reward function</li>
+                    <li><strong>γ</strong> – Discount factor</li>
+                </ul>
+            </div>
+            
+            <!-- Bellman -->
+            <div class="card-hover bg-gradient-to-br from-[#111827] to-[#1f2937] rounded-3xl p-8">
+                <h3 class="text-2xl font-semibold mb-6">Bellman Optimality Equation</h3>
+                <div class="katex-display">
+                    <span class="math block text-center text-2xl mb-8">Q^*(s,a) = r(s,a) + \gamma \mathbb{E}_{s' \sim P}[ \max_{a'} Q^*(s',a') ]</span>
+                </div>
+                <p class="text-gray-400">In offline RL we only have samples from a behavior policy μ. We cannot query P anymore.</p>
+                
+                <div class="mt-8 p-4 bg-black/30 rounded-2xl text-xs font-mono leading-relaxed">
+                    Offline objective becomes:<br>
+                    <span class="math"> \min_\theta \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \Big[ \big( Q_\theta(s,a) - (r + \gamma \max_{a'} Q_\theta(s',a')) \big)^2 \Big] </span>
+                </div>
+            </div>
+            
+            <!-- Key theoretical issue -->
+            <div class="lg:col-span-2 bg-white/5 border border-white/10 rounded-3xl p-10">
+                <div class="flex flex-col md:flex-row gap-8 items-start">
+                    <div class="flex-1">
+                        <h3 class="text-3xl font-semibold">The Core Problem: Distributional Shift</h3>
+                        <p class="mt-6 text-lg text-gray-300">The learned policy π may choose actions <strong>outside</strong> the support of the dataset. This causes <span class="text-red-400">extrapolation error</span> → massive overestimation of Q-values.</p>
+                    </div>
+                    <div class="flex-1 text-sm space-y-6">
+                        <div class="flex gap-x-4">
+                            <div class="font-mono bg-red-400/10 text-red-400 px-4 h-fit rounded-2xl py-1">OOD</div>
+                            <p>Out-Of-Distribution actions are evaluated using the Bellman backup → deadly overestimation</p>
+                        </div>
+                        <div class="h-px bg-white/10"></div>
+                        <p class="italic">“The fundamental challenge of offline RL is preventing the policy from selecting actions that are not well-covered by the dataset.”</p>
+                        <div class="text-xs text-cyan-400">— Sergey Levine, 2020</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ALGORITHMS -->
+    <section id="algorithms" class="bg-[#0a0a1f] py-24">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <h2 class="text-5xl font-semibold text-center mb-16">Pioneering Offline RL Algorithms</h2>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- BCQ -->
+                <div onclick="showAlgorithmDetail(0)" class="card-hover cursor-pointer bg-white/5 rounded-3xl p-8 group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-cyan-400 font-mono text-sm">2018 • Fujimoto et al.</div>
+                            <h4 class="text-3xl font-semibold mt-2 group-hover:text-cyan-400">BCQ</h4>
+                            <p class="text-gray-400">Batch-Constrained Q-learning</p>
+                        </div>
+                        <span class="text-6xl opacity-30 group-hover:opacity-100">📦</span>
+                    </div>
+                    <p class="mt-8 text-sm">Constrains the policy to only generate actions that are “close” to the behavior dataset using a generative model.</p>
+                    <div class="text-xs mt-10 inline-block bg-cyan-400/10 text-cyan-400 px-4 py-2 rounded-3xl">First practical deep offline RL</div>
+                </div>
+                
+                <!-- CQL -->
+                <div onclick="showAlgorithmDetail(1)" class="card-hover cursor-pointer bg-white/5 rounded-3xl p-8 group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-cyan-400 font-mono text-sm">2020 • Kumar et al.</div>
+                            <h4 class="text-3xl font-semibold mt-2 group-hover:text-cyan-400">CQL</h4>
+                            <p class="text-gray-400">Conservative Q-Learning</p>
+                        </div>
+                        <span class="text-6xl opacity-30 group-hover:opacity-100">🛡️</span>
+                    </div>
+                    <p class="mt-8 text-sm">Adds a conservative penalty that pushes down Q-values for out-of-distribution actions. Provably lower-bounds the true value.</p>
+                    <div class="text-xs mt-10 inline-block bg-purple-400/10 text-purple-400 px-4 py-2 rounded-3xl">State-of-the-art theoretical guarantees</div>
+                </div>
+                
+                <!-- BEAR / Others -->
+                <div onclick="showAlgorithmDetail(2)" class="card-hover cursor-pointer bg-white/5 rounded-3xl p-8 group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-cyan-400 font-mono text-sm">2019 • Kumar et al.</div>
+                            <h4 class="text-3xl font-semibold mt-2 group-hover:text-cyan-400">BEAR + Diffusion-RL</h4>
+                            <p class="text-gray-400">Bootstrapping Error Accumulation Reduction</p>
+                        </div>
+                        <span class="text-6xl opacity-30 group-hover:opacity-100">🌊</span>
+                    </div>
+                    <p class="mt-8 text-sm">Uses adversarial training to keep policy inside dataset support. Newer diffusion policies (2023+) generate high-quality actions directly.</p>
+                    <div class="text-xs mt-10 inline-block bg-pink-400/10 text-pink-400 px-4 py-2 rounded-3xl">Now used in real robots</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHALLENGES -->
+    <section id="challenges" class="max-w-screen-2xl mx-auto px-8 py-24">
+        <h2 class="text-5xl font-semibold mb-8">Major Challenges &amp; Limitations</h2>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-white/5 rounded-3xl p-8 hover:bg-red-400/10 group">
+                <div class="text-red-400 text-6xl mb-4 group-hover:rotate-12">📉</div>
+                <h4 class="font-semibold text-2xl">Distribution Shift</h4>
+                <p class="mt-4">Policy and behavior policy diverge → deadly extrapolation errors</p>
+            </div>
+            <div class="bg-white/5 rounded-3xl p-8 hover:bg-amber-400/10 group">
+                <div class="text-amber-400 text-6xl mb-4 group-hover:rotate-12">🔄</div>
+                <h4 class="font-semibold text-2xl">No Exploration</h4>
+                <p class="mt-4">Cannot discover better actions than those already in the data</p>
+            </div>
+            <div class="bg-white/5 rounded-3xl p-8 hover:bg-violet-400/10 group">
+                <div class="text-violet-400 text-6xl mb-4 group-hover:rotate-12">📉</div>
+                <h4 class="font-semibold text-2xl">Reward Misspecification</h4>
+                <p class="mt-4">Data may contain suboptimal or biased rewards</p>
+            </div>
+            <div class="bg-white/5 rounded-3xl p-8 hover:bg-teal-400/10 group">
+                <div class="text-teal-400 text-6xl mb-4 group-hover:rotate-12">🧩</div>
+                <h4 class="font-semibold text-2xl">Partial Observability</h4>
+                <p class="mt-4">Real datasets are rarely perfect Markovian</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- APPLICATIONS -->
+    <section id="apps" class="bg-[#0a0a1f] py-24">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <h2 class="text-5xl font-semibold text-center">Real-World Applications</h2>
+            <div class="mt-16 grid md:grid-cols-3 gap-8">
+                <div class="p-8 border border-white/10 rounded-3xl hover:border-cyan-400">
+                    <div class="h-12 w-12 bg-orange-400 rounded-2xl mb-8 flex items-center justify-center text-3xl">🤖</div>
+                    <h4 class="text-2xl font-semibold">Robotics</h4>
+                    <p class="mt-3">Train dexterous manipulation from thousands of hours of human teleoperation logs</p>
+                </div>
+                <div class="p-8 border border-white/10 rounded-3xl hover:border-cyan-400">
+                    <div class="h-12 w-12 bg-emerald-400 rounded-2xl mb-8 flex items-center justify-center text-3xl">🩺</div>
+                    <h4 class="text-2xl font-semibold">Healthcare</h4>
+                    <p class="mt-3">Learn optimal treatment policies from electronic health records without risking patients</p>
+                </div>
+                <div class="p-8 border border-white/10 rounded-3xl hover:border-cyan-400">
+                    <div class="h-12 w-12 bg-blue-400 rounded-2xl mb-8 flex items-center justify-center text-3xl">📱</div>
+                    <h4 class="text-2xl font-semibold">Recommendation Systems</h4>
+                    <p class="mt-3">Optimize long-term user engagement from historical click &amp; watch logs</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- INTERACTIVE DEMO / LAB -->
+    <section id="demo" class="max-w-screen-2xl mx-auto px-8 py-24 border-t border-b border-white/10">
+        <h2 class="text-5xl font-semibold text-center mb-4">🧪 Interactive Lab: Offline vs Online</h2>
+        <p class="text-center text-gray-400 mb-12">Watch how offline RL behaves with a simulated cart-pole environment</p>
+        
+        <div class="bg-[#111827] rounded-3xl p-8 max-w-5xl mx-auto">
+            <div class="flex flex-wrap justify-center gap-6 mb-8">
+                <button onclick="runDemo('online')" 
+                        class="demo-btn px-8 py-4 bg-emerald-400 text-black font-semibold rounded-3xl flex items-center gap-x-2 active:scale-95">
+                    <span>▶️</span> Run Online RL (live interaction)
+                </button>
+                <button onclick="runDemo('offline')" 
+                        class="demo-btn px-8 py-4 bg-cyan-400 text-black font-semibold rounded-3xl flex items-center gap-x-2 active:scale-95">
+                    <span>📦</span> Run Offline RL (fixed dataset)
+                </button>
+                <button onclick="resetDemo()" class="px-8 py-4 border border-white/30 hover:border-white rounded-3xl">Reset Simulation</button>
+            </div>
+            
+            <!-- Canvas visualization -->
+            <canvas id="demo-canvas" width="800" height="340" class="mx-auto bg-black rounded-2xl shadow-inner"></canvas>
+            
+            <div class="flex justify-between text-sm font-mono mt-4 px-4">
+                <div id="demo-status" class="text-emerald-400">Ready</div>
+                <div class="flex gap-x-8">
+                    <div>Episode: <span id="episode-count" class="font-semibold">0</span></div>
+                    <div>Avg Reward: <span id="avg-reward" class="font-semibold text-cyan-400">—</span></div>
+                </div>
+            </div>
+            
+            <p id="demo-explain" class="text-center text-gray-400 mt-4 text-sm max-w-md mx-auto">
+                Click a button above to simulate. Online RL explores freely. Offline RL is constrained to the dataset — safer but potentially sub-optimal.
+            </p>
+        </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz" class="max-w-screen-2xl mx-auto px-8 py-24">
+        <h2 class="text-5xl font-semibold text-center mb-12">❓ Test Your Offline RL Knowledge</h2>
+        
+        <div id="quiz-container" class="max-w-2xl mx-auto bg-white/5 rounded-3xl p-10">
+            <div id="question-text" class="text-2xl font-medium mb-10"></div>
+            
+            <div id="options" class="space-y-4"></div>
+            
+            <div class="mt-10 flex justify-between items-center">
+                <button onclick="nextQuestion()" id="next-btn"
+                        class="hidden px-8 py-4 bg-cyan-400 text-black font-semibold rounded-3xl">Next Question →</button>
+                <div id="score-display" class="text-2xl font-semibold"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-black py-12 border-t border-white/10">
+        <div class="max-w-screen-2xl mx-auto px-8 text-center text-gray-400 text-sm">
+            Fully self-contained HTML educational experience • Built as a single offline file<br>
+            Covers everything you need to know about Offline Reinforcement Learning<br>
+            <span class="text-cyan-400">Copy this code into a .html file and open it in any browser — no internet required after loading</span>
+        </div>
+    </footer>
+
+    <!-- ALGORITHM MODAL -->
+    <div onclick="if(event.target.id === 'modal'){hideModal()}" 
+         id="modal" class="hidden fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="bg-[#111827] max-w-2xl w-full mx-4 rounded-3xl p-10">
+            <div id="modal-content" class="prose prose-invert"></div>
+            <button onclick="hideModal()" 
+                    class="mt-8 w-full py-5 text-lg font-semibold bg-white text-black rounded-3xl">Close</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Main script for the complete Offline RL educational HTML
+         * Everything is self-contained except the two CDNs (Tailwind + KaTeX)
+         * Fully interactive, animated, hoverable, and beautiful
+         */
+
+        // Tailwind initialization
+        function initTailwind() {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        content: [],
+                        theme: {
+                            extend: {},
+                        },
+                        plugins: [],
+                        ...userConfig,
+                    }
+                },
+                theme: {
+                    extend: {},
+                },
+            }
+        }
+        
+        // Render all KaTeX equations
+        function renderMath() {
+            const mathElements = document.querySelectorAll('.math')
+            mathElements.forEach(el => {
+                const displayMode = el.classList.contains('block') || el.tagName === 'DIV'
+                katex.render(el.textContent.trim(), el, {
+                    throwOnError: false,
+                    displayMode: displayMode
+                })
+            })
+        }
+        
+        // Particle background for hero
+        function initParticles() {
+            const canvas = document.getElementById('particle-canvas')
+            if (!canvas) return
+            const ctx = canvas.getContext('2d')
+            
+            let width, height
+            let particles = []
+            
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * width
+                    this.y = Math.random() * height
+                    this.vx = (Math.random() - 0.5) * 0.6
+                    this.vy = (Math.random() - 0.5) * 0.6
+                    this.radius = Math.random() * 2.5 + 0.8
+                }
+                
+                update() {
+                    this.x += this.vx
+                    this.y += this.vy
+                    
+                    if (this.x < 0 || this.x > width) this.vx *= -1
+                    if (this.y < 0 || this.y > height) this.vy *= -1
+                }
+                
+                draw() {
+                    ctx.fillStyle = '#00f5ff'
+                    ctx.shadowBlur = 12
+                    ctx.shadowColor = '#00f5ff'
+                    ctx.beginPath()
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
+                    ctx.fill()
+                }
+            }
+            
+            function resize() {
+                width = window.innerWidth
+                height = window.innerHeight
+                canvas.width = width
+                canvas.height = height
+            }
+            
+            function connectParticles() {
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x
+                        const dy = particles[i].y - particles[j].y
+                        const distance = Math.sqrt(dx * dx + dy * dy)
+                        
+                        if (distance < 130) {
+                            ctx.strokeStyle = `rgba(0, 245, 255, ${1 - distance / 130})`
+                            ctx.lineWidth = 0.8
+                            ctx.shadowBlur = 0
+                            ctx.beginPath()
+                            ctx.moveTo(particles[i].x, particles[i].y)
+                            ctx.lineTo(particles[j].x, particles[j].y)
+                            ctx.stroke()
+                        }
+                    }
+                }
+            }
+            
+            function animate() {
+                ctx.clearRect(0, 0, width, height)
+                
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update()
+                    particles[i].draw()
+                }
+                
+                connectParticles()
+                requestAnimationFrame(animate)
+            }
+            
+            window.addEventListener('resize', () => {
+                resize()
+                particles = []
+                for (let i = 0; i < 120; i++) particles.push(new Particle())
+            })
+            
+            resize()
+            for (let i = 0; i < 120; i++) particles.push(new Particle())
+            animate()
+        }
+        
+        // Scroll fade-in animation
+        function initScrollAnimations() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible')
+                    }
+                })
+            }, { threshold: 0.15 })
+            
+            document.querySelectorAll('.fade-in').forEach(el => {
+                // We will add the class dynamically to sections
+                observer.observe(el)
+            })
+            
+            // Apply fade-in to all major sections
+            const sections = document.querySelectorAll('section')
+            sections.forEach(section => {
+                if (!section.classList.contains('fade-in')) {
+                    section.classList.add('fade-in')
+                    observer.observe(section)
+                }
+            })
+        }
+        
+        // Simple smooth navigation
+        function navigateToSection(id) {
+            const el = document.getElementById(id)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' })
+            }
+        }
+        
+        // Mobile menu
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu')
+            menu.classList.toggle('hidden')
+        }
+        
+        // Dark / Light toggle (demo only)
+        function toggleDarkMode() {
+            // Already dark by default - this just gives a fun flash
+            const body = document.body
+            body.style.transitionDuration = '600ms'
+            body.style.filter = 'invert(1) hue-rotate(180deg)'
+            setTimeout(() => {
+                body.style.filter = 'none'
+                body.style.transitionDuration = '150ms'
+            }, 400)
+        }
+        
+        // Demo canvas simulation
+        let demoInterval = null
+        let episode = 0
+        let totalReward = 0
+        
+        function runDemo(mode) {
+            const canvas = document.getElementById('demo-canvas')
+            const ctx = canvas.getContext('2d')
+            const status = document.getElementById('demo-status')
+            const rewardEl = document.getElementById('avg-reward')
+            const episodeEl = document.getElementById('episode-count')
+            
+            clearInterval(demoInterval)
+            
+            episode = 0
+            totalReward = 0
+            
+            let x = 380   // cart position
+            let poleAngle = 0
+            let velocity = 0
+            
+            status.textContent = mode === 'online' ? '🔴 LIVE INTERACTION' : '📦 OFFLINE MODE'
+            status.style.color = mode === 'online' ? '#10b981' : '#22d3ee'
+            
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+                
+                // Background grid
+                ctx.strokeStyle = '#334155'
+                ctx.lineWidth = 1
+                for (let i = 40; i < canvas.width; i += 40) {
+                    ctx.beginPath()
+                    ctx.moveTo(i, 0)
+                    ctx.lineTo(i, canvas.height)
+                    ctx.stroke()
+                }
+                for (let i = 40; i < canvas.height; i += 40) {
+                    ctx.beginPath()
+                    ctx.moveTo(0, i)
+                    ctx.lineTo(canvas.width, i)
+                    ctx.stroke()
+                }
+                
+                // Cart
+                ctx.fillStyle = '#64748b'
+                ctx.fillRect(x - 40, 240, 80, 30)
+                
+                // Pole
+                ctx.save()
+                ctx.translate(x, 255)
+                ctx.rotate(poleAngle)
+                ctx.fillStyle = mode === 'online' ? '#10b981' : '#22d3ee'
+                ctx.fillRect(-8, -8, 16, 160)
+                ctx.restore()
+                
+                // Base track
+                ctx.fillStyle = '#1e2937'
+                ctx.fillRect(30, 265, canvas.width - 60, 12)
+                
+                // Fake reward bar
+                const rewardBarWidth = (totalReward / (episode + 10)) * 300
+                ctx.fillStyle = '#67e8f9'
+                ctx.fillRect(250, 30, rewardBarWidth, 14)
+                ctx.fillStyle = '#fff'
+                ctx.font = '500 13px monospace'
+                ctx.fillText('Cumulative Reward', 250, 22)
+            }
+            
+            demoInterval = setInterval(() => {
+                episode++
+                episodeEl.textContent = episode
+                
+                // Simulate physics
+                if (mode === 'online') {
+                    // More chaotic = online
+                    velocity += (Math.random() * 4 - 2)
+                    poleAngle += velocity * 0.03
+                    x += velocity * 2.8
+                } else {
+                    // More stable but lower reward = offline
+                    velocity *= 0.92
+                    poleAngle += velocity * 0.015
+                    x += velocity * 1.2
+                    totalReward += Math.random() * 1.8 + 0.8   // conservative reward
+                }
+                
+                // Clamp
+                x = Math.max(80, Math.min(canvas.width - 80, x))
+                poleAngle = Math.max(-1.2, Math.min(1.2, poleAngle))
+                
+                totalReward += mode === 'online' ? (Math.random() * 4) : (Math.random() * 2.2)
+                rewardEl.textContent = totalReward.toFixed(0)
+                
+                draw()
+                
+                if (episode > 80) {
+                    clearInterval(demoInterval)
+                    document.getElementById('demo-explain').innerHTML = mode === 'online' 
+                        ? '✅ Online RL reached high reward but risked instability!' 
+                        : '✅ Offline RL was safer but plateaued earlier — classic trade-off!'
+                }
+            }, 32)
+            
+            draw()
+        }
+        
+        function resetDemo() {
+            clearInterval(demoInterval)
+            const canvas = document.getElementById('demo-canvas')
+            const ctx = canvas.getContext('2d')
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            document.getElementById('episode-count').textContent = '0'
+            document.getElementById('avg-reward').textContent = '—'
+            document.getElementById('demo-status').textContent = 'Ready'
+            document.getElementById('demo-explain').innerHTML = 'Click a button above to simulate. Online RL explores freely. Offline RL is constrained to the dataset — safer but potentially sub-optimal.'
+        }
+        
+        // Algorithm modal
+        function showAlgorithmDetail(n) {
+            const modal = document.getElementById('modal')
+            const content = document.getElementById('modal-content')
+            
+            const algorithms = [
+                {
+                    title: "BCQ — Batch-Constrained Q-learning",
+                    html: `<h2 class="text-4xl font-semibold mb-6">Batch-Constrained Q-learning (2018)</h2>
+                    <p class="text-cyan-400 font-medium">Key innovation: constrain the policy to stay inside the support of the data</p>
+                    <div class="my-8 bg-black/50 p-6 rounded-2xl text-sm font-mono">π(a|s) = argmax_{a ∈ A_μ(s)} Q(s,a)</div>
+                    <p>Uses a generative model (VAE) to sample only plausible actions. First algorithm that reliably outperformed simple behavioral cloning on continuous control tasks.</p>`
+                },
+                {
+                    title: "CQL — Conservative Q-Learning",
+                    html: `<h2 class="text-4xl font-semibold mb-6">Conservative Q-Learning (2020)</h2>
+                    <p class="text-purple-400 font-medium">Theoretical guarantee: learned Q is a lower bound on the true value</p>
+                    <div class="my-8 flex justify-center"><span class="math block">min_θ [ E_{(s,a)∼D} [Q_θ(s,a)] − α ⋅ E_{(s,a)∼μ} [Q_θ(s,a)] ]</span></div>
+                    <p>Adds a regularization term that penalizes Q-values for actions not seen in the dataset. Became the de-facto baseline for offline RL.</p>`
+                },
+                {
+                    title: "BEAR &amp; Modern Diffusion Policies",
+                    html: `<h2 class="text-4xl font-semibold mb-6">BEAR + Diffusion-RL (2019–2023)</h2>
+                    <p class="text-pink-400 font-medium">Bootstrapping Error Accumulation Reduction + modern generative policies</p>
+                    <p class="mt-6">BEAR uses adversarial training to minimize bootstrapping error.<br>Latest diffusion policies treat action generation as a denoising process — extremely powerful for high-dimensional offline control.</p>`
+                }
+            ]
+            
+            content.innerHTML = algorithms[n].html
+            modal.style.display = 'flex'
+            renderMath() // re-render any new math
+        }
+        
+        function hideModal() {
+            document.getElementById('modal').style.display = 'none'
+        }
+        
+        // Quiz data
+        let currentQuestion = 0
+        let score = 0
+        
+        const quizQuestions = [
+            {
+                q: "What is the biggest risk in offline RL?",
+                options: [
+                    "The agent will explore too much",
+                    "Distributional shift and overestimation on OOD actions",
+                    "The environment changes too fast",
+                    "It requires too much compute"
+                ],
+                correct: 1
+            },
+            {
+                q: "Which algorithm adds a conservatism penalty to Q-values?",
+                options: ["BCQ", "CQL", "DQN", "PPO"],
+                correct: 1
+            },
+            {
+                q: "Offline RL is also known as…",
+                options: ["Online RL", "Batch RL", "Model-free RL", "Imitation Learning only"],
+                correct: 1
+            },
+            {
+                q: "Why is offline RL safer than online RL?",
+                options: ["It never touches the real environment", "It uses more data", "It has better exploration", "It runs faster"],
+                correct: 0
+            }
+        ]
+        
+        function startQuiz() {
+            currentQuestion = 0
+            score = 0
+            showQuestion()
+        }
+        
+        function showQuestion() {
+            const container = document.getElementById('quiz-container')
+            const qEl = document.getElementById('question-text')
+            const optionsEl = document.getElementById('options')
+            const nextBtn = document.getElementById('next-btn')
+            
+            qEl.textContent = quizQuestions[currentQuestion].q
+            optionsEl.innerHTML = ''
+            
+            quizQuestions[currentQuestion].options.forEach((option, i) => {
+                const btn = document.createElement('button')
+                btn.className = "w-full text-left px-6 py-6 bg-white/5 hover:bg-white/10 rounded-3xl text-xl flex justify-between items-center"
+                btn.innerHTML = `
+                    ${option}
+                    <span class="text-xs px-4 h-8 flex items-center bg-white/10 rounded-3xl">select</span>
+                `
+                btn.onclick = () => {
+                    if (i === quizQuestions[currentQuestion].correct) {
+                        score++
+                        btn.style.backgroundColor = '#67e8f9'
+                        btn.style.color = '#0f172a'
+                    } else {
+                        btn.style.backgroundColor = '#f43f5e'
+                    }
+                    // Disable all buttons
+                    Array.from(optionsEl.children).forEach(b => b.onclick = null)
+                    nextBtn.classList.remove('hidden')
+                }
+                optionsEl.appendChild(btn)
+            })
+            
+            nextBtn.classList.add('hidden')
+        }
+        
+        function nextQuestion() {
+            currentQuestion++
+            if (currentQuestion >= quizQuestions.length) {
+                // Show final score
+                const container = document.getElementById('quiz-container')
+                container.innerHTML = `
+                    <h3 class="text-5xl font-semibold mb-8 text-center">Quiz Complete!</h3>
+                    <div class="text-center">
+                        <div class="text-8xl font-bold text-cyan-400 mb-4">${score}/${quizQuestions.length}</div>
+                        <p class="text-2xl">You understand Offline RL!</p>
+                        <button onclick="location.reload()" class="mt-12 px-10 py-6 bg-white text-black text-2xl rounded-3xl font-semibold">Restart the whole page</button>
+                    </div>
+                `
+                return
+            }
+            showQuestion()
+        }
+        
+        // Download the entire HTML (offline save)
+        function downloadHTML() {
+            const htmlContent = document.documentElement.outerHTML
+            const blob = new Blob([htmlContent], { type: 'text/html' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'OfflineRL_Interactive_Guide.html'
+            a.click()
+            URL.revokeObjectURL(url)
+        }
+        
+        // Main initialization
+        window.onload = function () {
+            initTailwind().config({ darkMode: 'class' })
+            initParticles()
+            renderMath()
+            initScrollAnimations()
+            startQuiz() // pre-load quiz
+            
+            console.log('%c✅ Offline RL Interactive HTML loaded successfully! Fully animated, interactive, and offline-ready.', 'color:#22d3ee; font-size:13px; font-family:monospace')
+        }
+    </script>
+</body>
+</html>
