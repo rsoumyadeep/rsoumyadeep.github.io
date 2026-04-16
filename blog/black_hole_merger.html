@@ -397,6 +397,77 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+// ═══════════════════════════════════════════════════════════════
+//  AUDIO ENGINE (GW CHIRP)
+// ═══════════════════════════════════════════════════════════════
+class GWAudio {
+  constructor() {
+    this.ctx = null;
+    this.osc = null;
+    this.gain = null;
+    this.filter = null;
+    this.started = false;
+  }
+
+  init() {
+    if (this.started) return;
+
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    this.osc = this.ctx.createOscillator();
+    this.gain = this.ctx.createGain();
+    this.filter = this.ctx.createBiquadFilter();
+
+    this.osc.type = "sine";
+
+    // Soft low-pass filter → cinematic feel
+    this.filter.type = "lowpass";
+    this.filter.frequency.value = 1200;
+
+    this.gain.gain.value = 0;
+
+    this.osc.connect(this.filter);
+    this.filter.connect(this.gain);
+    this.gain.connect(this.ctx.destination);
+
+    this.osc.start();
+    this.started = true;
+  }
+
+  update(sim) {
+    if (!this.started) return;
+
+    // Frequency increases as separation decreases
+    let freq = 40 + 600 * (1 / sim.sep);
+
+    // Clamp for stability
+    freq = Math.min(freq, 1200);
+
+    this.osc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.05);
+
+    // Volume based on strain amplitude
+    let amp = Math.abs(sim.strainAmplitude());
+    let volume = Math.min(amp * 1.5, 0.3);
+
+    // Merger spike
+    if (sim.phase === "merger") {
+      volume = 0.5;
+    }
+
+    if (sim.phase === "merged") {
+      volume *= 0.2;
+    }
+
+    this.gain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.05);
+  }
+}
+
+const audio = new GWAudio();
+  
+  window.addEventListener("click", () => {
+    audio.init();
+  }, { once: true });
+
 
 // ═══════════════════════════════════════════════════════════════
 //  CONSTANTS & HELPERS
