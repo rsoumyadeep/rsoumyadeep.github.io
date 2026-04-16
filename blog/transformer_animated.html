@@ -1,1 +1,428 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformer Forward Pass</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+        }
+        .title-font { font-family: 'Space Grotesk', sans-serif; }
+
+        .matrix-container {
+            display: grid;
+            gap: 3px;
+            background: #e2e8f0;
+            padding: 4px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+        }
+        .matrix-cell {
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-family: 'Space Grotesk', monospace;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            color: #1e2937;
+            font-weight: 500;
+            position: relative;
+        }
+        .matrix-cell.highlight {
+            animation: matrixHighlight 900ms ease-in-out;
+            box-shadow: 0 0 0 3px #06b6d4;
+        }
+        @keyframes matrixHighlight {
+            0%,100% { box-shadow: 0 0 0 3px #06b6d4; }
+            50% { box-shadow: 0 0 0 8px #67e8f9; }
+        }
+
+        .gradient-flow {
+            position: relative;
+        }
+        .gradient-flow::after {
+            content: '← BACKPROP';
+            position: absolute;
+            top: -12px;
+            right: -60px;
+            font-size: 10px;
+            color: #f43f5e;
+            font-weight: 600;
+            animation: flowAnim 2s infinite;
+        }
+        @keyframes flowAnim {
+            0%,100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-[1480px] mx-auto p-8">
+        <!-- Header -->
+        <div class="bg-white rounded-3xl shadow-xl shadow-sky-100 p-8 mb-10">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-5">
+                    <div class="w-14 h-14 bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-500 rounded-2xl flex items-center justify-center text-4xl shadow-lg">⚡</div>
+                    <div>
+                        <h1 class="title-font text-5xl font-semibold tracking-tighter text-slate-900">Transformer</h1>
+                        <p class="text-sky-600 text-sm tracking-widest font-medium">FORWARD + BACKPROP SIMULATOR</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <!-- Speed Control -->
+                    <div class="flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-3xl border border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">Speed</span>
+                        <input type="range" id="speed-slider" min="300" max="3000" value="1100" step="100"
+                               oninput="updateSpeed(this)" class="accent-sky-500 w-52 cursor-pointer">
+                        <span id="speed-value" class="font-mono text-sm font-semibold text-slate-700 w-20">1100 ms</span>
+                    </div>
+
+                    <input id="sentence-input" value="the cat sat on the mat"
+                           class="bg-slate-50 border border-slate-200 focus:border-sky-400 rounded-3xl px-7 py-4 text-slate-700 w-96 outline-none text-lg">
+                    
+                    <button onclick="startSimulation()" 
+                            class="bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-600 hover:to-sky-600 text-white font-semibold px-9 py-4 rounded-3xl shadow-lg">
+                        RUN SIMULATION
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-8">
+            <!-- Sidebar -->
+            <div class="w-80 bg-white rounded-3xl shadow-xl shadow-slate-200 p-8 flex flex-col">
+                <div id="step-title" class="text-3xl font-semibold text-slate-800 mb-2">Step 1 • Tokenization</div>
+                <div id="step-desc" class="text-slate-600 leading-relaxed min-h-[70px]"></div>
+
+                <div class="mt-10">
+                    <div class="uppercase text-xs font-medium tracking-widest text-slate-500 mb-4">TOKENS</div>
+                    <div id="tokens" class="flex flex-wrap gap-3"></div>
+                </div>
+
+                <div id="vector-preview-area" class="mt-12 hidden">
+                    <div class="uppercase text-xs font-medium tracking-widest text-slate-500 mb-4">TOKEN VECTOR</div>
+                    <div id="vector-bars" class="flex gap-2 h-32 items-end bg-slate-50 rounded-2xl p-4"></div>
+                </div>
+
+                <!-- Controls -->
+                <div class="mt-auto pt-12 border-t border-slate-100">
+                    <div class="flex items-center justify-center gap-4 mb-6">
+                        <button onclick="prevStep()" class="w-12 h-12 flex items-center justify-center text-3xl text-slate-500 hover:text-slate-700 rounded-2xl hover:bg-slate-100">←</button>
+                        <button onclick="togglePlay()" id="play-button" class="w-16 h-16 bg-sky-500 hover:bg-sky-600 text-white rounded-3xl text-3xl flex items-center justify-center shadow-xl">▶</button>
+                        <button onclick="nextStep()" class="w-12 h-12 flex items-center justify-center text-3xl text-slate-500 hover:text-slate-700 rounded-2xl hover:bg-slate-100">→</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="replayCurrentStep()" 
+                                class="py-4 text-sm font-medium rounded-3xl border border-slate-300 hover:border-cyan-400 hover:text-cyan-600">
+                            REPLAY STEP
+                        </button>
+                        <button onclick="toggleManualMode()" id="manual-btn"
+                                class="py-4 text-sm font-medium rounded-3xl border border-slate-300 hover:border-slate-400">
+                            MANUAL MODE
+                        </button>
+                    </div>
+
+                    <div class="h-2 bg-slate-100 rounded-full mt-8 overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-gradient-to-r from-cyan-400 to-sky-500 rounded-full" style="width:14.28%"></div>
+                    </div>
+                    <div class="text-center text-xs text-slate-400 mt-2">Step <span id="step-counter" class="font-semibold text-slate-600">1</span>/8</div>
+                </div>
+            </div>
+
+            <!-- Main Visualization -->
+            <div class="flex-1 space-y-10">
+                <!-- Stages 0-6 (Forward Pass) -->
+                <div id="stage-0" class="stage-card p-10 bg-white rounded-3xl shadow-xl"> <!-- Tokenization --> </div>
+                <div id="stage-1" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Embeddings --> </div>
+                <div id="stage-2" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- QKV --> </div>
+                <div id="stage-3" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Attention --> </div>
+                <div id="stage-4" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Residual --> </div>
+                <div id="stage-5" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- FFN --> </div>
+                <div id="stage-6" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Final Output --> </div>
+
+                <!-- New Backpropagation Stage -->
+                <div id="stage-7" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden">
+                    <h2 class="text-2xl font-semibold text-rose-600 mb-8 flex items-center gap-4">
+                        <span class="inline-block w-9 h-9 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-xl font-bold">8</span>
+                        BACKPROPAGATION VISUALIZATION
+                    </h2>
+                    <div class="gradient-flow bg-slate-50 border border-rose-200 rounded-3xl p-10">
+                        <div class="text-center mb-8">
+                            <div class="inline-flex items-center gap-3 text-rose-600 font-medium">
+                                <span class="text-3xl">←</span>
+                                GRADIENT FLOW DURING BACKPROPAGATION
+                                <span class="text-3xl">←</span>
+                            </div>
+                        </div>
+                        <div id="backprop-flow" class="space-y-6">
+                            <!-- Dynamically filled by JS -->
+                        </div>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-6 text-center">Gradients flow backward through the network, updating weights using chain rule.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attention Explanation Panel (appears in stage 3) -->
+    <div id="attention-explain" class="fixed bottom-8 right-8 max-w-md bg-white rounded-3xl shadow-2xl p-8 hidden">
+        <div class="flex justify-between items-start mb-6">
+            <h3 class="font-semibold text-lg text-slate-800">How Attention Works</h3>
+            <button onclick="closeAttentionExplain()" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <div class="prose prose-slate text-sm leading-relaxed">
+            <p>The model computes <strong>Query (Q)</strong>, <strong>Key (K)</strong>, and <strong>Value (V)</strong> vectors for each token.</p>
+            <p class="mt-3">It then calculates attention scores as:</p>
+            <div class="bg-slate-100 p-4 rounded-2xl font-mono text-xs my-4">
+                softmax( QK<sup>T</sup> / √dₖ )
+            </div>
+            <p>These scores determine how much each token should "attend" to others. The final output is a weighted sum of Value vectors.</p>
+            <p class="mt-4 text-sky-600">This mechanism allows the model to focus on relevant parts of the input dynamically.</p>
+        </div>
+    </div>
+
+    <script>
+        let pipelineData = null;
+        let currentStep = 0;
+        let isPlaying = false;
+        let animationSpeed = 1100;
+        let isManualMode = false;
+        let currentHead = 0;
+
+        const explanations = [
+            "The input sentence is split into tokens. Each token becomes an independent unit.",
+            "Token embeddings capture meaning. Positional encodings add order information. Their sum is the input to the first layer.",
+            "Linear projections create Query, Key, and Value vectors for each token.",
+            "Multi-head attention computes relevance between tokens using scaled dot-product.",
+            "Residual connections + LayerNorm stabilize training and preserve information.",
+            "Position-wise Feed-Forward Network adds non-linearity.",
+            "Final contextual embeddings after one full encoder layer.",
+            "Backpropagation: Gradients flow backward to update all weights using the chain rule."
+        ];
+
+        function getEmbedding(token) {
+            let h = 0;
+            for (let i = 0; i < token.length; i++) h = (h << 5) - h + token.charCodeAt(i);
+            return Array.from({length: 4}, (_, i) => Math.sin(h * (i+1) * 0.14) * 1.2 + Math.cos(h * (i+2) * 0.1) * 0.8);
+        }
+
+        function positionalEncoding(seqLen) {
+            return Array.from({length: seqLen}, (_, pos) => 
+                Array.from({length: 4}, (_, i) => i % 2 === 0 
+                    ? Math.sin(pos / Math.pow(10000, i/4))
+                    : Math.cos(pos / Math.pow(10000, (i-1)/4))
+                )
+            );
+        }
+
+        function runTransformer(sentence) {
+            const tokens = sentence.toLowerCase().trim().split(/\s+/).slice(0, 6);
+            const seqLen = tokens.length;
+            const embeddings = tokens.map(getEmbedding);
+            const posEnc = positionalEncoding(seqLen);
+            const X = embeddings.map((row,i) => row.map((v,j) => v + posEnc[i][j]));
+            
+            return {
+                tokens, embeddings, posEnc, X,
+                Q: X, K: X, V: X,
+                headResults: Array(2).fill().map(() => ({weights: Array(seqLen).fill().map(() => Array(seqLen).fill(0.25)), output: X})),
+                finalOutput: X
+            };
+        }
+
+        function renderMatrix(id, matrix) {
+            const container = document.getElementById(id);
+            if (!container || !matrix) return;
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${matrix[0].length}, 1fr)`;
+            
+            matrix.forEach((row, i) => {
+                row.forEach((val, j) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    cell.innerHTML = `<span>${val.toFixed(2)}</span>`;
+                    setTimeout(() => {
+                        cell.classList.add('highlight');
+                        setTimeout(() => cell.classList.remove('highlight'), 1100);
+                    }, 70 * i + 40 * j);
+                    container.appendChild(cell);
+                });
+            });
+        }
+
+        function animateAttentionHeatmap() {
+            const container = document.getElementById('attention-heatmap');
+            if (!container) return;
+            container.innerHTML = '';
+            const size = pipelineData ? pipelineData.tokens.length : 5;
+            container.style.gridTemplateColumns = `repeat(${size}, 56px)`;
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const val = (Math.random() * 0.7 + 0.3).toFixed(2);
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell text-xs font-medium';
+                    cell.style.background = `hsl(200, 80%, ${75 + parseFloat(val)*20}%)`;
+                    cell.textContent = val;
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function renderBackpropStage() {
+            const container = document.getElementById('backprop-flow');
+            container.innerHTML = `
+                <div class="grid grid-cols-7 gap-4 text-center text-xs">
+                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Output Loss</div>
+                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Final Output</div>
+                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">FFN</div>
+                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Attention</div>
+                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">QKV</div>
+                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Embeddings</div>
+                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Input Tokens</div>
+                </div>
+                <div class="flex justify-center text-rose-500 text-4xl mt-6 animate-pulse">↑ GRADIENTS FLOW BACK ↑</div>
+            `;
+        }
+
+        function renderCurrentStage() {
+            document.querySelectorAll('.stage-card').forEach(el => el.classList.add('hidden'));
+            const stageEl = document.getElementById(`stage-${currentStep}`);
+            if (stageEl) stageEl.classList.remove('hidden');
+
+            document.getElementById('progress-bar').style.width = `${((currentStep + 1) / 8) * 100}%`;
+            document.getElementById('step-counter').textContent = currentStep + 1;
+            document.getElementById('step-title').textContent = `Step ${currentStep + 1} • ${["Tokenization","Embeddings + Pos","QKV Projections","Multi-Head Attention","Residual + LayerNorm","Feed-Forward","Final Output","Backpropagation"][currentStep]}`;
+            document.getElementById('step-desc').innerHTML = explanations[currentStep];
+
+            if (!pipelineData) return;
+
+            if (currentStep === 0) {
+                const container = document.getElementById('token-display');
+                container.innerHTML = pipelineData.tokens.map(t => 
+                    `<div class="px-8 py-5 bg-white border border-slate-200 rounded-3xl text-xl text-slate-700 shadow-sm">${t}</div>`
+                ).join('');
+            }
+            else if (currentStep === 1) {
+                renderMatrix('embed-mat', pipelineData.embeddings);
+                renderMatrix('pos-mat', pipelineData.posEnc);
+                renderMatrix('x-mat', pipelineData.X);
+            }
+            else if (currentStep === 2) {
+                renderMatrix('q-mat', pipelineData.Q);
+                renderMatrix('k-mat', pipelineData.K);
+                renderMatrix('v-mat', pipelineData.V);
+            }
+            else if (currentStep === 3) {
+                animateAttentionHeatmap();
+                document.getElementById('attention-explain').classList.remove('hidden');
+            }
+            else if (currentStep === 6) {
+                renderMatrix('final-mat', pipelineData.finalOutput);
+            }
+            else if (currentStep === 7) {
+                renderBackpropStage();
+            }
+        }
+
+        function startSimulation() {
+            const text = document.getElementById('sentence-input').value || "the cat sat on the mat";
+            pipelineData = runTransformer(text);
+            currentStep = 0;
+            isPlaying = false;
+            renderCurrentStage();
+        }
+
+        function nextStep() {
+            if (currentStep < 7) {
+                currentStep++;
+                renderCurrentStage();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                renderCurrentStage();
+            }
+        }
+
+        function replayCurrentStep() {
+            const stage = document.getElementById(`stage-${currentStep}`);
+            if (!stage) return;
+            stage.style.opacity = 0.3;
+            setTimeout(() => {
+                renderCurrentStage();
+                stage.style.opacity = 1;
+            }, 180);
+        }
+
+        function togglePlay() {
+            if (isManualMode) return alert("Turn off Manual Mode first");
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('play-button');
+            btn.innerHTML = isPlaying ? '❚❚' : '▶';
+            if (isPlaying) {
+                const interval = setInterval(() => {
+                    if (!isPlaying || currentStep >= 7) {
+                        clearInterval(interval);
+                        isPlaying = false;
+                        btn.innerHTML = '▶';
+                        return;
+                    }
+                    nextStep();
+                }, animationSpeed);
+            }
+        }
+
+        function toggleManualMode() {
+            isManualMode = !isManualMode;
+            const btn = document.getElementById('manual-btn');
+            if (isManualMode) {
+                btn.classList.add('bg-slate-800', 'text-white');
+                btn.textContent = "MANUAL ACTIVE";
+                isPlaying = false;
+                document.getElementById('play-button').innerHTML = '▶';
+            } else {
+                btn.classList.remove('bg-slate-800', 'text-white');
+                btn.textContent = "MANUAL MODE";
+            }
+        }
+
+        function updateSpeed(slider) {
+            animationSpeed = parseInt(slider.value);
+            document.getElementById('speed-value').textContent = animationSpeed + " ms";
+        }
+
+        function closeAttentionExplain() {
+            document.getElementById('attention-explain').classList.add('hidden');
+        }
+
+        function switchHead(h) {
+            currentHead = h;
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === "ArrowRight") nextStep();
+            if (e.key === "ArrowLeft") prevStep();
+            if (e.key === " ") { e.preventDefault(); togglePlay(); }
+            if (e.key.toLowerCase() === "r") replayCurrentStep();
+        });
+
+        window.onload = () => {
+            pipelineData = runTransformer("the cat sat on the mat");
+            renderCurrentStage();
+        };
+    </script>
+</body>
+</html>
