@@ -1,1 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q-Learning & Stochastic Approximation Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&amp;family=Space+Grotesk:wght@500&amp;display=swap');
+        
+        :root {
+            --tw-color-primary: #0ea5e9;
+        }
+        
+        * {
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        
+        canvas {
+            image-rendering: crisp-edges;
+        }
+        
+        .grid-cell {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .formula {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100">
+    <div class="max-w-screen-2xl mx-auto">
+        <!-- HEADER -->
+        <div class="border-b border-white/10 bg-white/5 backdrop-blur-xl sticky top-0 z-50">
+            <div class="px-8 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <div class="w-9 h-9 bg-sky-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-inner">📐</div>
+                    <div>
+                        <h1 class="text-2xl font-semibold tracking-[-0.5px] text-white">Q-Learning</h1>
+                        <p class="text-sm text-zinc-400 -mt-0.5">Stochastic Approximation in 5×5 Gridworld</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-x-8 text-sm">
+                    <div class="flex items-center gap-x-1.5 bg-white/10 text-white px-4 h-9 rounded-3xl">
+                        <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                        LIVE SIMULATION
+                    </div>
+                    
+                    <a href="#" onclick="resetSimulation()" 
+                       class="flex items-center gap-x-2 text-zinc-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15m-6 0a8 8 0 01-7.714-6.314" />
+                        </svg>
+                        <span class="font-medium">Reset Q-table</span>
+                    </a>
+                    
+                    <div class="flex items-center text-xs uppercase tracking-[0.5px] bg-white/10 px-3 h-9 rounded-3xl font-medium">
+                        <span class="text-emerald-400">DETERMINISTIC</span>
+                        <span class="mx-2 text-white/30">•</span>
+                        <span>ε-greedy</span>
+                        <span class="mx-2 text-white/30">•</span>
+                        <span class="text-amber-400">STOCHASTIC APPROXIMATION</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-x-2">
+                    <div onclick="toggleHelp()" 
+                         class="flex items-center justify-center w-9 h-9 bg-white/10 hover:bg-white/20 rounded-2xl cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 01-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="text-xs px-3 py-1 bg-white/10 rounded-3xl flex items-center gap-x-1">
+                        <span class="font-mono text-emerald-400">v1.0</span>
+                        <span class="text-zinc-500">•</span>
+                        Teaching tool
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <div class="px-8 py-6">
+            <!-- CONTROLS -->
+            <div class="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 mb-8">
+                <div class="grid grid-cols-12 gap-8">
+                    <!-- Playback -->
+                    <div class="col-span-3">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <h2 class="uppercase text-xs font-medium tracking-widest text-zinc-400">Playback</h2>
+                            <div class="flex-1 h-px bg-white/10"></div>
+                        </div>
+                        <div class="flex items-center gap-x-3">
+                            <button onclick="toggleRun()" 
+                                    id="btn-run"
+                                    class="flex-1 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl flex items-center justify-center font-medium text-lg shadow-lg shadow-emerald-500/30">
+                                <span id="run-text">▶ START</span>
+                            </button>
+                            
+                            <button onclick="performSingleStep()" 
+                                    class="h-12 w-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center text-2xl">
+                                ⏭
+                            </button>
+                            
+                            <button onclick="resetSimulation()" 
+                                    class="h-12 px-6 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center font-medium">
+                                RESET
+                            </button>
+                            
+                            <div class="flex items-center ml-auto text-sm">
+                                <label class="text-zinc-400 mr-2">SPEED</label>
+                                <input type="range" id="speed-slider" 
+                                       oninput="updateSpeed(this.value)" 
+                                       value="60" min="10" max="300" step="10"
+                                       class="w-32 accent-sky-400">
+                                <span id="speed-val" class="tabular-nums w-10 text-right text-zinc-300 ml-2">60</span>
+                                <span class="text-xs text-zinc-400 ml-1">steps/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hyperparameters -->
+                    <div class="col-span-3 border-l border-white/10 pl-8">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <h2 class="uppercase text-xs font-medium tracking-widest text-zinc-400">Hyperparameters</h2>
+                            <div class="flex-1 h-px bg-white/10"></div>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <!-- Alpha -->
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="font-medium text-zinc-300">α — Learning rate</span>
+                                    <span id="alpha-val" class="font-mono tabular-nums text-emerald-400">0.15</span>
+                                </div>
+                                <input type="range" id="alpha-slider" value="0.15" min="0.05" max="0.5" step="0.01"
+                                       oninput="updateHyper('alpha', this.value)" 
+                                       class="w-full accent-emerald-400">
+                            </div>
+                            
+                            <!-- Gamma -->
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="font-medium text-zinc-300">γ — Discount factor</span>
+                                    <span id="gamma-val" class="font-mono tabular-nums text-amber-400">0.92</span>
+                                </div>
+                                <input type="range" id="gamma-slider" value="0.92" min="0.5" max="0.99" step="0.01"
+                                       oninput="updateHyper('gamma', this.value)" 
+                                       class="w-full accent-amber-400">
+                            </div>
+                            
+                            <!-- Epsilon -->
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="font-medium text-zinc-300">ε — Exploration rate</span>
+                                    <span id="epsilon-val" class="font-mono tabular-nums text-violet-400">0.18</span>
+                                </div>
+                                <input type="range" id="epsilon-slider" value="0.18" min="0.01" max="0.5" step="0.01"
+                                       oninput="updateHyper('epsilon', this.value)" 
+                                       class="w-full accent-violet-400">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Environment -->
+                    <div class="col-span-3 border-l border-white/10 pl-8">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <h2 class="uppercase text-xs font-medium tracking-widest text-zinc-400">Environment</h2>
+                            <div class="flex-1 h-px bg-white/10"></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-x-2">
+                                <input type="checkbox" id="traps-toggle" checked onchange="toggleTraps()" 
+                                       class="w-4 h-4 accent-sky-400">
+                                <label for="traps-toggle" class="text-sm cursor-pointer">Enable traps (−1)</label>
+                            </div>
+                            
+                            <div onclick="randomizeStartGoal()" 
+                                 class="text-xs flex items-center px-4 h-9 rounded-3xl bg-white/10 hover:bg-white/20 cursor-pointer">
+                                <span class="mr-1">🎲</span>
+                                RANDOMIZE POSITIONS
+                            </div>
+                            
+                            <div class="text-xs text-zinc-400 flex items-center">
+                                <span class="inline-block w-3 h-3 bg-emerald-400 rounded mr-1"></span>GOAL (+1)
+                                <span class="inline-block w-3 h-3 bg-rose-400 rounded ml-4 mr-1"></span>TRAP (−1)
+                            </div>
+                        </div>
+                        <div class="mt-4 text-[10px] font-mono bg-white/5 rounded-2xl p-3 leading-none">
+                            Start: <span id="start-label" class="text-emerald-300">(0,0)</span><br>
+                            Goal: <span id="goal-label" class="text-emerald-300">(4,4)</span><br>
+                            Traps: <span id="traps-label" class="text-rose-300">(2,2) (3,1)</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats -->
+                    <div class="col-span-3 border-l border-white/10 pl-8">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <h2 class="uppercase text-xs font-medium tracking-widest text-zinc-400">Training Stats</h2>
+                            <div class="flex-1 h-px bg-white/10"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div id="episode-count" class="text-4xl font-semibold tabular-nums text-white">0</div>
+                                <div class="text-xs text-zinc-400">EPISODES</div>
+                            </div>
+                            <div>
+                                <div id="step-count" class="text-4xl font-semibold tabular-nums text-white">0</div>
+                                <div class="text-xs text-zinc-400">TOTAL STEPS</div>
+                            </div>
+                            <div>
+                                <div id="avg-q-value" class="text-4xl font-semibold tabular-nums text-emerald-400">0.00</div>
+                                <div class="text-xs text-zinc-400">AVG MAX Q</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-8">
+                <!-- GRIDWORLD -->
+                <div class="col-span-7">
+                    <div class="flex justify-between items-baseline mb-3 px-1">
+                        <h2 class="text-xl font-semibold tracking-tight">5×5 Gridworld</h2>
+                        <div class="flex items-center text-xs uppercase font-medium bg-white/10 text-white px-5 h-8 rounded-3xl">
+                            <span id="current-state-label" class="font-mono">CURRENT STATE (0,0)</span>
+                            <span class="mx-4 text-white/30">•</span>
+                            <span id="action-taken" class="font-mono text-sky-400">—</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-3xl shadow-2xl p-4 border border-white/10">
+                        <canvas id="grid-canvas" width="580" height="580" class="mx-auto"></canvas>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div class="flex justify-center gap-x-8 mt-4 text-xs">
+                        <div class="flex items-center">
+                            <div class="w-6 h-px bg-emerald-400 mr-2"></div>
+                            <span class="text-emerald-300">Positive Q-value</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-6 h-px bg-rose-400 mr-2"></div>
+                            <span class="text-rose-300">Negative Q-value</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-sky-400 mr-2">⬤</span>
+                            <span class="text-zinc-400">Agent position</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="text-amber-400 mr-2 text-xl leading-none">↑↓←→</div>
+                            <span class="text-zinc-400">Arrow = Q(s,a) • Thickness = best action</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CONVERGENCE PLOT -->
+                <div class="col-span-5">
+                    <div class="flex justify-between items-baseline mb-3 px-1">
+                        <h2 class="text-xl font-semibold tracking-tight">Convergence &amp; Stochastic Noise</h2>
+                        <div onclick="clearHistory()" class="text-xs flex items-center cursor-pointer hover:text-white text-zinc-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6h12v12" />
+                            </svg>
+                            CLEAR
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-3xl shadow-2xl p-5 border border-white/10 h-full flex flex-col">
+                        <canvas id="convergence-chart" class="flex-1"></canvas>
+                        
+                        <div class="flex text-[10px] justify-between text-zinc-400 mt-3 px-2 font-mono">
+                            <div>Training step →</div>
+                            <div class="flex items-center gap-x-4">
+                                <span class="flex items-center"><span class="inline-block w-2 h-2 bg-emerald-400 rounded-full mr-1"></span>Avg max Q</span>
+                                <span class="flex items-center"><span class="inline-block w-2 h-2 bg-amber-400 rounded-full mr-1"></span>Max |TD error|</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- STOCHASTIC APPROXIMATION PANEL -->
+                <div class="col-span-12 mt-2">
+                    <div class="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-7">
+                        <div class="flex justify-between mb-5">
+                            <h2 class="text-lg font-semibold tracking-tight flex items-center">
+                                <span class="text-amber-400 mr-2">θ</span>
+                                Stochastic Approximation View
+                            </h2>
+                            <p class="text-zinc-400 text-sm max-w-md text-right">
+                                Q-learning is a stochastic approximation algorithm.<br>
+                                It solves the Bellman optimality equation using noisy single-sample targets.
+                            </p>
+                        </div>
+                        
+                        <div class="grid grid-cols-12 gap-8">
+                            <!-- Update equation -->
+                            <div class="col-span-7 bg-white/5 rounded-3xl p-6 font-mono">
+                                <div class="formula text-2xl mb-4 text-white flex items-center gap-x-3">
+                                    <span id="q-update-left" class="text-emerald-400">Q(s,a)</span>
+                                    <span class="text-3xl text-white/30">←</span>
+                                    <span id="q-update-right" class="text-white">Q(s,a) + α [ r + γ max<sub>a′</sub> Q(s′,a′) − Q(s,a) ]</span>
+                                </div>
+                                
+                                <div class="grid grid-cols-5 gap-4 text-sm">
+                                    <div class="bg-white/10 rounded-2xl p-4">
+                                        <div class="text-zinc-400 text-xs">Current state</div>
+                                        <div id="sa-state" class="font-semibold text-xl text-white font-mono">(0,0)</div>
+                                    </div>
+                                    <div class="bg-white/10 rounded-2xl p-4">
+                                        <div class="text-zinc-400 text-xs">Chosen action</div>
+                                        <div id="sa-action" class="text-4xl text-sky-400 font-medium">→</div>
+                                    </div>
+                                    <div class="bg-white/10 rounded-2xl p-4">
+                                        <div class="text-zinc-400 text-xs">Current Q(s,a)</div>
+                                        <div id="sa-qold" class="text-4xl text-white font-semibold tabular-nums">0.000</div>
+                                    </div>
+                                    <div class="bg-white/10 rounded-2xl p-4">
+                                        <div class="text-zinc-400 text-xs">TD error δ</div>
+                                        <div id="sa-td" class="text-4xl font-semibold tabular-nums text-amber-400">+0.000</div>
+                                    </div>
+                                    <div class="bg-white/10 rounded-2xl p-4">
+                                        <div class="text-zinc-400 text-xs">Update Δ</div>
+                                        <div id="sa-update" class="text-4xl font-semibold tabular-nums text-emerald-400">+0.000</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-6 text-xs flex items-center justify-between text-zinc-400">
+                                    <div>Target = <span id="sa-target" class="font-medium text-white">0.000</span></div>
+                                    <div>r = <span id="sa-reward" class="font-medium text-emerald-400">0</span></div>
+                                    <div>γ × maxQ(s′) = <span id="sa-maxnext" class="font-medium text-white">0.000</span></div>
+                                    <div>New Q(s,a) = <span id="sa-qnew" class="font-medium text-emerald-400">0.000</span></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Explanation -->
+                            <div class="col-span-5">
+                                <div id="explanation-text" class="bg-gradient-to-br from-amber-400/10 to-transparent border border-amber-400/20 rounded-3xl p-6 text-sm leading-relaxed h-full">
+                                    The agent took action <span id="exp-action" class="font-semibold text-sky-400">→</span> in state 
+                                    <span id="exp-state" class="font-semibold">s</span>.<br><br>
+                                    The <span class="font-semibold">target</span> is a <span class="text-amber-400 font-medium">noisy sample</span> 
+                                    of the true optimal value (r + γ max Q(s′,a′)).<br><br>
+                                    Q-learning performs stochastic gradient descent on the Bellman error.<br>
+                                    <span class="italic">Each update moves Q closer to the fixed point of the Bellman optimality equation.</span>
+                                </div>
+                                
+                                <div class="flex gap-2 mt-4 text-xs">
+                                    <div onclick="explainStep(1)" class="cursor-pointer px-4 py-2 bg-white/10 hover:bg-amber-400/20 rounded-3xl">Why noisy?</div>
+                                    <div onclick="explainStep(2)" class="cursor-pointer px-4 py-2 bg-white/10 hover:bg-amber-400/20 rounded-3xl">Bootstrapping</div>
+                                    <div onclick="explainStep(3)" class="cursor-pointer px-4 py-2 bg-white/10 hover:bg-amber-400/20 rounded-3xl">Convergence</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HELP MODAL -->
+    <div onclick="if(event.target.id === 'help-modal')toggleHelp()" 
+         id="help-modal"
+         class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="max-w-2xl bg-white text-zinc-950 rounded-3xl p-8">
+            <h2 class="text-3xl mb-6 font-semibold">How Q-learning is a stochastic approximation</h2>
+            <div class="prose prose-zinc text-base">
+                <p class="mb-4">The classic Q-learning update</p>
+                <div class="bg-zinc-100 font-mono text-lg p-5 rounded-3xl mb-8">
+                    Q(s,a) ← Q(s,a) + α [ r + γ max<sub>a′</sub> Q(s′,a′) − Q(s,a) ]
+                </div>
+                <p>This is exactly the Robbins–Monro stochastic approximation algorithm applied to the Bellman optimality fixed-point equation.</p>
+                <ul class="list-disc pl-5 space-y-3 mt-6">
+                    <li><strong>θ</strong> = Q-values (the parameter we are learning)</li>
+                    <li>The <strong>target</strong> is a noisy Monte-Carlo-style sample of the true expectation</li>
+                    <li>α controls step size — too large → divergence, too small → slow convergence</li>
+                    <li>Even though transitions are deterministic here, ε-greedy exploration + single-sample bootstrapping introduce stochasticity</li>
+                    <li>Over many updates the noise averages out → Q → Q*</li>
+                </ul>
+                <div class="mt-8 flex justify-end">
+                    <button onclick="toggleHelp()" 
+                            class="px-8 py-4 bg-zinc-900 text-white rounded-3xl font-medium">Got it, thanks</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============== TAILWIND INITIALIZATION ==============
+        function initializeTailwind() {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        content: [],
+                        theme: {
+                            extend: {},
+                        },
+                        plugins: [],
+                        ...userConfig,
+                    }
+                },
+                theme: {
+                    extend: {},
+                },
+            }
+        }
+        
+        // ============== GLOBAL VARIABLES ==============
+        let GRID_SIZE = 5
+        let CELL_SIZE = 116
+        
+        let Q = Array.from({ length: GRID_SIZE * GRID_SIZE }, () => Array(4).fill(0))
+        
+        let startPos = { r: 0, c: 0 }
+        let goalPos = { r: 4, c: 4 }
+        let traps = [{ r: 2, c: 2 }, { r: 3, c: 1 }]
+        let useTraps = true
+        
+        let currentPos = { r: 0, c: 0 }
+        let episode = 0
+        let totalSteps = 0
+        let isRunning = false
+        let stepDelay = 40
+        
+        let alpha = 0.15
+        let gamma = 0.92
+        let epsilon = 0.18
+        
+        let lastUpdateData = null
+        
+        // History for chart
+        let historySteps = []
+        let historyAvgMaxQ = []
+        let historyMaxTD = []
+        
+        // Canvas elements
+        let gridCanvas, gridCtx
+        let chartInstance = null
+        
+        // Action definitions
+        const ACTIONS = [
+            { name: '↑', dr: -1, dc: 0, angle: -Math.PI / 2 },
+            { name: '↓', dr: 1, dc: 0, angle: Math.PI / 2 },
+            { name: '←', dr: 0, dc: -1, angle: Math.PI },
+            { name: '→', dr: 0, dc: 1, angle: 0 }
+        ]
+        
+        // ============== UTILITY FUNCTIONS ==============
+        function getIndex(r, c) {
+            return r * GRID_SIZE + c
+        }
+        
+        function isTerminal(r, c) {
+            if (r === goalPos.r && c === goalPos.c) return true
+            if (!useTraps) return false
+            return traps.some(t => t.r === r && t.c === c)
+        }
+        
+        function getReward(nr, nc) {
+            if (nr === goalPos.r && nc === goalPos.c) return 1
+            if (useTraps && traps.some(t => t.r === nr && t.c === nc)) return -1
+            return 0
+        }
+        
+        function takeAction(r, c, actionIdx) {
+            const act = ACTIONS[actionIdx]
+            let nr = Math.max(0, Math.min(GRID_SIZE - 1, r + act.dr))
+            let nc = Math.max(0, Math.min(GRID_SIZE - 1, c + act.dc))
+            
+            const reward = getReward(nr, nc)
+            return { nr, nc, reward }
+        }
+        
+        function getMaxQ(r, c) {
+            if (isTerminal(r, c)) return 0
+            const idx = getIndex(r, c)
+            return Math.max(...Q[idx])
+        }
+        
+        function argmaxQ(r, c) {
+            if (isTerminal(r, c)) return -1
+            const idx = getIndex(r, c)
+            let maxVal = -Infinity
+            let best = 0
+            for (let a = 0; a < 4; a++) {
+                if (Q[idx][a] > maxVal) {
+                    maxVal = Q[idx][a]
+                    best = a
+                }
+            }
+            return best
+        }
+        
+        function computeAvgMaxQ() {
+            let sum = 0
+            let count = 0
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (!isTerminal(r, c)) {
+                        sum += getMaxQ(r, c)
+                        count++
+                    }
+                }
+            }
+            return count > 0 ? sum / count : 0
+        }
+        
+        // ============== CORE Q-LEARNING STEP ==============
+        function performStep() {
+            totalSteps++
+            
+            // Episode reset if terminal
+            if (isTerminal(currentPos.r, currentPos.c)) {
+                episode++
+                currentPos = { ...startPos }
+                updateStatsUI()
+                drawGrid()
+                updateChart()
+                return
+            }
+            
+            const sIdx = getIndex(currentPos.r, currentPos.c)
+            
+            // ε-greedy action selection
+            let actionIdx
+            if (Math.random() < epsilon) {
+                actionIdx = Math.floor(Math.random() * 4)
+            } else {
+                actionIdx = argmaxQ(currentPos.r, currentPos.c)
+            }
+            
+            // Execute action
+            const { nr, nc, reward } = takeAction(currentPos.r, currentPos.c, actionIdx)
+            
+            const nextIsTerminal = isTerminal(nr, nc)
+            const maxNext = nextIsTerminal ? 0 : getMaxQ(nr, nc)
+            
+            // TD target and error
+            const target = reward + gamma * maxNext
+            const oldQ = Q[sIdx][actionIdx]
+            const tdError = target - oldQ
+            const updateDelta = alpha * tdError
+            
+            // Apply update
+            Q[sIdx][actionIdx] += updateDelta
+            
+            // Store update data for SA panel
+            lastUpdateData = {
+                state: { r: currentPos.r, c: currentPos.c },
+                action: actionIdx,
+                qOld: oldQ,
+                reward: reward,
+                nextState: { r: nr, c: nc },
+                maxNext: maxNext,
+                target: target,
+                tdError: tdError,
+                updateDelta: updateDelta,
+                qNew: Q[sIdx][actionIdx]
+            }
+            
+            // Move agent
+            currentPos.r = nr
+            currentPos.c = nc
+            
+            // Record history
+            if (totalSteps % 3 === 0) {
+                const avgMax = computeAvgMaxQ()
+                historySteps.push(totalSteps)
+                historyAvgMaxQ.push(avgMax)
+                historyMaxTD.push(Math.abs(tdError))
+                
+                // Keep last 350 points
+                if (historySteps.length > 350) {
+                    historySteps.shift()
+                    historyAvgMaxQ.shift()
+                    historyMaxTD.shift()
+                }
+                updateChart()
+            }
+            
+            // Render everything
+            updateStatsUI()
+            drawGrid()
+            updateSAPanel()
+            updateExplanationText()
+        }
+        
+        function performSingleStep() {
+            if (isRunning) toggleRun()
+            performStep()
+        }
+        
+        // ============== DRAW GRID ==============
+        function drawGrid() {
+            gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height)
+            
+            // Background grid
+            gridCtx.strokeStyle = '#27272a'
+            gridCtx.lineWidth = 3
+            for (let i = 0; i <= GRID_SIZE; i++) {
+                gridCtx.beginPath()
+                gridCtx.moveTo(i * CELL_SIZE, 0)
+                gridCtx.lineTo(i * CELL_SIZE, GRID_SIZE * CELL_SIZE)
+                gridCtx.stroke()
+                
+                gridCtx.beginPath()
+                gridCtx.moveTo(0, i * CELL_SIZE)
+                gridCtx.lineTo(GRID_SIZE * CELL_SIZE, i * CELL_SIZE)
+                gridCtx.stroke()
+            }
+            
+            // Cells
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const x = c * CELL_SIZE
+                    const y = r * CELL_SIZE
+                    const centerX = x + CELL_SIZE / 2
+                    const centerY = y + CELL_SIZE / 2
+                    
+                    // Terminal coloring
+                    if (r === goalPos.r && c === goalPos.c) {
+                        gridCtx.fillStyle = '#10b981'
+                        gridCtx.globalAlpha = 0.12
+                        gridCtx.fillRect(x + 4, y + 4, CELL_SIZE - 8, CELL_SIZE - 8)
+                        gridCtx.globalAlpha = 1
+                        gridCtx.fillStyle = '#10b981'
+                        gridCtx.font = '700 22px Inter'
+                        gridCtx.textAlign = 'center'
+                        gridCtx.textBaseline = 'middle'
+                        gridCtx.fillText('GOAL', centerX, centerY + 4)
+                        gridCtx.fillText('+1', centerX, centerY + 32)
+                        continue
+                    }
+                    
+                    if (useTraps && traps.some(t => t.r === r && t.c === c)) {
+                        gridCtx.fillStyle = '#e11d48'
+                        gridCtx.globalAlpha = 0.12
+                        gridCtx.fillRect(x + 4, y + 4, CELL_SIZE - 8, CELL_SIZE - 8)
+                        gridCtx.globalAlpha = 1
+                        gridCtx.fillStyle = '#e11d48'
+                        gridCtx.font = '700 22px Inter'
+                        gridCtx.textAlign = 'center'
+                        gridCtx.textBaseline = 'middle'
+                        gridCtx.fillText('TRAP', centerX, centerY + 4)
+                        gridCtx.fillText('−1', centerX, centerY + 32)
+                        continue
+                    }
+                    
+                    // Q-value arrows
+                    const sIdx = getIndex(r, c)
+                    const bestAction = argmaxQ(r, c)
+                    
+                    for (let a = 0; a < 4; a++) {
+                        const qVal = Q[sIdx][a]
+                        
+                        // Length scaling (clamped)
+                        let length = 18 + qVal * 7.5
+                        length = Math.max(7, Math.min(48, length))
+                        
+                        const act = ACTIONS[a]
+                        const color = qVal >= 0 ? '#10b981' : '#e11d48'
+                        
+                        // Thickness & glow for best action
+                        const isBest = (a === bestAction)
+                        gridCtx.shadowBlur = isBest ? 12 : 0
+                        gridCtx.shadowColor = color
+                        gridCtx.lineWidth = isBest ? 4.5 : 2.8
+                        gridCtx.strokeStyle = color
+                        
+                        // Draw shaft from center
+                        gridCtx.beginPath()
+                        gridCtx.moveTo(centerX, centerY)
+                        const endX = centerX + act.dc * length
+                        const endY = centerY + act.dr * length
+                        gridCtx.lineTo(endX, endY)
+                        gridCtx.stroke()
+                        
+                        // Arrowhead
+                        const headSize = isBest ? 9 : 7
+                        const angle = Math.atan2(act.dr * length, act.dc * length)
+                        gridCtx.save()
+                        gridCtx.translate(endX, endY)
+                        gridCtx.rotate(angle)
+                        gridCtx.fillStyle = color
+                        gridCtx.beginPath()
+                        gridCtx.moveTo(0, 0)
+                        gridCtx.lineTo(-headSize, -headSize / 1.8)
+                        gridCtx.lineTo(-headSize, headSize / 1.8)
+                        gridCtx.fill()
+                        gridCtx.restore()
+                        
+                        gridCtx.shadowBlur = 0
+                    }
+                }
+            }
+            
+            // Draw agent
+            const agentX = currentPos.c * CELL_SIZE + CELL_SIZE / 2
+            const agentY = currentPos.r * CELL_SIZE + CELL_SIZE / 2
+            
+            // Glow ring
+            gridCtx.shadowBlur = 25
+            gridCtx.shadowColor = '#0ea5e9'
+            gridCtx.fillStyle = 'rgba(14, 165, 233, 0.3)'
+            gridCtx.beginPath()
+            gridCtx.arc(agentX, agentY, 32, 0, Math.PI * 2)
+            gridCtx.fill()
+            gridCtx.shadowBlur = 0
+            
+            // Agent body
+            gridCtx.fillStyle = '#0ea5e9'
+            gridCtx.beginPath()
+            gridCtx.arc(agentX, agentY, 22, 0, Math.PI * 2)
+            gridCtx.fill()
+            
+            // Inner icon
+            gridCtx.fillStyle = '#fff'
+            gridCtx.font = '900 26px Inter'
+            gridCtx.textAlign = 'center'
+            gridCtx.textBaseline = 'middle'
+            gridCtx.fillText('◉', agentX, agentY + 2)
+        }
+        
+        // ============== CHART ==============
+        function createChart() {
+            const ctx = document.getElementById('convergence-chart')
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: historySteps,
+                    datasets: [
+                        {
+                            label: 'Avg max Q',
+                            data: historyAvgMaxQ,
+                            borderColor: '#10b981',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Max |TD error|',
+                            data: historyMaxTD,
+                            borderColor: '#f59e0b',
+                            borderWidth: 3,
+                            tension: 0.2,
+                            pointRadius: 0,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false },
+                    scales: {
+                        x: {
+                            grid: { color: '#27272a', lineWidth: 1 },
+                            ticks: { color: '#a3a3a3', font: { size: 11 } }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: '#27272a' },
+                            ticks: { color: '#10b981', font: { size: 11 } },
+                            title: { display: true, text: 'Avg max Q', color: '#10b981' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#f59e0b', font: { size: 11 } },
+                            title: { display: true, text: '|TD error|', color: '#f59e0b' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#18181b',
+                            titleColor: '#fff',
+                            bodyColor: '#a3a3a3',
+                            displayColors: false
+                        }
+                    }
+                }
+            })
+        }
+        
+        function updateChart() {
+            if (!chartInstance) return
+            chartInstance.data.labels = historySteps
+            chartInstance.data.datasets[0].data = historyAvgMaxQ
+            chartInstance.data.datasets[1].data = historyMaxTD
+            chartInstance.update('none')
+        }
+        
+        function clearHistory() {
+            historySteps = []
+            historyAvgMaxQ = []
+            historyMaxTD = []
+            if (chartInstance) chartInstance.update()
+        }
+        
+        // ============== SA PANEL ==============
+        function updateSAPanel() {
+            if (!lastUpdateData) return
+            
+            const d = lastUpdateData
+            
+            document.getElementById('sa-state').textContent = `(${d.state.r},${d.state.c})`
+            document.getElementById('sa-action').innerHTML = ACTIONS[d.action].name
+            document.getElementById('sa-qold').textContent = d.qOld.toFixed(3)
+            document.getElementById('sa-reward').textContent = d.reward
+            document.getElementById('sa-maxnext').textContent = d.maxNext.toFixed(3)
+            document.getElementById('sa-target').textContent = d.target.toFixed(3)
+            document.getElementById('sa-td').innerHTML = d.tdError >= 0 ? 
+                `+${d.tdError.toFixed(3)}` : d.tdError.toFixed(3)
+            document.getElementById('sa-update').innerHTML = d.updateDelta >= 0 ? 
+                `+${d.updateDelta.toFixed(3)}` : d.updateDelta.toFixed(3)
+            document.getElementById('sa-qnew').textContent = d.qNew.toFixed(3)
+            
+            // Update the live equation
+            document.getElementById('q-update-left').textContent = `Q(${d.state.r},${d.state.c},${ACTIONS[d.action].name})`
+        }
+        
+        function updateExplanationText() {
+            if (!lastUpdateData) return
+            const d = lastUpdateData
+            const actName = ACTIONS[d.action].name
+            const stateStr = `(${d.state.r},${d.state.c})`
+            
+            let html = `The agent took action <span class="font-semibold text-sky-400">${actName}</span> in state <span class="font-semibold">${stateStr}</span>.<br><br>`
+            
+            if (Math.abs(d.tdError) > 0.3) {
+                html += `A <span class="font-semibold text-amber-400">large TD error</span> shows the current Q-value was far from the sampled future value.<br>`
+            } else {
+                html += `Small TD error → Q-values are getting close to optimal.<br>`
+            }
+            
+            html += `<br>The noisy target <span class="font-medium">${d.target.toFixed(3)}</span> is a single-sample bootstrap.<br>`
+            html += `Over thousands of updates this stochastic process converges to the true Q*.`
+            
+            document.getElementById('explanation-text').innerHTML = html
+            document.getElementById('exp-action').textContent = actName
+            document.getElementById('exp-state').textContent = stateStr
+        }
+        
+        function explainStep(n) {
+            const panel = document.getElementById('explanation-text')
+            if (n === 1) {
+                panel.innerHTML = `<strong>Why noisy?</strong><br>Because we only observe one transition at a time instead of the full expectation over all possible next states/actions. ε-greedy also injects deliberate randomness.`
+            } else if (n === 2) {
+                panel.innerHTML = `<strong>Bootstrapping</strong><br>We use our own current estimate of future value (max Q(s′,a′)) to improve the current estimate — this is the core of temporal-difference learning.`
+            } else if (n === 3) {
+                panel.innerHTML = `<strong>Convergence guarantee</strong><br>Under standard conditions (0 &lt; α &lt; 1, ∑α = ∞, ∑α² &lt; ∞), Q-learning converges to the optimal Q* with probability 1.`
+            }
+            setTimeout(() => {
+                if (lastUpdateData) updateExplanationText()
+            }, 2200)
+        }
+        
+        // ============== UI UPDATES ==============
+        function updateStatsUI() {
+            document.getElementById('episode-count').textContent = episode
+            document.getElementById('step-count').textContent = totalSteps
+            document.getElementById('avg-q-value').textContent = computeAvgMaxQ().toFixed(2)
+            
+            const label = document.getElementById('current-state-label')
+            label.textContent = `CURRENT STATE (${currentPos.r},${currentPos.c})`
+            
+            if (lastUpdateData) {
+                document.getElementById('action-taken').innerHTML = `<span class="text-sky-400">${ACTIONS[lastUpdateData.action].name}</span>`
+            }
+            
+            document.getElementById('start-label').textContent = `(${startPos.r},${startPos.c})`
+            document.getElementById('goal-label').textContent = `(${goalPos.r},${goalPos.c})`
+            document.getElementById('traps-label').textContent = useTraps ? 
+                traps.map(t => `(${t.r},${t.c})`).join(' ') : '—'
+        }
+        
+        function updateHyper(param, value) {
+            if (param === 'alpha') {
+                alpha = parseFloat(value)
+                document.getElementById('alpha-val').textContent = alpha.toFixed(2)
+            } else if (param === 'gamma') {
+                gamma = parseFloat(value)
+                document.getElementById('gamma-val').textContent = gamma.toFixed(2)
+            } else if (param === 'epsilon') {
+                epsilon = parseFloat(value)
+                document.getElementById('epsilon-val').textContent = epsilon.toFixed(2)
+            }
+        }
+        
+        function updateSpeed(val) {
+            stepDelay = parseInt(val)
+            document.getElementById('speed-val').textContent = Math.round(1000 / stepDelay)
+        }
+        
+        function toggleTraps() {
+            useTraps = document.getElementById('traps-toggle').checked
+            drawGrid()
+            updateStatsUI()
+        }
+        
+        function toggleRun() {
+            isRunning = !isRunning
+            const btn = document.getElementById('btn-run')
+            const text = document.getElementById('run-text')
+            
+            if (isRunning) {
+                btn.classList.add('!bg-rose-500', '!shadow-rose-500/30')
+                btn.classList.remove('!bg-emerald-500', '!shadow-emerald-500/30')
+                text.textContent = '⏹ PAUSE'
+                runLoop()
+            } else {
+                btn.classList.remove('!bg-rose-500', '!shadow-rose-500/30')
+                btn.classList.add('!bg-emerald-500', '!shadow-emerald-500/30')
+                text.textContent = '▶ START'
+            }
+        }
+        
+        let loopTimeout = null
+        function runLoop() {
+            if (!isRunning) return
+            performStep()
+            loopTimeout = setTimeout(runLoop, stepDelay)
+        }
+        
+        function resetSimulation() {
+            if (isRunning) toggleRun()
+            
+            // Reset Q-table
+            Q = Array.from({ length: GRID_SIZE * GRID_SIZE }, () => Array(4).fill(0))
+            
+            // Reset position
+            currentPos = { ...startPos }
+            
+            // Reset counters
+            episode = 0
+            totalSteps = 0
+            lastUpdateData = null
+            
+            // Clear history
+            clearHistory()
+            
+            // Redraw
+            drawGrid()
+            updateStatsUI()
+            updateSAPanel()
+            
+            // Show message
+            const msg = document.createElement('div')
+            msg.style.cssText = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:9999px; font-size:13px; box-shadow: 0 25px 50px -12px rgb(16 185 129);'
+            msg.textContent = 'Q-table reset to zero • Ready for new training'
+            document.body.appendChild(msg)
+            setTimeout(() => msg.remove(), 2200)
+        }
+        
+        function randomizeStartGoal() {
+            if (isRunning) toggleRun()
+            
+            // Random start (not terminal)
+            do {
+                startPos = {
+                    r: Math.floor(Math.random() * GRID_SIZE),
+                    c: Math.floor(Math.random() * GRID_SIZE)
+                }
+            } while (isTerminal(startPos.r, startPos.c))
+            
+            // Random goal
+            do {
+                goalPos = {
+                    r: Math.floor(Math.random() * GRID_SIZE),
+                    c: Math.floor(Math.random() * GRID_SIZE)
+                }
+            } while (goalPos.r === startPos.r && goalPos.c === startPos.c)
+            
+            // Randomize traps slightly
+            if (useTraps) {
+                traps = [
+                    { r: Math.floor(Math.random() * GRID_SIZE), c: Math.floor(Math.random() * GRID_SIZE) },
+                    { r: Math.floor(Math.random() * GRID_SIZE), c: Math.floor(Math.random() * GRID_SIZE) }
+                ]
+                // avoid overlap
+                if (traps[0].r === traps[1].r && traps[0].c === traps[1].c) traps[1].c = (traps[1].c + 1) % GRID_SIZE
+            }
+            
+            currentPos = { ...startPos }
+            resetSimulation()
+            drawGrid()
+            updateStatsUI()
+        }
+        
+        function toggleHelp() {
+            const modal = document.getElementById('help-modal')
+            modal.classList.toggle('hidden')
+        }
+        
+        // ============== INITIALIZATION ==============
+        function initialize() {
+            // Tailwind
+            const config = initializeTailwind().config({
+                theme: { extend: {} }
+            })
+            document.documentElement.setAttribute('data-tailwind-config', JSON.stringify(config))
+            
+            // Get canvases
+            gridCanvas = document.getElementById('grid-canvas')
+            gridCtx = gridCanvas.getContext('2d')
+            
+            // Initial draw
+            createChart()
+            drawGrid()
+            updateStatsUI()
+            
+            console.log('%c✅ Q-learning Stochastic Approximation Visualizer ready', 'background:#0ea5e9;color:white;padding:1px 3px;border-radius:2px')
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'r' || e.key === 'R') resetSimulation()
+                if (e.key === ' ') {
+                    e.preventDefault()
+                    performSingleStep()
+                }
+                if (e.key === 'p' || e.key === 'P') toggleRun()
+            })
+            
+            console.log('%cPress SPACE for single step • P to play/pause • R to reset', 'font-size:10px;color:#64748b')
+        }
+        
+        // Start everything
+        window.onload = initialize
+    </script>
+</body>
+</html>
