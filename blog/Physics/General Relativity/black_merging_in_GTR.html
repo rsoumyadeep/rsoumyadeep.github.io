@@ -1,1 +1,1271 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Binary Black Hole Merger — Interactive Simulation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #010108;
+    --panel: rgba(5, 8, 20, 0.82);
+    --border: rgba(90, 160, 255, 0.15);
+    --accent: #4fc3f7;
+    --accent2: #f06292;
+    --text: #cfd8dc;
+    --text-dim: #607d8b;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+
+  canvas { display: block; }
+
+  /* ── Info Panel ── */
+  #info-panel {
+    position: fixed;
+    top: 0; left: 0;
+    width: 340px;
+    height: 100vh;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 0 0 24px;
+  }
+
+  .panel-header {
+    padding: 28px 24px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-header h1 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #fff;
+    line-height: 1.3;
+  }
+
+  .panel-header .subtitle {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  .section {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .description {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1.75;
+    color: #90a4ae;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin: 2px 2px 2px 0;
+    letter-spacing: 0.04em;
+  }
+  .tag.accurate { background: rgba(79,195,247,0.12); color: var(--accent); border: 1px solid rgba(79,195,247,0.25); }
+  .tag.approx   { background: rgba(240,98,146,0.12); color: var(--accent2); border: 1px solid rgba(240,98,146,0.25); }
+
+  /* ── Controls ── */
+  .control-group { margin-bottom: 14px; }
+
+  .control-group label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #90a4ae;
+    margin-bottom: 6px;
+  }
+  .control-group label span { color: var(--accent); }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: rgba(79,195,247,0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+
+  /* ── Stats readout ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-box {
+    background: rgba(79,195,247,0.04);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+  }
+
+  .stat-box .label {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stat-box .value {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  /* ── GW canvas ── */
+  #gw-canvas {
+    width: 100%;
+    height: 70px;
+    display: block;
+    margin-top: 4px;
+  }
+
+  /* ── Phase indicator ── */
+  #phase-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .phase-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    flex-shrink: 0;
+  }
+  .phase-dot.merger { background: var(--accent2); box-shadow: 0 0 10px var(--accent2); }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .btn {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px;
+    background: rgba(79,195,247,0.07);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .btn:hover {
+    background: rgba(79,195,247,0.15);
+    border-color: rgba(79,195,247,0.4);
+  }
+  .btn.reset { color: var(--accent2); border-color: rgba(240,98,146,0.2); background: rgba(240,98,146,0.07); }
+  .btn.reset:hover { background: rgba(240,98,146,0.15); border-color: rgba(240,98,146,0.4); }
+
+  /* ── Hints ── */
+  .hint {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ── Merger flash overlay ── */
+  #merger-flash {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, transparent 65%);
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.08s ease-out;
+  }
+
+  /* scrollbar */
+  #info-panel::-webkit-scrollbar { width: 3px; }
+  #info-panel::-webkit-scrollbar-thumb { background: rgba(79,195,247,0.25); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ── MERGER FLASH ── -->
+<div id="merger-flash"></div>
+
+<!-- ── CANVAS ── -->
+<div id="canvas-container"></div>
+
+<!-- ── LEFT PANEL ── -->
+<div id="info-panel">
+
+  <div class="panel-header">
+    <h1>Binary Black Hole<br>Merger Simulation</h1>
+    <div class="subtitle">GR-Inspired · Interactive · 3D</div>
+  </div>
+
+  <!-- PHYSICS DESCRIPTION -->
+  <div class="section">
+    <div class="section-title">What is simulated</div>
+    <p class="description">
+      Two supermassive black holes in a decaying orbit — the inspiral phase of a binary merger.
+      As angular momentum is lost to gravitational radiation, the separation shrinks, the orbital
+      frequency rises (chirp), and the system merges into a single remnant.
+    </p>
+    <div style="margin-top:10px;">
+      <div class="section-title">Physically accurate</div>
+      <span class="tag accurate">Keplerian orbit</span>
+      <span class="tag accurate">Inspiral decay</span>
+      <span class="tag accurate">GW chirp shape</span>
+      <span class="tag accurate">Mass-radius scaling</span>
+    </div>
+    <div style="margin-top:8px;">
+      <div class="section-title">Approximated / artistic</div>
+      <span class="tag approx">Newtonian gravity</span>
+      <span class="tag approx">Energy loss (Peters formula)</span>
+      <span class="tag approx">Gravitational lensing</span>
+      <span class="tag approx">Accretion disk</span>
+    </div>
+  </div>
+
+  <!-- PHASE -->
+  <div class="section">
+    <div class="section-title">Orbital Phase</div>
+    <div id="phase-bar">
+      <div class="phase-dot" id="phase-dot"></div>
+      <span id="phase-label">Inspiral</span>
+    </div>
+  </div>
+
+  <!-- LIVE STATS -->
+  <div class="section">
+    <div class="section-title">Live Diagnostics</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="label">Separation</div>
+        <div class="value" id="stat-sep">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Frequency</div>
+        <div class="value" id="stat-freq">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">M₁ / M☉</div>
+        <div class="value" id="stat-m1">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">M₂ / M☉</div>
+        <div class="value" id="stat-m2">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GW WAVEFORM -->
+  <div class="section">
+    <div class="section-title">Gravitational Wave Strain h(t)</div>
+    <canvas id="gw-canvas"></canvas>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="section">
+    <div class="section-title">Parameters</div>
+
+    <div class="control-group">
+      <label>Mass Ratio (M₁/M₂) <span id="lbl-ratio">1.0</span></label>
+      <input type="range" id="sl-ratio" min="1" max="5" step="0.1" value="1.0"/>
+    </div>
+
+    <div class="control-group">
+      <label>Initial Separation <span id="lbl-sep">12</span> AU</label>
+      <input type="range" id="sl-sep" min="6" max="24" step="0.5" value="12"/>
+    </div>
+
+    <div class="control-group">
+      <label>Decay Rate <span id="lbl-decay">1.0</span>×</label>
+      <input type="range" id="sl-decay" min="0.1" max="4" step="0.1" value="1.0"/>
+    </div>
+
+    <div class="control-group">
+      <label>Accretion Disk Brightness <span id="lbl-disk">1.0</span></label>
+      <input type="range" id="sl-disk" min="0.1" max="2" step="0.1" value="1.0"/>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btn-pause">Pause</button>
+      <button class="btn reset" id="btn-reset">Reset</button>
+    </div>
+  </div>
+
+  <!-- HINTS -->
+  <div class="section">
+    <div class="section-title">Controls</div>
+    <p class="hint">
+      🖱 Drag → Rotate camera<br>
+      🖱 Scroll → Zoom<br>
+      🖱 Right-drag → Pan<br>
+      Sliders → Adjust physics parameters<br>
+      Reset → Restart with new parameters
+    </p>
+  </div>
+
+</div>
+
+<!-- ── THREE.JS ── -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS & HELPERS
+// ═══════════════════════════════════════════════════════════════
+const TWO_PI = Math.PI * 2;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDERER SETUP
+// ═══════════════════════════════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// ═══════════════════════════════════════════════════════════════
+//  SCENE & CAMERA
+// ═══════════════════════════════════════════════════════════════
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x010108);
+scene.fog = new THREE.FogExp2(0x010108, 0.012);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 1000);
+camera.position.set(0, 18, 32);
+camera.lookAt(0, 0, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 3;
+controls.maxDistance = 120;
+controls.autoRotate = false;
+
+// ═══════════════════════════════════════════════════════════════
+//  POST-PROCESSING (Bloom)
+// ═══════════════════════════════════════════════════════════════
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  1.6,   // strength
+  0.55,  // radius
+  0.08   // threshold
+);
+composer.addPass(bloomPass);
+
+// ═══════════════════════════════════════════════════════════════
+//  STARFIELD
+// ═══════════════════════════════════════════════════════════════
+function buildStarfield() {
+  const N = 12000;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
+
+  const starColors = [
+    new THREE.Color(0xffffff),
+    new THREE.Color(0xadd8ff),
+    new THREE.Color(0xffd9a0),
+    new THREE.Color(0xffb3b3),
+  ];
+
+  for (let i = 0; i < N; i++) {
+    const r = 200 + Math.random() * 300;
+    const theta = Math.random() * TWO_PI;
+    const phi = Math.acos(2 * Math.random() - 1);
+    pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i*3+2] = r * Math.cos(phi);
+
+    const c = starColors[Math.floor(Math.random() * starColors.length)];
+    const bright = 0.4 + Math.random() * 0.6;
+    col[i*3]   = c.r * bright;
+    col[i*3+1] = c.g * bright;
+    col[i*3+2] = c.b * bright;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.35,
+    vertexColors: true,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.9,
+  });
+  return new THREE.Points(geo, mat);
+}
+scene.add(buildStarfield());
+
+// ═══════════════════════════════════════════════════════════════
+//  SPACETIME GRID (warping plane)
+// ═══════════════════════════════════════════════════════════════
+class SpacetimeGrid {
+  constructor() {
+    this.segments = 60;
+    const geo = new THREE.PlaneGeometry(80, 80, this.segments, this.segments);
+    geo.rotateX(-Math.PI / 2);
+
+    // Store original positions for displacement
+    const pos = geo.attributes.position;
+    this.origY = new Float32Array(pos.count);
+    for (let i = 0; i < pos.count; i++) this.origY[i] = pos.getY(i);
+
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x1a3a5c,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.18,
+    });
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.mesh.position.y = -3.5;
+  }
+
+  /**
+   * Displace grid vertices by combined gravitational well of two BHs.
+   * Uses a simple 1/r² potential approximation projected onto the grid plane.
+   */
+  update(bh1Pos, bh2Pos, m1, m2, merged, mergedPos) {
+    const pos = this.mesh.geometry.attributes.position;
+    const count = pos.count;
+
+    for (let i = 0; i < count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      let dy = 0;
+
+      const wells = merged
+        ? [{ p: mergedPos, m: m1 + m2 }]
+        : [{ p: bh1Pos, m: m1 }, { p: bh2Pos, m: m2 }];
+
+      for (const { p, m } of wells) {
+        const dx = x - p.x, dz = z - p.z;
+        const r2 = dx*dx + dz*dz + 0.5;
+        dy -= (m * 2.5) / r2;
+      }
+      pos.setY(i, clamp(dy, -6, 0));
+    }
+    pos.needsUpdate = true;
+    this.mesh.geometry.computeVertexNormals();
+  }
+}
+const grid = new SpacetimeGrid();
+scene.add(grid.mesh);
+
+// ═══════════════════════════════════════════════════════════════
+//  ACCRETION DISK (particle system per BH)
+// ═══════════════════════════════════════════════════════════════
+class AccretionDisk {
+  /**
+   * @param {THREE.Color} innerColor
+   * @param {THREE.Color} outerColor
+   * @param {number} particleCount
+   */
+  constructor(innerColor, outerColor, particleCount = 2800) {
+    this.N = particleCount;
+    this.angles = new Float32Array(particleCount);
+    this.radii  = new Float32Array(particleCount);
+    this.speeds = new Float32Array(particleCount);
+    this.heights= new Float32Array(particleCount);
+
+    const positions = new Float32Array(particleCount * 3);
+    const colors    = new Float32Array(particleCount * 3);
+    const sizes     = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+      // Power-law distribution — more particles near center
+      const t = Math.pow(Math.random(), 1.8); // 0 = inner, 1 = outer
+      const r = 0.6 + t * 3.2;
+      this.radii[i]  = r;
+      this.angles[i] = Math.random() * TWO_PI;
+      this.speeds[i] = (1.0 / Math.sqrt(r)) * (0.9 + Math.random() * 0.2); // Keplerian
+      this.heights[i]= (Math.random() - 0.5) * 0.08 * (1 - t);
+
+      const c = innerColor.clone().lerp(outerColor, t);
+      colors[i*3]   = c.r;
+      colors[i*3+1] = c.g;
+      colors[i*3+2] = c.b;
+      sizes[i] = 0.07 + (1 - t) * 0.12;
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.14,
+      vertexColors: true,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    this.points = new THREE.Points(geo, mat);
+    this.diskNormal = new THREE.Vector3(0, 1, 0);
+  }
+
+  /**
+   * Advance particle angles and update positions around a center.
+   */
+  update(centerX, centerY, centerZ, dt, tilt = 0, brightness = 1) {
+    const pos = this.points.geometry.attributes.position;
+    this.points.material.opacity = clamp(brightness * 0.85, 0.1, 1.0);
+
+    // Tilt normal (slight inclination makes disk look 3D)
+    const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
+
+    for (let i = 0; i < this.N; i++) {
+      this.angles[i] += this.speeds[i] * dt * 0.9;
+      const a = this.angles[i];
+      const r = this.radii[i];
+
+      // Local disk coords
+      let lx = r * Math.cos(a);
+      let ly = this.heights[i];
+      let lz = r * Math.sin(a);
+
+      // Apply tilt around X axis
+      const ty = ly * cosT - lz * sinT;
+      const tz = ly * sinT + lz * cosT;
+
+      pos.setXYZ(i, centerX + lx, centerY + ty, centerZ + tz);
+    }
+    pos.needsUpdate = true;
+  }
+
+  setVisible(v) { this.points.visible = v; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BLACK HOLE MESH (event horizon sphere + photon sphere glow)
+// ═══════════════════════════════════════════════════════════════
+class BlackHoleMesh {
+  constructor(color) {
+    this.group = new THREE.Group();
+
+    // Event horizon — pure black sphere
+    const bhGeo = new THREE.SphereGeometry(1, 40, 40);
+    const bhMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    this.sphere = new THREE.Mesh(bhGeo, bhMat);
+    this.group.add(this.sphere);
+
+    // Photon sphere / corona glow — additive shell
+    const glowGeo = new THREE.SphereGeometry(1, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.22,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.glow = new THREE.Mesh(glowGeo, glowMat);
+    this.glow.scale.setScalar(1.55);
+    this.group.add(this.glow);
+
+    // Outer haze ring (lens-like)
+    const ringGeo = new THREE.TorusGeometry(1.4, 0.25, 8, 80);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.08,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.ring = new THREE.Mesh(ringGeo, ringMat);
+    this.ring.rotation.x = Math.PI / 2;
+    this.group.add(this.ring);
+  }
+
+  /** Scale the entire mesh according to Schwarzschild radius ~ M */
+  setRadius(r) {
+    this.sphere.scale.setScalar(r);
+    this.glow.scale.setScalar(r * 1.55);
+    this.ring.scale.setScalar(r);
+  }
+
+  setPosition(x, y, z) { this.group.position.set(x, y, z); }
+  getPosition() { return this.group.position; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GRAVITATIONAL WAVE TRAIL (3D waveform tube)
+// ═══════════════════════════════════════════════════════════════
+class GWTrail {
+  constructor() {
+    this.maxPoints = 400;
+    this.points = [];
+    this.curve = null;
+
+    // We'll rebuild the tube each frame (cheap at this size)
+    this.material = new THREE.MeshBasicMaterial({
+      color: 0x4fc3f7,
+      transparent: true,
+      opacity: 0.45,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.mesh = null;
+    this.tOffset = 0;
+  }
+
+  /** Append a new strain sample and update the 3D tube */
+  push(strain, separation) {
+    const spread = 18;
+    this.tOffset += 0.12;
+    // Extend along +Z axis; amplitude = strain
+    this.points.push(new THREE.Vector3(
+      strain * spread,
+      1.5,
+      -this.tOffset
+    ));
+    if (this.points.length > this.maxPoints) this.points.shift();
+    this._rebuild();
+  }
+
+  _rebuild() {
+    if (this.points.length < 4) return;
+    if (this.mesh) { scene.remove(this.mesh); this.mesh.geometry.dispose(); }
+
+    const curve = new THREE.CatmullRomCurve3(this.points);
+    const geo = new THREE.TubeGeometry(curve, this.points.length, 0.05, 5, false);
+    this.mesh = new THREE.Mesh(geo, this.material);
+    scene.add(this.mesh);
+  }
+
+  reset() {
+    if (this.mesh) { scene.remove(this.mesh); this.mesh.geometry.dispose(); this.mesh = null; }
+    this.points = [];
+    this.tOffset = 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  2D GW WAVEFORM CANVAS
+// ═══════════════════════════════════════════════════════════════
+class GWPlot {
+  constructor(canvasEl) {
+    this.canvas = canvasEl;
+    this.ctx = canvasEl.getContext('2d');
+    this.history = [];
+    this.maxSamples = 300;
+    this._resize();
+  }
+
+  _resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.getBoundingClientRect();
+    this.canvas.width  = rect.width  * dpr;
+    this.canvas.height = rect.height * dpr;
+    this.ctx.scale(dpr, dpr);
+    this.W = rect.width;
+    this.H = rect.height;
+  }
+
+  push(strain) {
+    this.history.push(strain);
+    if (this.history.length > this.maxSamples) this.history.shift();
+    this.draw();
+  }
+
+  draw() {
+    const { ctx, W, H } = this;
+    ctx.clearRect(0, 0, W, H);
+
+    // Background
+    ctx.fillStyle = 'rgba(1,1,8,0.0)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Baseline
+    ctx.strokeStyle = 'rgba(79,195,247,0.12)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
+    ctx.stroke();
+
+    if (this.history.length < 2) return;
+
+    const N = this.history.length;
+    const maxStrain = 0.6;
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, 'rgba(79,195,247,0.05)');
+    grad.addColorStop(0.7, 'rgba(79,195,247,0.6)');
+    grad.addColorStop(1, 'rgba(240,98,146,1.0)');
+
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#4fc3f7';
+    ctx.beginPath();
+
+    for (let i = 0; i < N; i++) {
+      const x = (i / (N-1)) * W;
+      const y = H/2 - (this.history[i] / maxStrain) * (H/2 - 4);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  reset() { this.history = []; this.draw(); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SIMULATION STATE
+// ═══════════════════════════════════════════════════════════════
+class Simulation {
+  constructor(params) {
+    this.params = { ...params };
+    this.reset();
+  }
+
+  reset() {
+    const p = this.params;
+    // Normalize masses: m1 >= m2, total = 2
+    const totalMass = 2.0;
+    this.m1 = totalMass * p.massRatio / (1 + p.massRatio);
+    this.m2 = totalMass * 1         / (1 + p.massRatio);
+
+    // Initial separation (half on each side of CoM)
+    this.sep = p.initSep;  // current separation
+    this.initSep = p.initSep;
+
+    // Orbital angle
+    this.angle = 0;
+
+    // Peters formula coalescence timescale (dimensionless, tuned for visual)
+    // T_merge ∝ sep^4 / (m1 * m2 * (m1+m2))
+    const M = this.m1 + this.m2;
+    const mu = (this.m1 * this.m2) / M;
+    this.petersDenom = M * mu * 12.0; // tuned constant
+
+    this.phase = 'inspiral';  // inspiral | merger | merged
+    this.mergerT = 0;
+    this.mergedPos = new THREE.Vector3(0, 0, 0);
+    this.time = 0;
+
+    // Schwarzschild radius ~ mass (visual scaling)
+    this.r1 = 0.3 + this.m1 * 0.4;
+    this.r2 = 0.3 + this.m2 * 0.4;
+
+    // Centre-of-mass positions
+    this._updatePositions();
+  }
+
+  /** Newtonian orbit + Peters inspiral decay */
+  step(dt) {
+    if (this.phase === 'merged') return;
+    if (this.phase === 'merger') {
+      this.mergerT += dt;
+      if (this.mergerT > 1.5) this.phase = 'merged';
+      return;
+    }
+
+    const p = this.params;
+    const M = this.m1 + this.m2;
+
+    // Orbital angular velocity (Keplerian) ω² = G·M / r³, G=1 dimensionless
+    const omega = Math.sqrt(M / Math.pow(this.sep, 3));
+    this.omega = omega;
+    this.angle += omega * dt;
+
+    // Peters formula: da/dt = -C * M^2 * mu / a^3
+    // Simplified: da/dt ~ -K / a^3, scaled by decayRate
+    const K = 0.014 * p.decayRate * this.petersDenom;
+    const dadt = -K / Math.pow(this.sep, 3);
+    this.sep += dadt * dt;
+    this.sep = Math.max(this.sep, (this.r1 + this.r2) * 1.05);
+
+    this.time += dt;
+    this._updatePositions();
+
+    // Merger trigger: separation reaches sum of radii
+    if (this.sep <= (this.r1 + this.r2) * 1.05 + 0.05) {
+      this.phase = 'merger';
+      this.mergerT = 0;
+      this.mergedPos.set(0, 0, 0); // CoM
+    }
+  }
+
+  _updatePositions() {
+    const M = this.m1 + this.m2;
+    const r1 = (this.m2 / M) * this.sep;  // CoM distances
+    const r2 = (this.m1 / M) * this.sep;
+
+    this.pos1 = new THREE.Vector3(
+      r1 * Math.cos(this.angle),
+      0,
+      r1 * Math.sin(this.angle)
+    );
+    this.pos2 = new THREE.Vector3(
+      -r2 * Math.cos(this.angle),
+      0,
+      -r2 * Math.sin(this.angle)
+    );
+  }
+
+  /** GW strain amplitude ~ (μ/r) * (v/c)^2, approx as (mu * omega^2 * sep^2) */
+  strainAmplitude() {
+    if (this.phase !== 'inspiral') return 0;
+    const M = this.m1 + this.m2;
+    const mu = (this.m1 * this.m2) / M;
+    return clamp(mu * this.omega * this.sep * 0.15, -1, 1);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  READ UI PARAMS
+// ═══════════════════════════════════════════════════════════════
+function readParams() {
+  return {
+    massRatio:  +document.getElementById('sl-ratio').value,
+    initSep:    +document.getElementById('sl-sep').value,
+    decayRate:  +document.getElementById('sl-decay').value,
+    diskBright: +document.getElementById('sl-disk').value,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ASSEMBLE SCENE OBJECTS
+// ═══════════════════════════════════════════════════════════════
+const BH1_COLOR = new THREE.Color(0x4fc3f7);  // blue
+const BH2_COLOR = new THREE.Color(0xf06292);  // rose
+
+const bh1Mesh = new BlackHoleMesh(BH1_COLOR);
+const bh2Mesh = new BlackHoleMesh(BH2_COLOR);
+scene.add(bh1Mesh.group, bh2Mesh.group);
+
+const disk1 = new AccretionDisk(new THREE.Color(0xffffff), new THREE.Color(0x4fc3f7));
+const disk2 = new AccretionDisk(new THREE.Color(0xffffff), new THREE.Color(0xf06292));
+scene.add(disk1.points, disk2.points);
+
+const gwTrail = new GWTrail();
+const gwPlot = new GWPlot(document.getElementById('gw-canvas'));
+
+let sim = new Simulation(readParams());
+
+// Point light at each BH for subtle scene illumination
+const light1 = new THREE.PointLight(0x4fc3f7, 2.5, 20);
+const light2 = new THREE.PointLight(0xf06292, 2.5, 20);
+scene.add(light1, light2);
+scene.add(new THREE.AmbientLight(0x111122, 0.8));
+
+// ═══════════════════════════════════════════════════════════════
+//  MERGER FLASH
+// ═══════════════════════════════════════════════════════════════
+const mergerFlash = document.getElementById('merger-flash');
+let flashIntensity = 0;
+
+// ═══════════════════════════════════════════════════════════════
+//  MERGED BH (single remnant)
+// ═══════════════════════════════════════════════════════════════
+const mergedBHMesh = new BlackHoleMesh(new THREE.Color(0xb39ddb));
+mergedBHMesh.group.visible = false;
+scene.add(mergedBHMesh.group);
+const diskMerged = new AccretionDisk(new THREE.Color(0xffffff), new THREE.Color(0xb39ddb), 3800);
+diskMerged.points.visible = false;
+scene.add(diskMerged.points);
+
+// ═══════════════════════════════════════════════════════════════
+//  ORBITAL TRAIL (fading ring)
+// ═══════════════════════════════════════════════════════════════
+class OrbitalTrail {
+  constructor(color, maxPoints = 180) {
+    this.maxPoints = maxPoints;
+    this.positions = [];
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(maxPoints * 3);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.line = new THREE.Line(geo, mat);
+    this.count = 0;
+  }
+
+  push(p) {
+    this.positions.push(p.clone());
+    if (this.positions.length > this.maxPoints) this.positions.shift();
+    const buf = this.line.geometry.attributes.position;
+    const N = this.positions.length;
+    for (let i = 0; i < N; i++) {
+      buf.setXYZ(i, this.positions[i].x, this.positions[i].y, this.positions[i].z);
+    }
+    // Zero-fill the rest
+    for (let i = N; i < this.maxPoints; i++) buf.setXYZ(i, 0, 0, 0);
+    buf.needsUpdate = true;
+    this.line.geometry.setDrawRange(0, N);
+  }
+
+  reset() {
+    this.positions = [];
+    const buf = this.line.geometry.attributes.position;
+    for (let i = 0; i < this.maxPoints; i++) buf.setXYZ(i, 0, 0, 0);
+    buf.needsUpdate = true;
+    this.line.geometry.setDrawRange(0, 0);
+  }
+
+  setVisible(v) { this.line.visible = v; }
+}
+
+const trail1 = new OrbitalTrail(BH1_COLOR);
+const trail2 = new OrbitalTrail(BH2_COLOR);
+scene.add(trail1.line, trail2.line);
+
+// ═══════════════════════════════════════════════════════════════
+//  UI UPDATES
+// ═══════════════════════════════════════════════════════════════
+const statSep   = document.getElementById('stat-sep');
+const statFreq  = document.getElementById('stat-freq');
+const statM1    = document.getElementById('stat-m1');
+const statM2    = document.getElementById('stat-m2');
+const phaseLabel = document.getElementById('phase-label');
+const phaseDot   = document.getElementById('phase-dot');
+
+function updateStats(s) {
+  const SolMass = 1e9; // visually represent as ~10^9 solar masses
+  statSep.textContent  = s.sep.toFixed(2) + ' AU';
+  statFreq.textContent = (s.omega ? (s.omega * 1000).toFixed(2) : '—') + ' mHz';
+  statM1.textContent   = (s.m1 * SolMass / 1e9).toFixed(2) + ' × 10⁹';
+  statM2.textContent   = (s.m2 * SolMass / 1e9).toFixed(2) + ' × 10⁹';
+
+  if (s.phase === 'inspiral') {
+    phaseLabel.textContent = 'Inspiral';
+    phaseDot.classList.remove('merger');
+  } else if (s.phase === 'merger') {
+    phaseLabel.textContent = 'Merger!';
+    phaseDot.classList.add('merger');
+  } else {
+    phaseLabel.textContent = 'Merged — Remnant';
+    phaseDot.classList.add('merger');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SLIDER LABELS
+// ═══════════════════════════════════════════════════════════════
+function bindSlider(id, lblId, fmt) {
+  const sl  = document.getElementById(id);
+  const lbl = document.getElementById(lblId);
+  lbl.textContent = fmt(sl.value);
+  sl.addEventListener('input', () => { lbl.textContent = fmt(sl.value); });
+}
+bindSlider('sl-ratio', 'lbl-ratio', v => (+v).toFixed(1));
+bindSlider('sl-sep',   'lbl-sep',   v => (+v).toFixed(1));
+bindSlider('sl-decay', 'lbl-decay', v => (+v).toFixed(1));
+bindSlider('sl-disk',  'lbl-disk',  v => (+v).toFixed(1));
+
+// ═══════════════════════════════════════════════════════════════
+//  RESET & PAUSE
+// ═══════════════════════════════════════════════════════════════
+let paused = false;
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  const p = readParams();
+  sim = new Simulation(p);
+  gwTrail.reset();
+  gwPlot.reset();
+  trail1.reset(); trail2.reset();
+  flashIntensity = 0;
+  mergerFlash.style.opacity = 0;
+
+  bh1Mesh.group.visible  = true;
+  bh2Mesh.group.visible  = true;
+  disk1.points.visible   = true;
+  disk2.points.visible   = true;
+  trail1.setVisible(true);
+  trail2.setVisible(true);
+  mergedBHMesh.group.visible = false;
+  diskMerged.points.visible  = false;
+});
+
+document.getElementById('btn-pause').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? 'Resume' : 'Pause';
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+let gwSampleTimer = 0;
+const GW_SAMPLE_INTERVAL = 0.04; // seconds between GW plot samples
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05); // clamp for tab-unfocus spikes
+
+  controls.update();
+
+  if (!paused) {
+    // ── Advance simulation ──
+    sim.step(dt * 1.2); // slight time-warp for visual pacing
+
+    // ── Update BH meshes ──
+    if (sim.phase === 'inspiral' || sim.phase === 'merger') {
+      const lerpT = sim.phase === 'merger' ? sim.mergerT / 1.5 : 0;
+
+      const p1x = THREE.MathUtils.lerp(sim.pos1.x, 0, lerpT);
+      const p1z = THREE.MathUtils.lerp(sim.pos1.z, 0, lerpT);
+      const p2x = THREE.MathUtils.lerp(sim.pos2.x, 0, lerpT);
+      const p2z = THREE.MathUtils.lerp(sim.pos2.z, 0, lerpT);
+
+      bh1Mesh.setPosition(p1x, 0, p1z);
+      bh2Mesh.setPosition(p2x, 0, p2z);
+      bh1Mesh.setRadius(sim.r1);
+      bh2Mesh.setRadius(sim.r2);
+
+      light1.position.set(p1x, 1, p1z);
+      light2.position.set(p2x, 1, p2z);
+
+      // Disk tilt
+      const tilt1 = 0.22 + 0.08 * Math.sin(sim.time * 0.3);
+      const tilt2 = 0.32 + 0.06 * Math.sin(sim.time * 0.4 + 1);
+      const diskP = readParams().diskBright;
+      disk1.update(p1x, 0, p1z, dt, tilt1, diskP);
+      disk2.update(p2x, 0, p2z, dt, tilt2, diskP);
+
+      trail1.push(sim.pos1);
+      trail2.push(sim.pos2);
+
+      // Flash on merger start
+      if (sim.phase === 'merger' && sim.mergerT < 0.12) {
+        flashIntensity = 1.0;
+      }
+    }
+
+    if (sim.phase === 'merged') {
+      bh1Mesh.group.visible  = false;
+      bh2Mesh.group.visible  = false;
+      disk1.points.visible   = false;
+      disk2.points.visible   = false;
+      trail1.setVisible(false);
+      trail2.setVisible(false);
+
+      const rM = sim.r1 + sim.r2 + 0.2;
+      mergedBHMesh.setRadius(rM);
+      mergedBHMesh.setPosition(0, 0, 0);
+      mergedBHMesh.group.visible = true;
+      diskMerged.points.visible  = true;
+      diskMerged.update(0, 0, 0, dt, 0.15, readParams().diskBright * 1.3);
+      light1.position.set(0, 1, 0);
+      light2.position.set(0.5, 0.5, 0);
+    }
+
+    // ── Merger flash fade ──
+    if (flashIntensity > 0) {
+      flashIntensity = Math.max(0, flashIntensity - dt * 2.5);
+      mergerFlash.style.opacity = flashIntensity;
+    }
+
+    // ── Spacetime grid ──
+    grid.update(
+      bh1Mesh.getPosition(), bh2Mesh.getPosition(),
+      sim.m1, sim.m2,
+      sim.phase === 'merged',
+      sim.mergedPos
+    );
+
+    // ── GW samples ──
+    gwSampleTimer += dt;
+    if (gwSampleTimer >= GW_SAMPLE_INTERVAL) {
+      gwSampleTimer = 0;
+      const strain = sim.strainAmplitude() * Math.sin(sim.angle * 2);
+      gwPlot.push(strain);
+      if (sim.phase === 'inspiral') {
+        gwTrail.push(strain, sim.sep);
+      }
+    }
+
+    // ── Stats ──
+    updateStats(sim);
+  }
+
+  composer.render();
+}
+
+animate();
+
+// ═══════════════════════════════════════════════════════════════
+//  RESIZE
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  const W = window.innerWidth, H = window.innerHeight;
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
+  composer.setSize(W, H);
+  bloomPass.resolution.set(W, H);
+});
+
+</script>
+
+  <!-- ── AUDIO SYSTEM ── -->
+<audio id="chirp-audio" loop preload="auto"></audio>
+<audio id="merger-boom" preload="auto"></audio>
+
+<script>
+// Audio setup
+const chirpAudio = document.getElementById('chirp-audio');
+const mergerBoom = document.getElementById('merger-boom');
+
+// Free high-quality public domain / CC0 sounds (you can replace with your own)
+chirpAudio.src = "https://freesound.org/data/previews/612/612095_5674468-lq.mp3";           // rising chirp (you'll replace this)
+mergerBoom.src = "https://freesound.org/people/kwahmah_02/sounds/256419/";         // deep boom
+
+// Better free options (recommended):
+// Chirp: https://freesound.org/people/InspectorJ/sounds/398706/  (sci-fi rising tone)
+// Merger boom: deep sub-bass impact
+
+let isPlayingChirp = false;
+let lastFreq = 0;
+
+// Add this inside your animate() function, right after `if (!paused) { ... }` block (near the end of the simulation update):
+
+    // ── AUDIO CONTROL ──
+    if (!paused) {
+        const strain = sim.strainAmplitude();
+        const freq = sim.omega ? sim.omega * 180 : 20;   // map orbital frequency to audible range
+
+        // Dynamic chirp pitch + volume
+        if (sim.phase === 'inspiral') {
+            if (!isPlayingChirp) {
+                chirpAudio.play().catch(() => {});
+                isPlayingChirp = true;
+            }
+
+            // Map frequency from ~low to high as they approach merger
+            const targetFreq = Math.min(1200, 80 + freq * 18);
+            const volume = Math.min(0.75, 0.15 + (sim.sep / sim.initSep) * 0.6);
+
+            chirpAudio.playbackRate = targetFreq / 440;   // 440 Hz = reference A note
+            chirpAudio.volume = volume;
+        } 
+        else if (sim.phase === 'merger' && sim.mergerT < 0.3) {
+            // Play the big merger sound once
+            if (mergerBoom.paused) {
+                mergerBoom.currentTime = 0;
+                mergerBoom.volume = 0.9;
+                mergerBoom.play().catch(() => {});
+            }
+            // Fade out chirp during merger
+            if (chirpAudio.volume > 0.05) chirpAudio.volume *= 0.92;
+        } 
+        else if (sim.phase === 'merged') {
+            if (isPlayingChirp) {
+                chirpAudio.volume = Math.max(0, chirpAudio.volume - 0.04);
+                if (chirpAudio.volume < 0.01) {
+                    chirpAudio.pause();
+                    isPlayingChirp = false;
+                }
+            }
+        }
+    }
+      
+</body>
+</html>
