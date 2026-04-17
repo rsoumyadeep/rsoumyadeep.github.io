@@ -1,428 +1,1825 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transformer Forward Pass</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
-        
-        body {
-            font-family: 'Inter', system_ui, sans-serif;
-            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
-        }
-        .title-font { font-family: 'Space Grotesk', sans-serif; }
-
-        .matrix-container {
-            display: grid;
-            gap: 3px;
-            background: #e2e8f0;
-            padding: 4px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
-        }
-        .matrix-cell {
-            aspect-ratio: 1/1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-family: 'Space Grotesk', monospace;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-            color: #1e2937;
-            font-weight: 500;
-            position: relative;
-        }
-        .matrix-cell.highlight {
-            animation: matrixHighlight 900ms ease-in-out;
-            box-shadow: 0 0 0 3px #06b6d4;
-        }
-        @keyframes matrixHighlight {
-            0%,100% { box-shadow: 0 0 0 3px #06b6d4; }
-            50% { box-shadow: 0 0 0 8px #67e8f9; }
-        }
-
-        .gradient-flow {
-            position: relative;
-        }
-        .gradient-flow::after {
-            content: '← BACKPROP';
-            position: absolute;
-            top: -12px;
-            right: -60px;
-            font-size: 10px;
-            color: #f43f5e;
-            font-weight: 600;
-            animation: flowAnim 2s infinite;
-        }
-        @keyframes flowAnim {
-            0%,100% { opacity: 0.4; }
-            50% { opacity: 1; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transformer Forward Pass </title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Fraunces:ital,wght@0,300;0,600;0,700;1,300;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --bg2: #eee9df;
+    --bg3: #e4ddd0;
+    --ink: #1a1612;
+    --ink2: #3d3530;
+    --ink3: #7a6f65;
+    --accent: #c0392b;
+    --accent2: #e67e22;
+    --accent3: #2980b9;
+    --accent4: #27ae60;
+    --accent5: #8e44ad;
+    --card: #fffef9;
+    --border: #d4cec4;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'Fraunces', serif;
+    --sans: 'DM Sans', sans-serif;
+    --shadow: 0 2px 16px rgba(26,22,18,0.08);
+    --shadow-lg: 0 8px 40px rgba(26,22,18,0.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  /* ── HEADER ── */
+  header {
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+    padding: 28px 40px 20px;
+    display: flex;
+    align-items: flex-end;
+    gap: 32px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  header .logo {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  header .logo span { color: var(--accent); font-style: italic; }
+  header .tagline {
+    font-size: 12px;
+    color: var(--ink3);
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  /* ── LAYOUT ── */
+  .shell {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 28px 80px;
+  }
+  /* ── CONTROLS PANEL ── */
+  .controls-panel {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 32px;
+    box-shadow: var(--shadow);
+  }
+  .controls-panel h2 {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--ink);
+  }
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 260px;
+  }
+  .input-group label {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--ink3);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  #sentence-input {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #sentence-input:focus { border-color: var(--accent3); }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 0.18s;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #a93226; }
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--ink2);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { background: var(--bg2); }
+  .btn-accent3 {
+    background: var(--accent3);
+    color: #fff;
+    border-color: var(--accent3);
+  }
+  .btn-accent3:hover { background: #2471a3; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .speed-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .speed-group label {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  #speed-slider {
+    width: 90px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .math-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .math-toggle input[type=checkbox] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent5);
+    cursor: pointer;
+  }
+  .math-toggle label {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--accent5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    display: flex;
+    gap: 0;
+    background: var(--bg2);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .progress-step {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-right: 1px solid var(--border);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .progress-step:last-child { border-right: none; }
+  .progress-step.active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .progress-step.done {
+    background: var(--bg3);
+    color: var(--ink2);
+  }
+  .progress-step .step-num {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+  /* ── STAGE CARD ── */
+  .stage-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: all 0.4s;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .stage-card.active {
+    opacity: 1;
+    pointer-events: all;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(192,57,43,0.12), var(--shadow-lg);
+  }
+  .stage-card.done {
+    opacity: 0.85;
+    pointer-events: all;
+    border-color: var(--accent4);
+  }
+  .stage-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1.5px solid var(--border);
+    background: var(--bg);
+  }
+  .stage-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .stage-card.done .stage-num { background: var(--accent4); }
+  .stage-title {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .stage-formula {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink3);
+    margin-left: auto;
+    padding: 4px 12px;
+    background: var(--bg2);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  .stage-body { padding: 24px; }
+  /* ── EXPLANATION BOX ── */
+  .explain-box {
+    background: linear-gradient(135deg, #fff9f0 0%, #f0f7ff 100%);
+    border-left: 4px solid var(--accent2);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+  }
+  .explain-box .what {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+  .explain-box .why {
+    color: var(--ink2);
+    font-size: 13px;
+  }
+  .explain-box .why strong { color: var(--accent); }
+  /* ── TOKEN DISPLAY ── */
+  .token-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .token-chip {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .token-chip:hover .token-label { transform: translateY(-2px); }
+  .token-label {
+    padding: 8px 16px;
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    transition: all 0.3s;
+    min-width: 60px;
+    text-align: center;
+  }
+  .token-chip.active .token-label {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(192,57,43,0.3);
+  }
+  .token-id {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  /* ── MATRIX DISPLAY ── */
+  .matrix-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin: 14px 0;
+  }
+  .matrix-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .matrix-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+  .matrix-label strong {
+    display: block;
+    font-size: 16px;
+    color: var(--ink);
+    font-style: italic;
+    letter-spacing: 0;
+    text-transform: none;
+    font-family: var(--serif);
+  }
+  .matrix-grid {
+    display: inline-grid;
+    gap: 2px;
+    padding: 10px;
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    position: relative;
+  }
+  .matrix-grid::before, .matrix-grid::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 80%;
+    border: 2px solid var(--ink3);
+  }
+  .matrix-grid::before { left: -8px; border-right: none; border-radius: 3px 0 0 3px; }
+  .matrix-grid::after { right: -8px; border-left: none; border-radius: 0 3px 3px 0; }
+  .matrix-cell {
+    width: 46px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink2);
+    border-radius: 4px;
+    background: var(--card);
+    border: 1px solid transparent;
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .matrix-cell.row-highlight { background: rgba(41,128,185,0.15); border-color: var(--accent3); }
+  .matrix-cell.col-highlight { background: rgba(231,76,60,0.12); border-color: var(--accent); }
+  .matrix-cell.both-highlight {
+    background: rgba(39,174,96,0.2);
+    border-color: var(--accent4);
+    font-weight: 700;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(39,174,96,0.3);
+  }
+  .matrix-cell.result-fill {
+    background: var(--accent5);
+    color: #fff;
+    font-weight: 700;
+    transform: scale(1.08);
+    box-shadow: 0 3px 12px rgba(142,68,173,0.4);
+  }
+  /* color by value */
+  .matrix-cell.val-pos { background: rgba(39,174,96,0.12); }
+  .matrix-cell.val-neg { background: rgba(192,57,43,0.1); }
+  .matrix-cell.val-high { background: rgba(39,174,96,0.35); font-weight: 600; }
+  /* ── ATTENTION HEATMAP ── */
+  .attention-section {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin: 14px 0;
+  }
+  .heatmap-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .heatmap-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink3);
+  }
+  .heatmap-grid-wrap {
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+  }
+  .heatmap-y-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 24px;
+  }
+  .heatmap-y-label {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink3);
+    padding-right: 6px;
+    text-align: right;
+    width: 50px;
+    justify-content: flex-end;
+  }
+  .heatmap-inner { display: flex; flex-direction: column; gap: 2px; }
+  .heatmap-x-labels {
+    display: flex;
+    gap: 2px;
+    padding-left: 0;
+  }
+  .heatmap-x-label {
+    width: 38px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-align: center;
+    transform: rotate(-30deg);
+    transform-origin: center bottom;
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+  .heatmap-row { display: flex; gap: 2px; }
+  .heatmap-cell {
+    width: 38px;
+    height: 38px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1.5px solid transparent;
+  }
+  .heatmap-cell:hover {
+    transform: scale(1.1);
+    border-color: var(--ink);
+    z-index: 2;
+    position: relative;
+  }
+  /* ── VECTOR DISPLAY ── */
+  .vector-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+    align-items: flex-start;
+  }
+  .vector-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .vector-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+  .vector-bar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .vector-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 20px;
+  }
+  .vector-bar-idx {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink3);
+    width: 14px;
+    text-align: right;
+  }
+  .vector-bar-track {
+    width: 80px;
+    height: 14px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .vector-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .vector-bar-val {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink2);
+    width: 40px;
+  }
+  /* ── MATH MODE PANEL ── */
+  .math-panel {
+    background: #faf8ff;
+    border: 1.5px solid #c9b8e8;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 16px;
+    display: none;
+  }
+  .math-panel.visible { display: block; }
+  .math-panel h4 {
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--accent5);
+    margin-bottom: 12px;
+  }
+  .math-step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    transition: background 0.3s;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink2);
+    border-left: 3px solid transparent;
+  }
+  .math-step.active-step {
+    background: rgba(142,68,173,0.08);
+    border-left-color: var(--accent5);
+    color: var(--ink);
+  }
+  .math-step .step-icon { font-size: 14px; flex-shrink: 0; }
+  /* ── LAYERNORM DISPLAY ── */
+  .ln-display {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 14px 0;
+    align-items: center;
+  }
+  .ln-stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .ln-stat .val {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent3);
+    display: block;
+    margin-top: 2px;
+  }
+  /* ── OUTPUT DISPLAY ── */
+  .output-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .output-token-card {
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: all 0.3s;
+  }
+  .output-token-card:hover {
+    border-color: var(--accent3);
+    box-shadow: 0 4px 16px rgba(41,128,185,0.15);
+  }
+  .output-token-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  /* ── TOOLTIP ── */
+  #tooltip {
+    position: fixed;
+    background: var(--ink);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.2s;
+    max-width: 220px;
+    line-height: 1.5;
+  }
+  /* ── ANIMATION CLASSES ── */
+  .fade-in { animation: fadeIn 0.5s ease forwards; }
+  .slide-up { animation: slideUp 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:none } }
+  .pulse-ring {
+    animation: pulseRing 1.5s ease-in-out infinite;
+  }
+  @keyframes pulseRing {
+    0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.3) }
+    50% { box-shadow: 0 0 0 8px rgba(192,57,43,0) }
+  }
+  /* ── MISC ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .tag-blue { background: rgba(41,128,185,0.12); color: var(--accent3); }
+  .tag-red { background: rgba(192,57,43,0.1); color: var(--accent); }
+  .tag-green { background: rgba(39,174,96,0.12); color: var(--accent4); }
+  .tag-purple { background: rgba(142,68,173,0.12); color: var(--accent5); }
+  .tag-orange { background: rgba(230,126,34,0.12); color: var(--accent2); }
+  .section-intro {
+    font-size: 13px;
+    color: var(--ink2);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+  .multi-head-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .mh-tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    color: var(--ink2);
+    transition: all 0.2s;
+  }
+  .mh-tab.active {
+    background: var(--accent5);
+    border-color: var(--accent5);
+    color: #fff;
+  }
+  .ff-net {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 14px 0;
+  }
+  .ff-layer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .ff-nodes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ff-node {
+    width: 44px;
+    height: 24px;
+    border-radius: 4px;
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    transition: all 0.3s;
+  }
+  .ff-node.active-node {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: #fff;
+    transform: scaleX(1.1);
+    box-shadow: 0 2px 8px rgba(230,126,34,0.4);
+  }
+  .ff-node.relu-node.active-node {
+    background: var(--accent4);
+    border-color: var(--accent4);
+    box-shadow: 0 2px 8px rgba(39,174,96,0.4);
+  }
+  .ff-arrow {
+    font-size: 20px;
+    color: var(--ink3);
+    padding: 0 4px;
+  }
+  .ff-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  /* ── RESIDUAL VIS ── */
+  .residual-diagram {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 14px 0;
+  }
+  .res-block {
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink2);
+    min-width: 80px;
+    transition: all 0.3s;
+  }
+  .res-block.lit {
+    background: rgba(41,128,185,0.12);
+    border-color: var(--accent3);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .res-plus {
+    font-size: 22px;
+    color: var(--accent4);
+    font-weight: 700;
+  }
+  .res-arrow { color: var(--ink3); font-size: 20px; }
+  /* ── SCROLL INDICATOR ── */
+  .scroll-hint {
+    text-align: center;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%,100%{transform:translateY(0)} 50%{transform:translateY(4px)}
+  }
+  /* responsive */
+  @media(max-width:700px) {
+    header { padding: 16px 16px 12px; }
+    .shell { padding: 16px 12px 60px; }
+    .controls-panel { padding: 16px; }
+    .stage-body { padding: 16px; }
+    .matrix-cell { width: 36px; height: 30px; font-size: 10px; }
+    .heatmap-cell { width: 30px; height: 30px; font-size: 9px; }
+  }
+</style>
 </head>
-<body class="min-h-screen">
-    <div class="max-w-[1480px] mx-auto p-8">
-        <!-- Header -->
-        <div class="bg-white rounded-3xl shadow-xl shadow-sky-100 p-8 mb-10">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-5">
-                    <div class="w-14 h-14 bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-500 rounded-2xl flex items-center justify-center text-4xl shadow-lg">⚡</div>
-                    <div>
-                        <h1 class="title-font text-5xl font-semibold tracking-tighter text-slate-900">Transformer</h1>
-                        <p class="text-sky-600 text-sm tracking-widest font-medium">FORWARD + BACKPROP SIMULATOR</p>
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-6">
-                    <!-- Speed Control -->
-                    <div class="flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-3xl border border-slate-200">
-                        <span class="text-sm font-medium text-slate-600">Speed</span>
-                        <input type="range" id="speed-slider" min="300" max="3000" value="1100" step="100"
-                               oninput="updateSpeed(this)" class="accent-sky-500 w-52 cursor-pointer">
-                        <span id="speed-value" class="font-mono text-sm font-semibold text-slate-700 w-20">1100 ms</span>
-                    </div>
+<body>
 
-                    <input id="sentence-input" value="the cat sat on the mat"
-                           class="bg-slate-50 border border-slate-200 focus:border-sky-400 rounded-3xl px-7 py-4 text-slate-700 w-96 outline-none text-lg">
-                    
-                    <button onclick="startSimulation()" 
-                            class="bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-600 hover:to-sky-600 text-white font-semibold px-9 py-4 rounded-3xl shadow-lg">
-                        RUN SIMULATION
-                    </button>
-                </div>
-            </div>
-        </div>
+<header>
+  <div>
+    <div class="logo">Trans<span>former</span> Simulator</div>
+    <div class="tagline">Encoder Forward Pass · Interactive · Step-by-Step</div>
+  </div>
+</header>
 
-        <div class="flex gap-8">
-            <!-- Sidebar -->
-            <div class="w-80 bg-white rounded-3xl shadow-xl shadow-slate-200 p-8 flex flex-col">
-                <div id="step-title" class="text-3xl font-semibold text-slate-800 mb-2">Step 1 • Tokenization</div>
-                <div id="step-desc" class="text-slate-600 leading-relaxed min-h-[70px]"></div>
-
-                <div class="mt-10">
-                    <div class="uppercase text-xs font-medium tracking-widest text-slate-500 mb-4">TOKENS</div>
-                    <div id="tokens" class="flex flex-wrap gap-3"></div>
-                </div>
-
-                <div id="vector-preview-area" class="mt-12 hidden">
-                    <div class="uppercase text-xs font-medium tracking-widest text-slate-500 mb-4">TOKEN VECTOR</div>
-                    <div id="vector-bars" class="flex gap-2 h-32 items-end bg-slate-50 rounded-2xl p-4"></div>
-                </div>
-
-                <!-- Controls -->
-                <div class="mt-auto pt-12 border-t border-slate-100">
-                    <div class="flex items-center justify-center gap-4 mb-6">
-                        <button onclick="prevStep()" class="w-12 h-12 flex items-center justify-center text-3xl text-slate-500 hover:text-slate-700 rounded-2xl hover:bg-slate-100">←</button>
-                        <button onclick="togglePlay()" id="play-button" class="w-16 h-16 bg-sky-500 hover:bg-sky-600 text-white rounded-3xl text-3xl flex items-center justify-center shadow-xl">▶</button>
-                        <button onclick="nextStep()" class="w-12 h-12 flex items-center justify-center text-3xl text-slate-500 hover:text-slate-700 rounded-2xl hover:bg-slate-100">→</button>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="replayCurrentStep()" 
-                                class="py-4 text-sm font-medium rounded-3xl border border-slate-300 hover:border-cyan-400 hover:text-cyan-600">
-                            REPLAY STEP
-                        </button>
-                        <button onclick="toggleManualMode()" id="manual-btn"
-                                class="py-4 text-sm font-medium rounded-3xl border border-slate-300 hover:border-slate-400">
-                            MANUAL MODE
-                        </button>
-                    </div>
-
-                    <div class="h-2 bg-slate-100 rounded-full mt-8 overflow-hidden">
-                        <div id="progress-bar" class="h-full bg-gradient-to-r from-cyan-400 to-sky-500 rounded-full" style="width:14.28%"></div>
-                    </div>
-                    <div class="text-center text-xs text-slate-400 mt-2">Step <span id="step-counter" class="font-semibold text-slate-600">1</span>/8</div>
-                </div>
-            </div>
-
-            <!-- Main Visualization -->
-            <div class="flex-1 space-y-10">
-                <!-- Stages 0-6 (Forward Pass) -->
-                <div id="stage-0" class="stage-card p-10 bg-white rounded-3xl shadow-xl"> <!-- Tokenization --> </div>
-                <div id="stage-1" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Embeddings --> </div>
-                <div id="stage-2" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- QKV --> </div>
-                <div id="stage-3" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Attention --> </div>
-                <div id="stage-4" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Residual --> </div>
-                <div id="stage-5" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- FFN --> </div>
-                <div id="stage-6" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden"> <!-- Final Output --> </div>
-
-                <!-- New Backpropagation Stage -->
-                <div id="stage-7" class="stage-card p-10 bg-white rounded-3xl shadow-xl hidden">
-                    <h2 class="text-2xl font-semibold text-rose-600 mb-8 flex items-center gap-4">
-                        <span class="inline-block w-9 h-9 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-xl font-bold">8</span>
-                        BACKPROPAGATION VISUALIZATION
-                    </h2>
-                    <div class="gradient-flow bg-slate-50 border border-rose-200 rounded-3xl p-10">
-                        <div class="text-center mb-8">
-                            <div class="inline-flex items-center gap-3 text-rose-600 font-medium">
-                                <span class="text-3xl">←</span>
-                                GRADIENT FLOW DURING BACKPROPAGATION
-                                <span class="text-3xl">←</span>
-                            </div>
-                        </div>
-                        <div id="backprop-flow" class="space-y-6">
-                            <!-- Dynamically filled by JS -->
-                        </div>
-                    </div>
-                    <p class="text-slate-500 text-sm mt-6 text-center">Gradients flow backward through the network, updating weights using chain rule.</p>
-                </div>
-            </div>
-        </div>
+<div class="shell">
+  <!-- CONTROLS -->
+  <div class="controls-panel">
+    <h2>Configuration & Controls</h2>
+    <div class="controls-row">
+      <div class="input-group">
+        <label>Input:</label>
+        <input type="text" id="sentence-input" value="the cat sat" maxlength="40">
+      </div>
+      <button class="btn btn-primary" id="btn-start">▶ Start</button>
+      <button class="btn btn-secondary" id="btn-next" disabled>Next Step →</button>
+      <button class="btn btn-secondary" id="btn-replay" disabled>↺ Replay</button>
+      <div class="speed-group">
+        <label>Speed:</label>
+        <input type="range" id="speed-slider" min="0.5" max="3" step="0.5" value="1.5">
+        <span id="speed-label" style="font-family:var(--mono);font-size:12px;color:var(--ink3)">1.5×</span>
+      </div>
+      <label class="math-toggle">
+        <input type="checkbox" id="math-mode-toggle">
+        <label for="math-mode-toggle">🔬 Detailed Math Mode</label>
+      </label>
     </div>
+  </div>
 
-    <!-- Attention Explanation Panel (appears in stage 3) -->
-    <div id="attention-explain" class="fixed bottom-8 right-8 max-w-md bg-white rounded-3xl shadow-2xl p-8 hidden">
-        <div class="flex justify-between items-start mb-6">
-            <h3 class="font-semibold text-lg text-slate-800">How Attention Works</h3>
-            <button onclick="closeAttentionExplain()" class="text-slate-400 hover:text-slate-600">✕</button>
-        </div>
-        <div class="prose prose-slate text-sm leading-relaxed">
-            <p>The model computes <strong>Query (Q)</strong>, <strong>Key (K)</strong>, and <strong>Value (V)</strong> vectors for each token.</p>
-            <p class="mt-3">It then calculates attention scores as:</p>
-            <div class="bg-slate-100 p-4 rounded-2xl font-mono text-xs my-4">
-                softmax( QK<sup>T</sup> / √dₖ )
-            </div>
-            <p>These scores determine how much each token should "attend" to others. The final output is a weighted sum of Value vectors.</p>
-            <p class="mt-4 text-sky-600">This mechanism allows the model to focus on relevant parts of the input dynamically.</p>
-        </div>
+  <!-- PROGRESS BAR -->
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-step" data-step="0"><span class="step-num">①</span>Tokenize</div>
+    <div class="progress-step" data-step="1"><span class="step-num">②</span>Embed+PE</div>
+    <div class="progress-step" data-step="2"><span class="step-num">③</span>Q,K,V</div>
+    <div class="progress-step" data-step="3"><span class="step-num">④</span>Attention</div>
+    <div class="progress-step" data-step="4"><span class="step-num">⑤</span>Multi-Head</div>
+    <div class="progress-step" data-step="5"><span class="step-num">⑥</span>Residual+LN</div>
+    <div class="progress-step" data-step="6"><span class="step-num">⑦</span>FFN</div>
+    <div class="progress-step" data-step="7"><span class="step-num">⑧</span>Output</div>
+  </div>
+
+  <!-- STAGE CARDS (rendered by JS) -->
+  <div id="stages-container"></div>
+
+  <div class="scroll-hint" id="scroll-hint" style="display:none">↓ scroll to see current stage</div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  TRANSFORMER MATH ENGINE
+// ═══════════════════════════════════════════════════════
+
+const D_MODEL = 6; // embedding dim
+const D_K = 3;     // per-head key/query dim
+const D_V = 3;     // per-head value dim
+const N_HEADS = 2;
+const D_FF = 12;   // feedforward hidden dim
+
+// Deterministic seeded random for reproducibility
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+const rng = mulberry32(42);
+function randN() { return (rng() - 0.5) * 2; }
+
+// Matrix ops
+function matmul(A, B) {
+  const rows = A.length, inner = B.length, cols = B[0].length;
+  return Array.from({length:rows}, (_,i) =>
+    Array.from({length:cols}, (_,j) =>
+      A[i].reduce((s,_,k) => s + A[i][k]*B[k][j], 0)
+    )
+  );
+}
+function matAdd(A, B) {
+  return A.map((r,i) => r.map((v,j) => v + B[i][j]));
+}
+function vecAdd(a, b) { return a.map((v,i) => v + b[i]); }
+function softmax(arr) {
+  const m = Math.max(...arr);
+  const exps = arr.map(v => Math.exp(v - m));
+  const s = exps.reduce((a,b) => a+b, 0);
+  return exps.map(v => v/s);
+}
+function relu(x) { return Math.max(0, x); }
+function layerNorm(vec) {
+  const mean = vec.reduce((a,b) => a+b, 0) / vec.length;
+  const variance = vec.reduce((a,v) => a + (v-mean)**2, 0) / vec.length;
+  const std = Math.sqrt(variance + 1e-8);
+  return { normed: vec.map(v => (v-mean)/std), mean, std };
+}
+function fmt(v) { return v >= 0 ? ' '+v.toFixed(2) : v.toFixed(2); }
+function fmt3(v) { return v.toFixed(3); }
+
+// Generate weight matrices (fixed by seed)
+function makeWeights() {
+  const mat = (r,c) => Array.from({length:r},()=>Array.from({length:c},()=>randN()*0.5));
+  const vec = (n) => Array.from({length:n}, ()=>randN()*0.3);
+  return {
+    W_E: mat(20, D_MODEL),          // embedding table (vocab 20)
+    W_Qh: [mat(D_MODEL,D_K), mat(D_MODEL,D_K)],  // head 0,1 Q
+    W_Kh: [mat(D_MODEL,D_K), mat(D_MODEL,D_K)],
+    W_Vh: [mat(D_MODEL,D_V), mat(D_MODEL,D_V)],
+    W_O:  mat(N_HEADS*D_V, D_MODEL), // output projection
+    W_FF1: mat(D_MODEL, D_FF),
+    b_FF1: vec(D_FF),
+    W_FF2: mat(D_FF, D_MODEL),
+    b_FF2: vec(D_MODEL),
+    gamma1: Array(D_MODEL).fill(1),
+    beta1:  Array(D_MODEL).fill(0),
+    gamma2: Array(D_MODEL).fill(1),
+    beta2:  Array(D_MODEL).fill(0),
+  };
+}
+
+// Simple tokenizer (character-level word tokens → vocab index)
+const VOCAB = ['<pad>','<unk>','the','a','an','cat','dog','sat','mat','on','in','at','is','was','run','saw','big','small','red','blue'];
+function tokenize(sentence) {
+  const words = sentence.trim().toLowerCase().split(/\s+/).slice(0,8);
+  return words.map(w => {
+    const idx = VOCAB.indexOf(w);
+    return { word: w, id: idx < 0 ? 1 : idx };
+  });
+}
+
+// Positional encoding
+function positionalEncoding(pos, d) {
+  return Array.from({length:d}, (_,i) =>
+    i%2===0
+      ? Math.sin(pos / Math.pow(10000, i/d))
+      : Math.cos(pos / Math.pow(10000, (i-1)/d))
+  );
+}
+
+// Full forward pass computation
+function runTransformer(sentence) {
+  const W = makeWeights();
+  const tokens = tokenize(sentence);
+  const T = tokens.length;
+
+  // 1. Embeddings + PE
+  const embeddings = tokens.map(t => W.W_E[t.id].slice(0, D_MODEL));
+  const pe = tokens.map((_,i) => positionalEncoding(i, D_MODEL));
+  const X = embeddings.map((e,i) => vecAdd(e, pe[i]));  // [T, D_MODEL]
+
+  // 2. Multi-head attention
+  const heads = [];
+  for (let h = 0; h < N_HEADS; h++) {
+    // Project
+    const XMat = X;  // [T x D_MODEL]
+    const Qh = XMat.map(row => matmul([row], W.W_Qh[h])[0]);  // [T x D_K]
+    const Kh = XMat.map(row => matmul([row], W.W_Kh[h])[0]);
+    const Vh = XMat.map(row => matmul([row], W.W_Vh[h])[0]);
+
+    // QK^T
+    const scale = Math.sqrt(D_K);
+    const scores = Qh.map((qi,i) =>
+      Kh.map((kj) => qi.reduce((s,v,d) => s + v*kj[d], 0) / scale)
+    );
+    const attn = scores.map(row => softmax(row));
+    // attn @ V
+    const headOut = attn.map(aw =>
+      aw.reduce((acc,w,j) => acc.map((v,d) => v + w*Vh[j][d]), Array(D_V).fill(0))
+    );
+    heads.push({ Qh, Kh, Vh, scores, attn, headOut });
+  }
+
+  // Concat heads + project
+  const concat = X.map((_,i) =>
+    [...heads[0].headOut[i], ...heads[1].headOut[i]]  // [N_HEADS*D_V]
+  );
+  const attnOut = concat.map(row => matmul([row], W.W_O)[0]);  // [T x D_MODEL]
+
+  // 3. Residual + LayerNorm 1
+  const res1 = X.map((xi,i) => vecAdd(xi, attnOut[i]));
+  const ln1 = res1.map(v => layerNorm(v));
+  const X2 = ln1.map(({normed},i) =>
+    normed.map((v,d) => W.gamma1[d]*v + W.beta1[d])
+  );
+
+  // 4. FFN
+  const ffnHidden = X2.map(xi => {
+    const h = matmul([xi], W.W_FF1)[0].map((v,d) => relu(v + W.b_FF1[d]));
+    return h;
+  });
+  const ffnOut = ffnHidden.map(hi =>
+    matmul([hi], W.W_FF2)[0].map((v,d) => v + W.b_FF2[d])
+  );
+
+  // 5. Residual + LayerNorm 2
+  const res2 = X2.map((xi,i) => vecAdd(xi, ffnOut[i]));
+  const ln2 = res2.map(v => layerNorm(v));
+  const X3 = ln2.map(({normed},i) =>
+    normed.map((v,d) => W.gamma2[d]*v + W.beta2[d])
+  );
+
+  return { W, tokens, embeddings, pe, X, heads, attnOut, res1, ln1, X2, ffnHidden, ffnOut, res2, ln2, X3 };
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let state = null;
+let currentStep = -1;
+let speed = 1.5;
+let mathMode = false;
+let activeHead = 0;
+
+const STEPS = [
+  'tokenize','embed','qkv','attention','multihead','residual','ffn','output'
+];
+
+// ═══════════════════════════════════════════════════════
+//  RENDERING HELPERS
+// ═══════════════════════════════════════════════════════
+
+function colorForValue(v, min, max) {
+  const t = Math.max(0, Math.min(1, (v - min)/(max - min + 1e-9)));
+  // blue → white → red
+  if (t < 0.5) {
+    const u = t*2;
+    return `rgba(41,128,185,${0.15 + u*0.3})`;
+  } else {
+    const u = (t-0.5)*2;
+    return `rgba(192,57,43,${u*0.45})`;
+  }
+}
+
+function attnColor(v) {
+  // white → deep teal
+  const r = Math.round(255 - v*180);
+  const g = Math.round(255 - v*120);
+  const b = Math.round(255 - v*60);
+  return `rgb(${r},${g},${b})`;
+}
+
+function renderMatrix(mat, opts={}) {
+  const { rowHighlight=-1, colHighlight=-1, bothHighlight=null, title='', subtitle='', cellClass='' } = opts;
+  const rows = mat.length, cols = mat[0].length;
+  const allVals = mat.flat();
+  const minV = Math.min(...allVals), maxV = Math.max(...allVals);
+
+  let html = `<div class="matrix-container">`;
+  if (title) html += `<div class="matrix-label"><strong>${title}</strong>${subtitle?`<br>${subtitle}`:''}</div>`;
+  html += `<div class="matrix-grid" style="grid-template-columns:repeat(${cols},auto)">`;
+  for (let i=0; i<rows; i++) {
+    for (let j=0; j<cols; j++) {
+      let cls = 'matrix-cell';
+      if (bothHighlight && bothHighlight[0]===i && bothHighlight[1]===j) cls += ' both-highlight';
+      else if (rowHighlight===i) cls += ' row-highlight';
+      else if (colHighlight===j) cls += ' col-highlight';
+      else {
+        const v = mat[i][j];
+        if (v > maxV*0.6) cls += ' val-high';
+        else if (v > 0) cls += ' val-pos';
+        else if (v < 0) cls += ' val-neg';
+      }
+      const bg = (bothHighlight||rowHighlight>=0||colHighlight>=0) ? '' : `style="background:${colorForValue(mat[i][j],minV,maxV)}"`;
+      html += `<div class="${cls}" ${bg} data-val="${fmt3(mat[i][j])}">${fmt(mat[i][j])}</div>`;
+    }
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+function renderVector(vec, label, color) {
+  const maxAbs = Math.max(...vec.map(Math.abs), 1);
+  let html = `<div class="vector-container">
+    <div class="vector-label">${label}</div>
+    <div class="vector-bar-group">`;
+  vec.forEach((v,i) => {
+    const pct = Math.abs(v)/maxAbs*100;
+    const fillColor = v>=0 ? color : '#c0392b';
+    html += `<div class="vector-bar-row">
+      <span class="vector-bar-idx">${i}</span>
+      <div class="vector-bar-track"><div class="vector-bar-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+      <span class="vector-bar-val">${fmt(v)}</span>
+    </div>`;
+  });
+  html += `</div></div>`;
+  return html;
+}
+
+function renderHeatmap(matrix, tokens, headIdx) {
+  const T = tokens.length;
+  let html = `<div class="heatmap-container">
+    <div class="heatmap-label">Head ${headIdx+1} Attention Weights</div>
+    <div class="heatmap-grid-wrap">
+      <div class="heatmap-y-labels">`;
+  tokens.forEach(t => { html += `<div class="heatmap-y-label">${t.word}</div>`; });
+  html += `</div><div>
+    <div class="heatmap-inner">`;
+  matrix.forEach((row, i) => {
+    html += `<div class="heatmap-row">`;
+    row.forEach((v, j) => {
+      const bg = attnColor(v);
+      const textColor = v > 0.6 ? '#fff' : '#1a1612';
+      html += `<div class="heatmap-cell" style="background:${bg};color:${textColor}"
+        data-from="${tokens[i].word}" data-to="${tokens[j].word}" data-val="${v.toFixed(3)}"
+        title="${tokens[i].word}→${tokens[j].word}: ${v.toFixed(3)}"
+      >${v.toFixed(2)}</div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>
+    <div class="heatmap-x-labels">`;
+  tokens.forEach(t => { html += `<div class="heatmap-x-label">${t.word}</div>`; });
+  html += `</div></div></div></div>`;
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  STAGE RENDER FUNCTIONS
+// ═══════════════════════════════════════════════════════
+
+function renderStage(idx) {
+  const s = state;
+  switch(idx) {
+    case 0: return renderTokenize(s);
+    case 1: return renderEmbed(s);
+    case 2: return renderQKV(s);
+    case 3: return renderAttention(s);
+    case 4: return renderMultiHead(s);
+    case 5: return renderResidual(s);
+    case 6: return renderFFN(s);
+    case 7: return renderOutput(s);
+  }
+}
+
+function renderTokenize(s) {
+  const tokens = s.tokens;
+  let tokenHtml = tokens.map((t,i) => `
+    <div class="token-chip" data-idx="${i}">
+      <div class="token-label">${t.word}</div>
+      <div class="token-id">id:${t.id}</div>
+    </div>`).join('');
+
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Tokenization Details</h4>
+      ${tokens.map((t,i) => `
+        <div class="math-step"><span class="step-icon">→</span>
+          <span><strong>"${t.word}"</strong> maps to vocabulary index <strong>${t.id}</strong> in a vocab of ${VOCAB.length} words</span>
+        </div>`).join('')}
+      <div class="math-step" style="margin-top:8px;color:var(--ink3)">
+        <span class="step-icon">ℹ</span>
+        <span>In real models (BERT, GPT), subword tokenizers (BPE/WordPiece) are used, creating ~30K-50K vocabulary items.</span>
+      </div>
+    </div>`;
+
+  return `
+    <div class="explain-box">
+      <div class="what">What: Splitting text into tokens and looking up their IDs</div>
+      <div class="why">Why: Transformers operate on discrete integer indices, not raw text.
+        Each word (or subword) maps to a <strong>fixed integer ID</strong> — the "address" into the embedding table.</div>
     </div>
+    <p class="section-intro">Sentence: <code style="font-family:var(--mono);background:var(--bg2);padding:2px 8px;border-radius:4px">"${s.tokens.map(t=>t.word).join(' ')}"</code>
+      → split into <strong>${tokens.length} tokens</strong></p>
+    <div class="token-row">${tokenHtml}</div>
+    <div class="divider"></div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--ink3)">
+      Token IDs: [${tokens.map(t=>t.id).join(', ')}] &nbsp;|&nbsp; Sequence length T = ${tokens.length}
+    </div>
+    ${mathHtml}`;
+}
 
-    <script>
-        let pipelineData = null;
-        let currentStep = 0;
-        let isPlaying = false;
-        let animationSpeed = 1100;
-        let isManualMode = false;
-        let currentHead = 0;
+function renderEmbed(s) {
+  const { tokens, embeddings, pe, X } = s;
+  const T = tokens.length;
 
-        const explanations = [
-            "The input sentence is split into tokens. Each token becomes an independent unit.",
-            "Token embeddings capture meaning. Positional encodings add order information. Their sum is the input to the first layer.",
-            "Linear projections create Query, Key, and Value vectors for each token.",
-            "Multi-head attention computes relevance between tokens using scaled dot-product.",
-            "Residual connections + LayerNorm stabilize training and preserve information.",
-            "Position-wise Feed-Forward Network adds non-linearity.",
-            "Final contextual embeddings after one full encoder layer.",
-            "Backpropagation: Gradients flow backward to update all weights using the chain rule."
-        ];
+  let embHtml = '<div class="vector-row">';
+  tokens.forEach((t,i) => {
+    embHtml += renderVector(embeddings[i], `${t.word}<br>embed`, '#2980b9');
+  });
+  embHtml += '</div>';
 
-        function getEmbedding(token) {
-            let h = 0;
-            for (let i = 0; i < token.length; i++) h = (h << 5) - h + token.charCodeAt(i);
-            return Array.from({length: 4}, (_, i) => Math.sin(h * (i+1) * 0.14) * 1.2 + Math.cos(h * (i+2) * 0.1) * 0.8);
-        }
+  let peHtml = '<div class="vector-row">';
+  tokens.forEach((t,i) => {
+    peHtml += renderVector(pe[i], `pos ${i}<br>PE`, '#e67e22');
+  });
+  peHtml += '</div>';
 
-        function positionalEncoding(seqLen) {
-            return Array.from({length: seqLen}, (_, pos) => 
-                Array.from({length: 4}, (_, i) => i % 2 === 0 
-                    ? Math.sin(pos / Math.pow(10000, i/4))
-                    : Math.cos(pos / Math.pow(10000, (i-1)/4))
-                )
-            );
-        }
+  let xHtml = '<div class="vector-row">';
+  tokens.forEach((t,i) => {
+    xHtml += renderVector(X[i], `${t.word}<br>X`, '#27ae60');
+  });
+  xHtml += '</div>';
 
-        function runTransformer(sentence) {
-            const tokens = sentence.toLowerCase().trim().split(/\s+/).slice(0, 6);
-            const seqLen = tokens.length;
-            const embeddings = tokens.map(getEmbedding);
-            const posEnc = positionalEncoding(seqLen);
-            const X = embeddings.map((row,i) => row.map((v,j) => v + posEnc[i][j]));
-            
-            return {
-                tokens, embeddings, posEnc, X,
-                Q: X, K: X, V: X,
-                headResults: Array(2).fill().map(() => ({weights: Array(seqLen).fill().map(() => Array(seqLen).fill(0.25)), output: X})),
-                finalOutput: X
-            };
-        }
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Positional Encoding Formula</h4>
+      <div class="math-step active-step"><span class="step-icon">📐</span>
+        <span>PE(pos, 2i) = sin(pos / 10000^(2i/d_model))</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">📐</span>
+        <span>PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))</span>
+      </div>
+      <div class="math-step"><span class="step-icon">→</span>
+        <span>d_model=${D_MODEL}, so each position produces a ${D_MODEL}-dim sinusoidal vector</span>
+      </div>
+      <div class="math-step"><span class="step-icon">✚</span>
+        <span>X[i] = Embedding[token_id] + PE[position]</span>
+      </div>
+    </div>`;
 
-        function renderMatrix(id, matrix) {
-            const container = document.getElementById(id);
-            if (!container || !matrix) return;
-            container.innerHTML = '';
-            container.style.gridTemplateColumns = `repeat(${matrix[0].length}, 1fr)`;
-            
-            matrix.forEach((row, i) => {
-                row.forEach((val, j) => {
-                    const cell = document.createElement('div');
-                    cell.className = 'matrix-cell';
-                    cell.innerHTML = `<span>${val.toFixed(2)}</span>`;
-                    setTimeout(() => {
-                        cell.classList.add('highlight');
-                        setTimeout(() => cell.classList.remove('highlight'), 1100);
-                    }, 70 * i + 40 * j);
-                    container.appendChild(cell);
-                });
-            });
-        }
+  return `
+    <div class="explain-box">
+      <div class="what">What: Converting token IDs to dense vectors + adding position information</div>
+      <div class="why">Why: The embedding table translates sparse IDs into <strong>continuous geometric space</strong>.
+        Positional encoding injects <strong>where</strong> each token sits in the sequence — crucial because
+        attention has no inherent sense of order.</div>
+    </div>
+    <div style="margin-bottom:10px"><span class="tag tag-blue">Step 1</span> Token Embeddings (d=${D_MODEL})</div>
+    ${embHtml}
+    <div class="divider"></div>
+    <div style="margin-bottom:10px"><span class="tag tag-orange">Step 2</span> Positional Encodings</div>
+    ${peHtml}
+    <div class="divider"></div>
+    <div style="margin-bottom:10px"><span class="tag tag-green">Step 3</span> X = Embed + PE (input to transformer)</div>
+    ${xHtml}
+    ${mathHtml}`;
+}
 
-        function animateAttentionHeatmap() {
-            const container = document.getElementById('attention-heatmap');
-            if (!container) return;
-            container.innerHTML = '';
-            const size = pipelineData ? pipelineData.tokens.length : 5;
-            container.style.gridTemplateColumns = `repeat(${size}, 56px)`;
-            for (let i = 0; i < size; i++) {
-                for (let j = 0; j < size; j++) {
-                    const val = (Math.random() * 0.7 + 0.3).toFixed(2);
-                    const cell = document.createElement('div');
-                    cell.className = 'matrix-cell text-xs font-medium';
-                    cell.style.background = `hsl(200, 80%, ${75 + parseFloat(val)*20}%)`;
-                    cell.textContent = val;
-                    container.appendChild(cell);
-                }
-            }
-        }
+function renderQKV(s) {
+  const { tokens, X, heads } = s;
+  const h = heads[0];
+  const T = tokens.length;
 
-        function renderBackpropStage() {
-            const container = document.getElementById('backprop-flow');
-            container.innerHTML = `
-                <div class="grid grid-cols-7 gap-4 text-center text-xs">
-                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Output Loss</div>
-                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Final Output</div>
-                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">FFN</div>
-                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Attention</div>
-                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">QKV</div>
-                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Embeddings</div>
-                    <div class="p-4 bg-white border border-rose-200 rounded-2xl">Input Tokens</div>
-                </div>
-                <div class="flex justify-center text-rose-500 text-4xl mt-6 animate-pulse">↑ GRADIENTS FLOW BACK ↑</div>
-            `;
-        }
+  let qHtml = '<div class="vector-row">';
+  tokens.forEach((t,i) => { qHtml += renderVector(h.Qh[i], `Q:${t.word}`, '#c0392b'); });
+  qHtml += '</div>';
 
-        function renderCurrentStage() {
-            document.querySelectorAll('.stage-card').forEach(el => el.classList.add('hidden'));
-            const stageEl = document.getElementById(`stage-${currentStep}`);
-            if (stageEl) stageEl.classList.remove('hidden');
+  let kHtml = '<div class="vector-row">';
+  tokens.forEach((t,i) => { kHtml += renderVector(h.Kh[i], `K:${t.word}`, '#8e44ad'); });
+  kHtml += '</div>';
 
-            document.getElementById('progress-bar').style.width = `${((currentStep + 1) / 8) * 100}%`;
-            document.getElementById('step-counter').textContent = currentStep + 1;
-            document.getElementById('step-title').textContent = `Step ${currentStep + 1} • ${["Tokenization","Embeddings + Pos","QKV Projections","Multi-Head Attention","Residual + LayerNorm","Feed-Forward","Final Output","Backpropagation"][currentStep]}`;
-            document.getElementById('step-desc').innerHTML = explanations[currentStep];
+  let vHtml = '<div class="vector-row">';
+  tokens.forEach((t,i) => { vHtml += renderVector(h.Vh[i], `V:${t.word}`, '#2980b9'); });
+  vHtml += '</div>';
 
-            if (!pipelineData) return;
+  const XMat = X;
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Q, K, V Projection (Head 1)</h4>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px">
+        ${renderMatrix(s.W.W_Qh[0], {title:'W_Q', subtitle:`(${D_MODEL}×${D_K})`})}
+        ${renderMatrix(s.W.W_Kh[0], {title:'W_K', subtitle:`(${D_MODEL}×${D_K})`})}
+        ${renderMatrix(s.W.W_Vh[0], {title:'W_V', subtitle:`(${D_MODEL}×${D_V})`})}
+      </div>
+      ${tokens.map((t,i) => `
+        <div class="math-step"><span class="step-icon">→</span>
+          <span>Q["${t.word}"] = X[${i}] · W_Q → [${h.Qh[i].map(v=>v.toFixed(2)).join(', ')}]</span>
+        </div>`).join('')}
+    </div>`;
 
-            if (currentStep === 0) {
-                const container = document.getElementById('token-display');
-                container.innerHTML = pipelineData.tokens.map(t => 
-                    `<div class="px-8 py-5 bg-white border border-slate-200 rounded-3xl text-xl text-slate-700 shadow-sm">${t}</div>`
-                ).join('');
-            }
-            else if (currentStep === 1) {
-                renderMatrix('embed-mat', pipelineData.embeddings);
-                renderMatrix('pos-mat', pipelineData.posEnc);
-                renderMatrix('x-mat', pipelineData.X);
-            }
-            else if (currentStep === 2) {
-                renderMatrix('q-mat', pipelineData.Q);
-                renderMatrix('k-mat', pipelineData.K);
-                renderMatrix('v-mat', pipelineData.V);
-            }
-            else if (currentStep === 3) {
-                animateAttentionHeatmap();
-                document.getElementById('attention-explain').classList.remove('hidden');
-            }
-            else if (currentStep === 6) {
-                renderMatrix('final-mat', pipelineData.finalOutput);
-            }
-            else if (currentStep === 7) {
-                renderBackpropStage();
-            }
-        }
+  return `
+    <div class="explain-box">
+      <div class="what">What: Computing Query, Key, and Value vectors for each token</div>
+      <div class="why">Why: Three separate linear projections give each token <strong>three roles</strong>:
+        <strong>Query</strong> = "What am I looking for?",
+        <strong>Key</strong> = "What do I advertise?",
+        <strong>Value</strong> = "What do I contribute?" — learned separately for maximum flexibility.</div>
+    </div>
+    <div style="margin-bottom:8px"><span class="tag tag-red">Query</span> — d_k=${D_K} per head. "This token is searching for..."</div>
+    ${qHtml}
+    <div class="divider"></div>
+    <div style="margin-bottom:8px"><span class="tag tag-purple">Key</span> — d_k=${D_K} per head. "This token signals that it contains..."</div>
+    ${kHtml}
+    <div class="divider"></div>
+    <div style="margin-bottom:8px"><span class="tag tag-blue">Value</span> — d_v=${D_V} per head. "This token contributes..."</div>
+    ${vHtml}
+    ${mathHtml}`;
+}
 
-        function startSimulation() {
-            const text = document.getElementById('sentence-input').value || "the cat sat on the mat";
-            pipelineData = runTransformer(text);
-            currentStep = 0;
-            isPlaying = false;
-            renderCurrentStage();
-        }
+function renderAttention(s) {
+  const { tokens, heads } = s;
+  const h = heads[0];
+  const T = tokens.length;
+  const scale = Math.sqrt(D_K);
 
-        function nextStep() {
-            if (currentStep < 7) {
-                currentStep++;
-                renderCurrentStage();
-            }
-        }
+  const scoresMat = h.scores;
+  const attnMat = h.attn;
 
-        function prevStep() {
-            if (currentStep > 0) {
-                currentStep--;
-                renderCurrentStage();
-            }
-        }
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Scaled Dot-Product Attention (Head 1)</h4>
+      <div class="math-step active-step"><span class="step-icon">①</span>
+        <span>Raw scores = Q · Kᵀ &nbsp;&nbsp; (${T}×${D_K}) · (${D_K}×${T}) = (${T}×${T} matrix)</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">②</span>
+        <span>Scale by 1/√d_k = 1/√${D_K} ≈ ${(1/scale).toFixed(3)} &nbsp;&nbsp; (prevents vanishing gradients)</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">③</span>
+        <span>Apply row-wise softmax → probabilities summing to 1</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">④</span>
+        <span>Attention(Q,K,V) = softmax(QKᵀ/√d_k) · V</span>
+      </div>
+      <div class="divider"></div>
+      <p style="font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:8px">
+        Pre-softmax scores for "${tokens[0]?.word}"→others: [${scoresMat[0]?.map(v=>v.toFixed(3)).join(', ')}]<br>
+        Post-softmax: [${attnMat[0]?.map(v=>v.toFixed(3)).join(', ')}] (sum=${attnMat[0]?.reduce((a,b)=>a+b,0).toFixed(3)})
+      </p>
+    </div>`;
 
-        function replayCurrentStep() {
-            const stage = document.getElementById(`stage-${currentStep}`);
-            if (!stage) return;
-            stage.style.opacity = 0.3;
-            setTimeout(() => {
-                renderCurrentStage();
-                stage.style.opacity = 1;
-            }, 180);
-        }
+  return `
+    <div class="explain-box">
+      <div class="what">What: Computing how much each token should attend to every other token</div>
+      <div class="why">Why: The dot product Q·Kᵀ measures <strong>compatibility</strong> between queries and keys.
+        Scaling by √d_k stabilizes gradients. Softmax converts scores to a <strong>probability distribution</strong>
+        — the token "borrows" information from others proportional to these weights.</div>
+    </div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
+      <div>
+        <div style="margin-bottom:8px"><span class="tag tag-red">Raw Scores</span> QKᵀ / √${D_K} (pre-softmax)</div>
+        ${renderMatrix(scoresMat, {title:'Scores', subtitle:`(${T}×${T})`})}
+      </div>
+      <div style="font-size:28px;color:var(--ink3);padding-top:50px">→</div>
+      <div>
+        <div style="margin-bottom:8px"><span class="tag tag-green">Attention Weights</span> After softmax</div>
+        ${renderHeatmap(attnMat, tokens, 0)}
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <div style="margin-bottom:8px"><span class="tag tag-blue">Output</span> Attention × Values</div>
+      <div class="vector-row">${tokens.map((t,i) => renderVector(h.headOut[i], `Out:${t.word}`, '#27ae60')).join('')}</div>
+    </div>
+    ${mathHtml}`;
+}
 
-        function togglePlay() {
-            if (isManualMode) return alert("Turn off Manual Mode first");
-            isPlaying = !isPlaying;
-            const btn = document.getElementById('play-button');
-            btn.innerHTML = isPlaying ? '❚❚' : '▶';
-            if (isPlaying) {
-                const interval = setInterval(() => {
-                    if (!isPlaying || currentStep >= 7) {
-                        clearInterval(interval);
-                        isPlaying = false;
-                        btn.innerHTML = '▶';
-                        return;
-                    }
-                    nextStep();
-                }, animationSpeed);
-            }
-        }
+function renderMultiHead(s) {
+  const { tokens, heads, attnOut } = s;
 
-        function toggleManualMode() {
-            isManualMode = !isManualMode;
-            const btn = document.getElementById('manual-btn');
-            if (isManualMode) {
-                btn.classList.add('bg-slate-800', 'text-white');
-                btn.textContent = "MANUAL ACTIVE";
-                isPlaying = false;
-                document.getElementById('play-button').innerHTML = '▶';
-            } else {
-                btn.classList.remove('bg-slate-800', 'text-white');
-                btn.textContent = "MANUAL MODE";
-            }
-        }
+  let headTabs = `<div class="multi-head-tabs">
+    ${heads.map((h,hi) => `<div class="mh-tab ${activeHead===hi?'active':''}" onclick="switchHead(${hi},this)">Head ${hi+1}</div>`).join('')}
+  </div>`;
 
-        function updateSpeed(slider) {
-            animationSpeed = parseInt(slider.value);
-            document.getElementById('speed-value').textContent = animationSpeed + " ms";
-        }
+  const h = heads[activeHead];
+  const T = tokens.length;
 
-        function closeAttentionExplain() {
-            document.getElementById('attention-explain').classList.add('hidden');
-        }
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Multi-Head Mechanics</h4>
+      <div class="math-step active-step"><span class="step-icon">①</span>
+        <span>Each head runs independent attention with different W_Q, W_K, W_V projections</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">②</span>
+        <span>Each head output: (${T}×${D_V}) — heads capture different relationship patterns</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">③</span>
+        <span>Concat heads: [head₁; head₂] → (${T}×${N_HEADS*D_V}) matrix</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">④</span>
+        <span>Project back: × W_O (${N_HEADS*D_V}×${D_MODEL}) → (${T}×${D_MODEL})</span>
+      </div>
+      <div class="math-step"><span class="step-icon">💡</span>
+        <span>Head 1 may learn syntactic relationships; Head 2 may learn semantic ones — emergent specialization</span>
+      </div>
+    </div>`;
 
-        function switchHead(h) {
-            currentHead = h;
-        }
+  return `
+    <div class="explain-box">
+      <div class="what">What: Running ${N_HEADS} attention heads in parallel, then combining</div>
+      <div class="why">Why: Different heads can learn to attend to <strong>different types of relationships</strong>
+        simultaneously — one head for syntax, another for semantics, etc.
+        Concatenating and projecting fuses all perspectives into one unified representation.</div>
+    </div>
+    ${headTabs}
+    <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
+      <div>
+        <div style="margin-bottom:8px"><span class="tag tag-purple">Head ${activeHead+1}</span> Attention Pattern</div>
+        ${renderHeatmap(h.attn, tokens, activeHead)}
+      </div>
+      <div>
+        <div style="margin-bottom:8px"><span class="tag tag-blue">Head ${activeHead+1}</span> Output Vectors</div>
+        <div class="vector-row" style="flex-direction:column">
+          ${tokens.map((t,i) => renderVector(h.headOut[i], t.word, activeHead===0?'#c0392b':'#8e44ad')).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div style="margin-bottom:8px"><span class="tag tag-green">After W_O projection</span> Combined multi-head output</div>
+    <div class="vector-row">${tokens.map((t,i) => renderVector(attnOut[i], t.word, '#27ae60')).join('')}</div>
+    ${mathHtml}`;
+}
 
-        document.addEventListener('keydown', e => {
-            if (e.key === "ArrowRight") nextStep();
-            if (e.key === "ArrowLeft") prevStep();
-            if (e.key === " ") { e.preventDefault(); togglePlay(); }
-            if (e.key.toLowerCase() === "r") replayCurrentStep();
-        });
+function renderResidual(s) {
+  const { tokens, X, attnOut, res1, ln1, X2 } = s;
 
-        window.onload = () => {
-            pipelineData = runTransformer("the cat sat on the mat");
-            renderCurrentStage();
-        };
-    </script>
+  const T = tokens.length;
+  const ln1stats = ln1.map(r => ({ mean: r.mean.toFixed(3), std: r.std.toFixed(3) }));
+
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Residual Connection + Layer Normalization</h4>
+      <div class="math-step active-step"><span class="step-icon">✚</span>
+        <span>Residual: X_res = X + Attn(X) &nbsp;&nbsp; (element-wise addition)</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">📊</span>
+        <span>LayerNorm: μ = mean(x), σ² = var(x) over the feature dimension</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">📐</span>
+        <span>x̂ = (x - μ) / √(σ² + ε) &nbsp;&nbsp; then scale/shift: γ·x̂ + β</span>
+      </div>
+      ${tokens.map((t,i) => `
+        <div class="math-step"><span class="step-icon">→</span>
+          <span>"${t.word}": μ=${ln1stats[i].mean}, σ=${ln1stats[i].std}</span>
+        </div>`).join('')}
+    </div>`;
+
+  return `
+    <div class="explain-box">
+      <div class="what">What: Adding input back to output (skip connection), then normalizing</div>
+      <div class="why">Why: Residual connections allow <strong>gradient flow</strong> through many layers (prevents vanishing gradients).
+        LayerNorm re-centers and re-scales activations across the feature dimension,
+        keeping training <strong>numerically stable</strong> regardless of depth.</div>
+    </div>
+    <div class="residual-diagram">
+      <div class="res-block lit">X (input)</div>
+      <div class="res-arrow">+</div>
+      <div class="res-block lit">Attn(X)</div>
+      <div class="res-arrow">→</div>
+      <div class="res-block lit">Sum</div>
+      <div class="res-arrow">→</div>
+      <div class="res-block lit">LayerNorm</div>
+      <div class="res-arrow">→</div>
+      <div class="res-block lit" style="background:rgba(39,174,96,0.15);border-color:var(--accent4)">X₂</div>
+    </div>
+    <div class="divider"></div>
+    <div style="margin-bottom:8px"><span class="tag tag-green">LayerNorm Statistics</span></div>
+    <div class="ln-display">
+      ${tokens.map((t,i) => `
+        <div class="ln-stat">
+          <span style="font-size:12px;color:var(--ink3)">${t.word}</span>
+          <span class="val">${ln1stats[i].mean}</span>
+          <span style="font-size:10px;color:var(--ink3)">μ (mean)</span>
+          <span class="val" style="color:var(--accent2)">${ln1stats[i].std}</span>
+          <span style="font-size:10px;color:var(--ink3)">σ (std)</span>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:14px;margin-bottom:8px"><span class="tag tag-blue">X₂</span> — Normalized output (input to FFN)</div>
+    <div class="vector-row">${tokens.map((t,i) => renderVector(X2[i], t.word, '#2980b9')).join('')}</div>
+    ${mathHtml}`;
+}
+
+function renderFFN(s) {
+  const { tokens, X2, ffnHidden, ffnOut } = s;
+  const T = tokens.length;
+  const firstHidden = ffnHidden[0];
+  const maxH = Math.max(...firstHidden), minH = Math.min(...firstHidden);
+
+  // Visualize FFN as node diagram for first token
+  const N_VIS = Math.min(D_MODEL, 6);
+  const N_H_VIS = Math.min(D_FF, 8);
+  let ffnDiagram = `<div class="ff-net">
+    <div class="ff-layer">
+      <div class="ff-label">Input (${D_MODEL})</div>
+      <div class="ff-nodes">${X2[0].slice(0,N_VIS).map((v,i) =>
+        `<div class="ff-node" style="background:${colorForValue(v,-1,1)}">${v.toFixed(1)}</div>`
+      ).join('')}</div>
+    </div>
+    <div class="ff-arrow">→</div>
+    <div class="ff-layer">
+      <div class="ff-label">Hidden×ReLU (${D_FF})</div>
+      <div class="ff-nodes">${ffnHidden[0].slice(0,N_H_VIS).map((v,i) =>
+        `<div class="ff-node relu-node ${v>0?'active-node':''}">${v.toFixed(1)}</div>`
+      ).join('')}${D_FF>N_H_VIS?`<div class="ff-node" style="color:var(--ink3)">⋮</div>`:''}</div>
+    </div>
+    <div class="ff-arrow">→</div>
+    <div class="ff-layer">
+      <div class="ff-label">Output (${D_MODEL})</div>
+      <div class="ff-nodes">${ffnOut[0].slice(0,N_VIS).map((v,i) =>
+        `<div class="ff-node active-node">${v.toFixed(1)}</div>`
+      ).join('')}</div>
+    </div>
+  </div>`;
+
+  const activeCount = ffnHidden[0].filter(v=>v>0).length;
+
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Feed-Forward Network Math</h4>
+      <div class="math-step active-step"><span class="step-icon">①</span>
+        <span>FFN(x) = max(0, x·W₁ + b₁) · W₂ + b₂</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">②</span>
+        <span>W₁: (${D_MODEL}×${D_FF}), W₂: (${D_FF}×${D_MODEL}) — expansion ratio = ${D_FF/D_MODEL}×</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">③</span>
+        <span>ReLU(x) = max(0,x) — zeros out ${D_FF-activeCount}/${D_FF} neurons for token "${tokens[0].word}"</span>
+      </div>
+      <div class="math-step"><span class="step-icon">💡</span>
+        <span>The FFN adds token-wise nonlinear transformations — attention aggregates context, FFN processes each position independently</span>
+      </div>
+    </div>`;
+
+  return `
+    <div class="explain-box">
+      <div class="what">What: A 2-layer MLP applied independently to each token's representation</div>
+      <div class="why">Why: The FFN provides <strong>nonlinear transformation</strong> capacity. While attention mixes
+        information across positions, the FFN processes each position <strong>in isolation</strong>, adding depth.
+        The 4× expansion factor (here ${D_FF/D_MODEL}×) allows the model to "think more" before compressing back.</div>
+    </div>
+    <div style="margin-bottom:8px"><span class="tag tag-orange">Network Architecture</span> for token "${tokens[0]?.word}" (first token shown)</div>
+    ${ffnDiagram}
+    <div class="divider"></div>
+    <div style="margin-bottom:8px"><span class="tag tag-green">FFN Outputs</span> All tokens</div>
+    <div class="vector-row">${tokens.map((t,i) => renderVector(ffnOut[i], t.word, '#e67e22')).join('')}</div>
+    ${mathHtml}`;
+}
+
+function renderOutput(s) {
+  const { tokens, X2, ffnOut, res2, ln2, X3 } = s;
+
+  const mathHtml = `
+    <div class="math-panel ${mathMode?'visible':''}">
+      <h4>🔬 Final Residual + Output Representations</h4>
+      <div class="math-step active-step"><span class="step-icon">①</span>
+        <span>Residual 2: X₃_pre = X₂ + FFN(X₂)</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">②</span>
+        <span>LayerNorm 2: X₃ = LayerNorm(X₃_pre)</span>
+      </div>
+      <div class="math-step active-step"><span class="step-icon">③</span>
+        <span>X₃ ∈ ℝ^(${tokens.length}×${D_MODEL}) — final contextual representations</span>
+      </div>
+      <div class="math-step"><span class="step-icon">💡</span>
+        <span>These vectors are fed to next encoder layer, or (for classification) the [CLS] token goes to a classification head</span>
+      </div>
+    </div>`;
+
+  return `
+    <div class="explain-box">
+      <div class="what">What: Final contextualized representations of each token</div>
+      <div class="why">Why: After one full transformer block, each token has "seen" all other tokens
+        through attention, been non-linearly transformed by FFN, and been normalized twice.
+        These rich vectors encode <strong>context-aware semantics</strong> — "sat" now carries information
+        from "cat" and "the".</div>
+    </div>
+    <div class="output-grid">
+      ${tokens.map((t,i) => {
+        const mag = Math.sqrt(X3[i].reduce((s,v)=>s+v*v,0)).toFixed(3);
+        const preNorm = Math.sqrt(res2[i].reduce((s,v)=>s+v*v,0)).toFixed(3);
+        return `<div class="output-token-card">
+          <div class="output-token-name">"${t.word}"</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);margin-bottom:8px">
+            id:${t.id} · ‖X₃‖=${mag}
+          </div>
+          ${X3[i].map((v,d) => `
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:3px">
+              <span style="font-family:var(--mono);font-size:9px;color:var(--ink3);width:14px">d${d}</span>
+              <div style="flex:1;height:10px;background:var(--bg2);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${Math.abs(v)/2*100}%;max-width:100%;background:${v>=0?'#2980b9':'#c0392b'};border-radius:2px;transition:width 0.6s"></div>
+              </div>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--ink2);width:36px">${v.toFixed(2)}</span>
+            </div>`).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="divider"></div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--ink3);line-height:2">
+      ✅ Forward pass complete for 1 encoder layer.<br>
+      In BERT-base: 12 such layers, d=768, 12 heads, FFN dim=3072.<br>
+      In GPT-2: similar, but decoder (masked attention) — processes sequences auto-regressively.
+    </div>
+    ${mathHtml}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  STAGE CONFIG
+// ═══════════════════════════════════════════════════════
+const STAGE_CONFIG = [
+  { title:'Tokenization', formula:'sentence → [token₁, token₂, ...]', tag:'tag-red' },
+  { title:'Embedding + Positional Encoding', formula:'X = Embed(tokens) + PE', tag:'tag-blue' },
+  { title:'Q, K, V Projections', formula:'Q=XW_Q, K=XW_K, V=XW_V', tag:'tag-purple' },
+  { title:'Scaled Dot-Product Attention', formula:'softmax(QKᵀ/√d_k)·V', tag:'tag-green' },
+  { title:'Multi-Head Attention', formula:'Concat(head₁,...,headₙ)·W_O', tag:'tag-purple' },
+  { title:'Residual Connection + Layer Norm', formula:'LayerNorm(X + Attn(X))', tag:'tag-orange' },
+  { title:'Feed-Forward Network', formula:'FFN(x) = max(0,xW₁+b₁)W₂+b₂', tag:'tag-orange' },
+  { title:'Final Output Representation', formula:'X₃ ∈ ℝ^(T×d)', tag:'tag-green' },
+];
+
+// ═══════════════════════════════════════════════════════
+//  DOM SETUP
+// ═══════════════════════════════════════════════════════
+function setupStageCards() {
+  const container = document.getElementById('stages-container');
+  container.innerHTML = '';
+  STAGE_CONFIG.forEach((cfg, idx) => {
+    const card = document.createElement('div');
+    card.className = 'stage-card';
+    card.id = `stage-${idx}`;
+    card.innerHTML = `
+      <div class="stage-header">
+        <div class="stage-num">${idx+1}</div>
+        <div class="stage-title">${cfg.title}</div>
+        <div class="stage-formula">${cfg.formula}</div>
+      </div>
+      <div class="stage-body" id="stage-body-${idx}">
+        <div style="color:var(--ink3);font-family:var(--mono);font-size:12px;padding:20px 0">
+          Waiting for simulation to reach this stage...
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function activateStage(idx) {
+  // Update progress
+  document.querySelectorAll('.progress-step').forEach((el, i) => {
+    el.classList.remove('active','done');
+    if (i < idx) el.classList.add('done');
+    if (i === idx) el.classList.add('active');
+  });
+  // Update cards
+  document.querySelectorAll('.stage-card').forEach((el, i) => {
+    el.classList.remove('active','done');
+    if (i < idx) el.classList.add('done');
+    if (i === idx) el.classList.add('active');
+  });
+  // Populate body
+  const body = document.getElementById(`stage-body-${idx}`);
+  body.innerHTML = `<div style="color:var(--ink3);font-family:var(--mono);font-size:12px">Computing...</div>`;
+  setTimeout(() => {
+    body.innerHTML = renderStage(idx);
+    body.classList.add('fade-in');
+    addCellTooltips(body);
+    // Scroll into view
+    const card = document.getElementById(`stage-${idx}`);
+    setTimeout(() => card.scrollIntoView({ behavior:'smooth', block:'center' }), 100);
+  }, 200 / speed);
+}
+
+function addCellTooltips(container) {
+  const tooltip = document.getElementById('tooltip');
+  container.querySelectorAll('[data-val]').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      tooltip.textContent = `Value: ${el.dataset.val}`;
+      tooltip.style.opacity = '1';
+    });
+    el.addEventListener('mousemove', e => {
+      tooltip.style.left = (e.clientX+12)+'px';
+      tooltip.style.top = (e.clientY-24)+'px';
+    });
+    el.addEventListener('mouseleave', () => { tooltip.style.opacity='0'; });
+  });
+  // Heatmap cells
+  container.querySelectorAll('.heatmap-cell').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      const from = el.dataset.from, to = el.dataset.to, val = el.dataset.val;
+      tooltip.innerHTML = `<strong>"${from}"</strong> attends to <strong>"${to}"</strong><br>weight: ${val}`;
+      tooltip.style.opacity = '1';
+      // highlight corresponding token chips
+      document.querySelectorAll('.token-chip').forEach(chip => {
+        const w = chip.querySelector('.token-label')?.textContent;
+        chip.classList.toggle('active', w===from||w===to);
+      });
+    });
+    el.addEventListener('mousemove', e => {
+      tooltip.style.left = (e.clientX+12)+'px';
+      tooltip.style.top = (e.clientY-24)+'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      tooltip.style.opacity='0';
+      document.querySelectorAll('.token-chip').forEach(c=>c.classList.remove('active'));
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN LOGIC
+// ═══════════════════════════════════════════════════════
+function startSimulation() {
+  const sentence = document.getElementById('sentence-input').value.trim() || 'the cat sat';
+  state = runTransformer(sentence);
+  currentStep = -1;
+  activeHead = 0;
+
+  setupStageCards();
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-replay').disabled = false;
+
+  // Auto-advance step 0
+  setTimeout(nextStep, 300 / speed);
+}
+
+function nextStep() {
+  if (!state) return;
+  currentStep++;
+  if (currentStep >= STEPS.length) {
+    currentStep = STEPS.length - 1;
+    document.getElementById('btn-next').disabled = true;
+    return;
+  }
+  activateStage(currentStep);
+}
+
+function switchHead(idx, el) {
+  activeHead = idx;
+  document.querySelectorAll('.mh-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  const body = document.getElementById('stage-body-4');
+  if (body) {
+    body.innerHTML = renderStage(4);
+    body.classList.add('fade-in');
+    addCellTooltips(body);
+  }
+}
+
+function replaySimulation() {
+  setupStageCards();
+  currentStep = -1;
+  activeHead = 0;
+  document.getElementById('btn-next').disabled = false;
+  setTimeout(nextStep, 300 / speed);
+}
+
+// ── event listeners ──
+document.getElementById('btn-start').addEventListener('click', startSimulation);
+document.getElementById('btn-next').addEventListener('click', nextStep);
+document.getElementById('btn-replay').addEventListener('click', replaySimulation);
+document.getElementById('speed-slider').addEventListener('input', function() {
+  speed = parseFloat(this.value);
+  document.getElementById('speed-label').textContent = speed+'×';
+});
+document.getElementById('math-mode-toggle').addEventListener('change', function() {
+  mathMode = this.checked;
+  // Refresh current stage
+  if (currentStep >= 0) {
+    const body = document.getElementById(`stage-body-${currentStep}`);
+    if (body) {
+      body.innerHTML = renderStage(currentStep);
+      addCellTooltips(body);
+    }
+  }
+});
+document.querySelectorAll('.progress-step').forEach((el,i) => {
+  el.addEventListener('click', () => {
+    if (state && i <= currentStep) {
+      activateStage(i);
+    }
+  });
+});
+document.getElementById('sentence-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startSimulation();
+});
+
+// ── init ──
+setupStageCards();
+</script>
 </body>
 </html>
