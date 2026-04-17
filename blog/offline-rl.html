@@ -1,1050 +1,1266 @@
 <!DOCTYPE html>
-<html lang="en" class="dark scroll-smooth">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Complete Interactive Guide to Offline Reinforcement Learning - History, Theory, Algorithms &amp; Hands-on Demo">
-    <title>OfflineRL • Learn from the Past</title>
-    <!-- Tailwind CSS CDN (for beautiful, modern styling) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- KaTeX CDN for beautiful math rendering -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&amp;family=Space+Grotesk:wght@500&amp;display=swap');
-        
-        :root {
-            --tw-color-primary: #00f5ff;
-        }
-        
-        * {
-            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-            transition-duration: 150ms;
-        }
-        
-        .tailwind-ready * {
-            transition-duration: 300ms;
-        }
-        
-        /* Hero gradient animation */
-        .hero-bg {
-            background: linear-gradient(90deg, #0a0a2a, #001122, #0a0a2a);
-            background-size: 400% 400%;
-            animation: gradientShift 25s ease infinite;
-        }
-        
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        
-        /* Neon glow */
-        .neon-text {
-            text-shadow: 
-                0 0 10px #00f5ff,
-                0 0 20px #00f5ff,
-                0 0 40px #00f5ff;
-        }
-        
-        /* Card hover lift */
-        .card-hover {
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-12px) scale(1.03);
-            box-shadow: 25px 25px 50px -12px rgb(0 245 255 / 0.3);
-        }
-        
-        /* Section fade-in */
-        .fade-in {
-            opacity: 0;
-            transform: translateY(40px);
-        }
-        
-        .fade-in.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        /* Timeline dot pulse */
-        .timeline-dot {
-            animation: pulse 2s infinite;
-        }
-        
-        /* Navbar glass effect */
-        .glass {
-            background: rgba(10, 10, 42, 0.85);
-            backdrop-filter: blur(16px);
-        }
-        
-        /* Math container */
-        .katex-display {
-            background: #111827;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offline Reinforcement Learning — Interactive Guide</title>
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --text: #1e1c18;
+    --text2: #5a574f;
+    --text3: #8a877e;
+    --accent: #3b5bdb;
+    --accent2: #1971c2;
+    --green: #2f9e44;
+    --red: #e03131;
+    --amber: #e67700;
+    --purple: #7048e8;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+    --shadow-hover: 0 4px 12px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.07);
+    --nav-h: 60px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; font-size: 16px; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.7; }
+
+  /* Progress bar */
+  #progress-bar {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    z-index: 1000; transition: width 0.1s;
+  }
+
+  /* Nav */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h);
+    background: rgba(247,246,242,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); z-index: 999;
+    display: flex; align-items: center; padding: 0 2rem; gap: 0;
+  }
+  .nav-brand { font-weight: 600; font-size: 15px; color: var(--text); margin-right: 2rem; white-space: nowrap; flex-shrink: 0; }
+  .nav-brand span { color: var(--accent); }
+  .nav-links { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a {
+    padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    color: var(--text2); text-decoration: none; white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-links a:hover { background: var(--surface2); color: var(--text); }
+  .nav-links a.active { background: var(--accent); color: white; }
+
+  /* Layout */
+  main { padding-top: calc(var(--nav-h) + 2rem); max-width: 900px; margin: 0 auto; padding-left: 1.5rem; padding-right: 1.5rem; }
+  section { padding: 3rem 0; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: none; }
+
+  /* Headings */
+  .section-label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; margin-bottom: 1rem; color: var(--text); }
+  h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text); }
+  h4 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+  p { color: var(--text2); margin-bottom: 1rem; }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--text); font-weight: 600; }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+    box-shadow: var(--shadow); transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .card:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .card-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+
+  /* Badges */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
+  }
+  .badge-blue { background: #dbe4ff; color: #2c4bbd; }
+  .badge-green { background: #d3f9d8; color: #1e6f30; }
+  .badge-red { background: #ffe3e3; color: #b51f1f; }
+  .badge-amber { background: #fff3bf; color: #895600; }
+  .badge-purple { background: #e5dbff; color: #5530b5; }
+
+  /* Fade-in animation */
+  .fade-in { opacity: 0; transform: translateY(20px); transition: opacity 0.55s ease, transform 0.55s ease; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+  /* Hero */
+  #overview { padding-top: 4rem; }
+  .hero-title { font-size: 3rem; font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+  .hero-title span { color: var(--accent); }
+  .hero-subtitle { font-size: 1.15rem; color: var(--text2); max-width: 620px; margin-bottom: 2rem; }
+  .hero-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 2.5rem; }
+
+  /* Comparison table */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+  .compare-card { padding: 1.5rem; border-radius: var(--radius); }
+  .compare-online { background: #ebfbee; border: 1px solid #b2f2bb; }
+  .compare-offline { background: #e7f5ff; border: 1px solid #a5d8ff; }
+  .compare-card h4 { margin-bottom: 1rem; font-size: 1.1rem; }
+  .compare-card ul { list-style: none; }
+  .compare-card ul li { padding: 4px 0; font-size: 14px; color: var(--text2); display: flex; gap: 8px; align-items: flex-start; }
+  .compare-card ul li::before { content: '→'; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .compare-online ul li::before { color: var(--green); }
+  .compare-offline ul li::before { color: var(--accent2); }
+
+  /* Timeline */
+  .timeline { position: relative; margin: 2rem 0; }
+  .timeline::before { content: ''; position: absolute; left: 20px; top: 0; bottom: 0; width: 2px; background: var(--border2); }
+  .timeline-item { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; position: relative; }
+  .timeline-dot {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--surface);
+    border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--accent); flex-shrink: 0; z-index: 1;
+  }
+  .timeline-content { flex: 1; padding-top: 6px; }
+  .timeline-year { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 2px; }
+  .timeline-content h4 { margin-bottom: 4px; }
+  .timeline-content p { font-size: 14px; margin: 0; }
+
+  /* Flow diagram */
+  .flow-diagram { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin: 1.5rem 0; overflow-x: auto; }
+  .flow-row { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; }
+  .flow-node { background: var(--bg); border: 1.5px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 18px; text-align: center; min-width: 120px; }
+  .flow-node .fn-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .flow-node .fn-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .flow-node.blue { background: #dbe4ff; border-color: #748ffc; }
+  .flow-node.green { background: #d3f9d8; border-color: #69db7c; }
+  .flow-node.amber { background: #fff3bf; border-color: #ffd43b; }
+  .flow-node.purple { background: #e5dbff; border-color: #9775fa; }
+  .flow-arrow { font-size: 20px; color: var(--text3); padding: 0 8px; flex-shrink: 0; }
+  .flow-data { background: #fff3bf; border: 1.5px dashed #ffd43b; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: #895600; margin-top: 8px; text-align: center; }
+
+  /* Challenge cards */
+  .challenge-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
+  .challenge-title { display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem; }
+  .challenge-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+
+  /* OOD Interactive demo */
+  .demo-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; box-shadow: var(--shadow); }
+  .demo-canvas-wrap { position: relative; margin: 1rem 0; }
+  canvas { border-radius: var(--radius-sm); display: block; }
+  .demo-controls { display: flex; flex-direction: column; gap: 12px; margin-top: 1rem; }
+  .demo-controls label { font-size: 13px; font-weight: 600; color: var(--text2); display: flex; justify-content: space-between; align-items: center; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .demo-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* Algorithm cards */
+  .algo-section { margin-bottom: 2rem; }
+  .algo-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+  .algo-num { width: 32px; height: 32px; border-radius: 8px; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .algo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+  .algo-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; box-shadow: var(--shadow); cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .algo-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+  .algo-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
+  .algo-name { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+  .algo-tag { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+  .algo-desc { font-size: 14px; color: var(--text2); margin-bottom: 1rem; }
+  .algo-key { background: var(--surface2); border-radius: 6px; padding: 10px 12px; font-size: 13px; color: var(--text2); }
+  .algo-key strong { color: var(--text); }
+  .pseudo-block {
+    background: #1e1c18; color: #e8e6df; border-radius: var(--radius-sm);
+    padding: 14px; font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+    margin-top: 1rem; overflow-x: auto;
+  }
+  .pseudo-block .kw { color: #74c7ec; }
+  .pseudo-block .fn { color: #a6e3a1; }
+  .pseudo-block .cm { color: #6c7086; }
+  .pseudo-block .num { color: #f9e2af; }
+
+  /* Theory expandable */
+  .theory-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; box-shadow: var(--shadow); overflow: hidden; }
+  .theory-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1.25rem 1.5rem; cursor: pointer; user-select: none;
+    transition: background 0.15s;
+  }
+  .theory-header:hover { background: var(--surface2); }
+  .theory-header h4 { margin: 0; font-size: 1rem; }
+  .theory-toggle { font-size: 20px; color: var(--text3); transition: transform 0.25s; flex-shrink: 0; }
+  .theory-body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s; padding: 0 1.5rem; }
+  .theory-body.open { max-height: 800px; padding: 0 1.5rem 1.5rem; }
+  .theory-toggle.open { transform: rotate(45deg); }
+  .math-box { background: #f8f7f4; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 1rem 0; font-family: var(--font-mono); font-size: 14px; color: var(--text); overflow-x: auto; }
+  .math-box em { font-style: italic; color: var(--accent2); }
+
+  /* Error decomp viz */
+  .decomp-bar { margin: 1rem 0; }
+  .decomp-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .decomp-label { font-size: 13px; color: var(--text2); width: 180px; flex-shrink: 0; }
+  .decomp-track { flex: 1; height: 18px; background: var(--surface2); border-radius: 9px; overflow: hidden; }
+  .decomp-fill { height: 100%; border-radius: 9px; transition: width 0.5s ease; }
+
+  /* Practical grid */
+  .practical-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .practical-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow); }
+  .practical-icon { font-size: 24px; margin-bottom: 0.75rem; }
+
+  /* Limitations */
+  .limit-list { list-style: none; margin: 1.5rem 0; }
+  .limit-item { display: flex; gap: 12px; padding: 14px; border-radius: var(--radius-sm); margin-bottom: 8px; align-items: flex-start; }
+  .limit-item.warn { background: #fff9db; border: 1px solid #ffe066; }
+  .limit-item.danger { background: #fff5f5; border: 1px solid #ffa8a8; }
+  .limit-item .li-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .limit-item .li-text h4 { margin-bottom: 4px; font-size: 15px; }
+  .limit-item .li-text p { font-size: 14px; margin: 0; }
+
+  /* Research directions */
+  .research-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; box-shadow: var(--shadow); position: relative; overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .research-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+  .research-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .research-card.c1::before { background: var(--accent); }
+  .research-card.c2::before { background: var(--green); }
+  .research-card.c3::before { background: var(--purple); }
+  .research-card.c4::before { background: var(--amber); }
+  .research-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+  .research-card.c1 .research-tag { color: var(--accent); }
+  .research-card.c2 .research-tag { color: var(--green); }
+  .research-card.c3 .research-tag { color: var(--purple); }
+  .research-card.c4 .research-tag { color: var(--amber); }
+
+  /* Tooltip */
+  .keyword { border-bottom: 1px dashed var(--accent); cursor: help; color: var(--accent2); font-weight: 500; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* Q-value demo */
+  .qval-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 1rem 0; }
+  .qcell {
+    aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; cursor: pointer; transition: transform 0.15s;
+    position: relative; border: 2px solid transparent;
+  }
+  .qcell:hover { transform: scale(1.08); }
+  .qcell.in-dist { background: #d3f9d8; color: #1e6f30; border-color: #69db7c; }
+  .qcell.ood { background: #ffe3e3; color: #b51f1f; border-color: #ffa8a8; }
+  .qcell.neutral { background: var(--surface2); color: var(--text3); }
+  .qcell.selected { border-color: var(--accent) !important; transform: scale(1.12); }
+
+  /* CQL illustration */
+  .cql-vis { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .cql-panel { background: var(--surface2); border-radius: var(--radius-sm); padding: 1rem; text-align: center; }
+  .cql-panel h5 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  .q-bar-container { display: flex; flex-direction: column; gap: 6px; }
+  .q-bar-row { display: flex; align-items: center; gap: 8px; }
+  .q-bar-label { font-size: 11px; color: var(--text2); width: 60px; text-align: right; flex-shrink: 0; }
+  .q-bar-track { flex: 1; height: 14px; background: white; border-radius: 7px; overflow: hidden; }
+  .q-bar-fill { height: 100%; border-radius: 7px; transition: width 0.5s; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .hero-title { font-size: 2rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .cql-vis { grid-template-columns: 1fr; }
+    nav { padding: 0 1rem; }
+    .nav-brand { font-size: 13px; margin-right: 1rem; }
+  }
+</style>
 </head>
-<body class="tailwind-ready bg-[#05050f] text-white font-sans">
-    <!-- NAVBAR -->
-    <nav class="glass fixed top-0 left-0 right-0 z-50 border-b border-white/10">
-        <div class="max-w-screen-2xl mx-auto px-8 py-5 flex items-center justify-between">
-            <!-- Logo -->
-            <div class="flex items-center gap-x-3">
-                <div class="w-9 h-9 bg-cyan-400 rounded-2xl flex items-center justify-center text-[#05050f] font-bold text-2xl rotate-12">📦</div>
-                <h1 class="text-3xl font-semibold tracking-[-1px]" style="font-family: 'Space Grotesk', sans-serif;">
-                    OfflineRL
-                </h1>
-                <span class="px-3 py-0.5 text-xs font-medium bg-cyan-400/10 text-cyan-400 rounded-3xl border border-cyan-400/30">v2026</span>
-            </div>
+<body>
 
-            <!-- Desktop Menu -->
-            <div class="hidden md:flex items-center gap-x-8 text-sm font-medium">
-                <a onclick="navigateToSection('intro')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>📖</span> Introduction
-                </a>
-                <a onclick="navigateToSection('history')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>🕰️</span> History
-                </a>
-                <a onclick="navigateToSection('theory')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>🔬</span> Theory
-                </a>
-                <a onclick="navigateToSection('algorithms')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>⚡</span> Algorithms
-                </a>
-                <a onclick="navigateToSection('challenges')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>🚧</span> Challenges
-                </a>
-                <a onclick="navigateToSection('apps')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>🌍</span> Applications
-                </a>
-                <a onclick="navigateToSection('demo')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>🧪</span> Interactive Lab
-                </a>
-                <a onclick="navigateToSection('quiz')" class="hover:text-cyan-400 flex items-center gap-x-1 cursor-pointer">
-                    <span>❓</span> Test Yourself
-                </a>
-            </div>
+<div id="progress-bar"></div>
 
-            <!-- Right side -->
-            <div class="flex items-center gap-x-4">
-                <button onclick="toggleDarkMode()" 
-                        class="w-10 h-10 flex items-center justify-center rounded-2xl border border-white/20 hover:border-cyan-400 hover:text-cyan-400">
-                    <span id="theme-icon" class="text-xl">☀️</span>
-                </button>
-                
-                <!-- Mobile menu toggle -->
-                <button onclick="toggleMobileMenu()" 
-                        class="md:hidden w-10 h-10 flex items-center justify-center text-2xl">
-                    ☰
-                </button>
-                
-                <a href="#" onclick="downloadHTML()" 
-                   class="hidden sm:flex items-center gap-x-2 px-6 py-3 bg-white text-[#05050f] font-semibold rounded-3xl hover:bg-cyan-400 hover:text-[#05050f]">
-                    <span>↓</span>
-                    <span class="text-sm">Save Offline</span>
-                </a>
-            </div>
-        </div>
-        
-        <!-- Mobile Menu -->
-        <div id="mobile-menu" class="hidden md:hidden px-8 pb-8 border-t border-white/10 bg-[#05050f]">
-            <div class="flex flex-col gap-y-4 pt-6 text-lg font-medium">
-                <a onclick="navigateToSection('intro');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">📖 Introduction</a>
-                <a onclick="navigateToSection('history');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🕰️ Historical Context</a>
-                <a onclick="navigateToSection('theory');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🔬 Theoretical Underpinnings</a>
-                <a onclick="navigateToSection('algorithms');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">⚡ Key Algorithms</a>
-                <a onclick="navigateToSection('challenges');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🚧 Challenges &amp; Limitations</a>
-                <a onclick="navigateToSection('apps');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🌍 Real-World Applications</a>
-                <a onclick="navigateToSection('demo');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">🧪 Interactive Lab</a>
-                <a onclick="navigateToSection('quiz');toggleMobileMenu()" class="px-4 py-3 hover:bg-white/5 rounded-3xl">❓ Quick Quiz</a>
-            </div>
-        </div>
-    </nav>
+<nav>
+  <div class="nav-brand">Offline <span>RL</span></div>
+  <div class="nav-links">
+    <a href="#overview">Overview</a>
+    <a href="#history">History</a>
+    <a href="#setup">Problem Setup</a>
+    <a href="#challenges">Challenges</a>
+    <a href="#algorithms">Algorithms</a>
+    <a href="#theory">Theory</a>
+    <a href="#practical">Practical</a>
+    <a href="#limitations">Limitations</a>
+    <a href="#research">Research</a>
+  </div>
+</nav>
 
-    <!-- HERO SECTION -->
-    <header id="intro" class="hero-bg min-h-screen pt-20 flex items-center relative overflow-hidden">
-        <!-- Particle Canvas -->
-        <canvas id="particle-canvas" class="absolute inset-0 pointer-events-none z-0"></canvas>
-        
-        <div class="max-w-screen-2xl mx-auto px-8 grid md:grid-cols-2 gap-16 items-center relative z-10">
-            <div class="space-y-8">
-                <div class="inline-flex items-center gap-x-2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-3xl text-cyan-400 text-sm font-medium border border-cyan-400/30">
-                    <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                    OFFLINE REINFORCEMENT LEARNING
-                </div>
-                
-                <h1 class="text-7xl md:text-8xl font-bold leading-none tracking-[-3px] neon-text" style="font-family: 'Space Grotesk', sans-serif;">
-                    Learn from<br>the <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Past</span>
-                </h1>
-                
-                <p class="text-2xl text-gray-300 max-w-lg">
-                    Master policies from fixed, static datasets.<br>
-                    No dangerous exploration. No live environment.<br>
-                    Pure offline RL — safe, scalable, powerful.
-                </p>
-                
-                <div class="flex items-center gap-x-4">
-                    <button onclick="navigateToSection('demo')" 
-                            class="px-10 py-5 bg-gradient-to-r from-cyan-400 to-purple-400 text-[#05050f] font-semibold text-xl rounded-3xl hover:scale-105 flex items-center gap-x-3 shadow-2xl shadow-cyan-400/50">
-                        <span>Launch Interactive Lab</span>
-                        <span class="text-3xl">🧪</span>
-                    </button>
-                    
-                    <button onclick="navigateToSection('history')" 
-                            class="px-8 py-5 border-2 border-white/40 hover:border-cyan-400 text-lg font-medium rounded-3xl flex items-center gap-x-2">
-                        Explore 30+ years of history →
-                    </button>
-                </div>
-                
-                <div class="flex items-center gap-x-8 text-sm">
-                    <div class="flex -space-x-4">
-                        <div class="w-8 h-8 bg-purple-500 rounded-2xl flex items-center justify-center text-xs ring-2 ring-[#05050f]">BCQ</div>
-                        <div class="w-8 h-8 bg-cyan-400 rounded-2xl flex items-center justify-center text-xs ring-2 ring-[#05050f]">CQL</div>
-                        <div class="w-8 h-8 bg-pink-500 rounded-2xl flex items-center justify-center text-xs ring-2 ring-[#05050f]">BEAR</div>
-                    </div>
-                    <p class="text-gray-400">Featured in NeurIPS, ICML, ICLR since 2018</p>
-                </div>
-            </div>
-            
-            <!-- Visual hero -->
-            <div class="hidden md:flex justify-center relative">
-                <div class="w-96 h-96 bg-gradient-to-br from-cyan-400/10 to-purple-400/10 rounded-[4rem] rotate-12 flex items-center justify-center border border-white/10 shadow-2xl relative">
-                    <!-- Animated RL agent SVG -->
-                    <svg width="280" height="280" viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-[spin_25s_linear_infinite]">
-                        <!-- Grid background -->
-                        <rect x="20" y="20" width="240" height="240" rx="20" stroke="#00f5ff" stroke-opacity="0.15" stroke-width="8"/>
-                        <!-- State nodes -->
-                        <circle cx="70" cy="70" r="18" fill="#00f5ff" fill-opacity="0.8"/>
-                        <circle cx="210" cy="70" r="18" fill="#00f5ff" fill-opacity="0.8"/>
-                        <circle cx="70" cy="210" r="18" fill="#00f5ff" fill-opacity="0.8"/>
-                        <circle cx="210" cy="210" r="18" fill="#00f5ff" fill-opacity="0.8"/>
-                        <!-- Agent -->
-                        <g>
-                            <rect x="125" y="125" width="30" height="30" rx="6" fill="#111827"/>
-                            <circle cx="140" cy="140" r="12" fill="#00f5ff"/>
-                            <!-- Arrow showing offline data flow -->
-                            <path d="M80 140 L110 140" stroke="#00f5ff" stroke-width="8" stroke-linecap="round"/>
-                            <polygon points="110,130 130,140 110,150" fill="#00f5ff"/>
-                        </g>
-                        <!-- Data tapes -->
-                        <rect x="40" y="40" width="200" height="12" rx="2" fill="#a5f3fc" fill-opacity="0.3" transform="rotate(-12 40 46)"/>
-                        <rect x="40" y="228" width="200" height="12" rx="2" fill="#a5f3fc" fill-opacity="0.3" transform="rotate(12 40 234)"/>
-                    </svg>
-                    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
-                        <div class="text-cyan-400 text-sm font-mono flex items-center justify-center gap-x-1">
-                            <div class="animate-pulse">●</div>
-                            FIXED DATASET
-                        </div>
-                        <p class="text-2xl font-semibold">No interaction needed</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Scroll indicator -->
-        <div class="absolute bottom-10 left-1/2 flex flex-col items-center gap-y-2 text-cyan-400">
-            <div class="text-xs tracking-[3px] font-medium">SCROLL FOR DEEP DIVE</div>
-            <div class="w-6 h-10 border border-cyan-400 rounded-3xl flex items-center justify-center">
-                <div class="w-1.5 h-3 bg-cyan-400 rounded-full animate-bounce"></div>
-            </div>
-        </div>
-    </header>
+<main>
 
-    <!-- WHAT IS OFFLINE RL -->
-    <section class="max-w-screen-2xl mx-auto px-8 py-24">
-        <div class="grid md:grid-cols-12 gap-16">
-            <div class="md:col-span-5">
-                <span class="px-4 py-1 bg-cyan-400/10 text-cyan-400 rounded-3xl text-sm">CORE CONCEPT</span>
-                <h2 class="text-5xl font-semibold mt-4 leading-tight">What is Offline Reinforcement Learning?</h2>
-                <p class="mt-6 text-xl text-gray-300">
-                    Offline RL (also called Batch RL) trains an agent using a <strong>static dataset</strong> of previously collected transitions — no new interactions with the environment are allowed.
-                </p>
-                
-                <div class="mt-10 flex items-center gap-x-8">
-                    <div class="flex-1 bg-white/5 rounded-3xl p-6">
-                        <div class="text-emerald-400 text-sm mb-2">✅ ONLINE RL</div>
-                        <p class="text-2xl font-medium">Agent explores and learns <span class="text-white">live</span> in the real environment</p>
-                        <ul class="mt-4 space-y-2 text-gray-400">
-                            <li class="flex items-center gap-x-2">• Dangerous / expensive trials</li>
-                            <li class="flex items-center gap-x-2">• Requires real-time simulation</li>
-                        </ul>
-                    </div>
-                    <div class="flex-1 bg-gradient-to-br from-cyan-400/10 to-purple-400/10 rounded-3xl p-6 border border-cyan-400">
-                        <div class="text-cyan-400 text-sm mb-2">📦 OFFLINE RL</div>
-                        <p class="text-2xl font-medium">Agent learns from <span class="text-white">pre-recorded logs</span> only</p>
-                        <ul class="mt-4 space-y-2 text-gray-400">
-                            <li class="flex items-center gap-x-2">• Safe &amp; cheap</li>
-                            <li class="flex items-center gap-x-2">• Works with massive logged data</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="md:col-span-7">
-                <div class="grid grid-cols-3 gap-4">
-                    <div onclick="this.classList.toggle('ring-4');this.classList.toggle('ring-cyan-400')" 
-                         class="card-hover bg-white/5 p-6 rounded-3xl cursor-pointer hover:ring-4 hover:ring-cyan-400">
-                        <div class="text-4xl mb-4">📊</div>
-                        <h4 class="font-semibold text-xl">Fixed Dataset D</h4>
-                        <p class="text-gray-400 mt-2">Trajectories collected by any behavior policy (human, random, old agent)</p>
-                    </div>
-                    <div onclick="this.classList.toggle('ring-4');this.classList.toggle('ring-cyan-400')" 
-                         class="card-hover bg-white/5 p-6 rounded-3xl cursor-pointer hover:ring-4 hover:ring-cyan-400">
-                        <div class="text-4xl mb-4">🧠</div>
-                        <h4 class="font-semibold text-xl">Policy π</h4>
-                        <p class="text-gray-400 mt-2">Learned without ever touching the real MDP again</p>
-                    </div>
-                    <div onclick="this.classList.toggle('ring-4');this.classList.toggle('ring-cyan-400')" 
-                         class="card-hover bg-white/5 p-6 rounded-3xl cursor-pointer hover:ring-4 hover:ring-cyan-400">
-                        <div class="text-4xl mb-4">🚫</div>
-                        <h4 class="font-semibold text-xl">No Exploration</h4>
-                        <p class="text-gray-400 mt-2">Only exploitation of the data you already have</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- HISTORY SECTION -->
-    <section id="history" class="bg-[#0a0a1f] py-24">
-        <div class="max-w-screen-2xl mx-auto px-8">
-            <div class="flex justify-between items-end mb-12">
-                <div>
-                    <span class="text-purple-400">🕰️ TIMELINE</span>
-                    <h2 class="text-5xl font-semibold mt-2">Historical Context &amp; Evolution</h2>
-                </div>
-                <p class="max-w-md text-gray-400">From early batch methods to modern deep offline RL</p>
-            </div>
-            
-            <!-- Timeline -->
-            <div class="relative">
-                <div class="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent"></div>
-                
-                <div class="space-y-16 relative">
-                    <!-- 1990s -->
-                    <div class="grid md:grid-cols-12 items-center gap-8">
-                        <div class="md:col-span-5 text-right">
-                            <div class="inline-flex items-center gap-x-2 text-sm font-mono bg-white/10 px-5 py-2 rounded-3xl">1990 — 2005</div>
-                            <h3 class="text-3xl font-semibold mt-3">Birth of Batch RL</h3>
-                            <p class="text-gray-400">Early dynamic programming and approximate value iteration on fixed datasets. Pioneered by Bertsekas &amp; Tsitsiklis in neuro-dynamic programming.</p>
-                        </div>
-                        <div class="md:col-span-2 flex justify-center">
-                            <div class="timeline-dot w-6 h-6 bg-purple-400 rounded-full flex items-center justify-center ring-8 ring-purple-400/30 text-xs">📼</div>
-                        </div>
-                        <div class="md:col-span-5 bg-white/5 rounded-3xl p-8 text-sm leading-relaxed">
-                            First theoretical foundations. Least-Squares Policy Iteration (2003) showed offline methods could converge without interaction.
-                        </div>
-                    </div>
-                    
-                    <!-- 2010s -->
-                    <div class="grid md:grid-cols-12 items-center gap-8">
-                        <div class="md:col-span-5 bg-white/5 rounded-3xl p-8 text-sm leading-relaxed order-2 md:order-1">
-                            Rise of deep learning + RL. DQN (2015) was online-only. Researchers realized real-world data (robot logs, healthcare records) is abundant but interaction is impossible.
-                        </div>
-                        <div class="md:col-span-2 flex justify-center order-1 md:order-2">
-                            <div class="timeline-dot w-6 h-6 bg-cyan-400 rounded-full flex items-center justify-center ring-8 ring-cyan-400/30 text-xs">🌐</div>
-                        </div>
-                        <div class="md:col-span-5 order-3">
-                            <div class="inline-flex items-center gap-x-2 text-sm font-mono bg-white/10 px-5 py-2 rounded-3xl">2018 — 2020</div>
-                            <h3 class="text-3xl font-semibold mt-3">Deep Offline RL Explosion</h3>
-                            <p class="text-gray-400">BCQ (Fujimoto 2018), BEAR (Kumar 2019), CQL (Kumar 2020) — modern deep offline algorithms that finally beat behavior cloning.</p>
-                        </div>
-                    </div>
-                    
-                    <!-- 2021+ -->
-                    <div class="grid md:grid-cols-12 items-center gap-8">
-                        <div class="md:col-span-5 text-right">
-                            <div class="inline-flex items-center gap-x-2 text-sm font-mono bg-white/10 px-5 py-2 rounded-3xl">2021 — Today</div>
-                            <h3 class="text-3xl font-semibold mt-3">Maturity &amp; Scaling</h3>
-                            <p class="text-gray-400">Diffusion policies, model-based offline RL, and large-scale foundation models for RL. Offline RL is now production-ready for robotics, healthcare &amp; recommendation systems.</p>
-                        </div>
-                        <div class="md:col-span-2 flex justify-center">
-                            <div class="timeline-dot w-6 h-6 bg-pink-400 rounded-full flex items-center justify-center ring-8 ring-pink-400/30 text-xs">🚀</div>
-                        </div>
-                        <div class="md:col-span-5 bg-white/5 rounded-3xl p-8">
-                            Key insight: Offline RL bridges supervised learning and RL, unlocking massive logged datasets.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- THEORETICAL UNDERPINNINGS -->
-    <section id="theory" class="max-w-screen-2xl mx-auto px-8 py-24">
-        <h2 class="text-5xl font-semibold text-center mb-4">Theoretical Underpinnings</h2>
-        <p class="text-center text-gray-400 max-w-2xl mx-auto mb-16">Built on the same foundations as classic RL but with critical new constraints</p>
-        
-        <div class="grid lg:grid-cols-2 gap-12">
-            <!-- MDP -->
-            <div class="card-hover bg-gradient-to-br from-[#111827] to-[#1f2937] rounded-3xl p-8">
-                <h3 class="text-2xl font-semibold mb-6 flex items-center gap-x-3"><span class="text-4xl">📐</span> Markov Decision Process (MDP)</h3>
-                <div class="katex-display">
-                    <span class="math block text-center text-xl mb-6">(\mathcal{M} = \langle S, A, P, R, \gamma \rangle)</span>
-                </div>
-                <ul class="space-y-4 text-gray-300">
-                    <li><strong>S</strong> – State space</li>
-                    <li><strong>A</strong> – Action space</li>
-                    <li><strong>P(s′|s,a)</strong> – Unknown transition dynamics (never sampled again)</li>
-                    <li><strong>R(s,a)</strong> – Reward function</li>
-                    <li><strong>γ</strong> – Discount factor</li>
-                </ul>
-            </div>
-            
-            <!-- Bellman -->
-            <div class="card-hover bg-gradient-to-br from-[#111827] to-[#1f2937] rounded-3xl p-8">
-                <h3 class="text-2xl font-semibold mb-6">Bellman Optimality Equation</h3>
-                <div class="katex-display">
-                    <span class="math block text-center text-2xl mb-8">Q^*(s,a) = r(s,a) + \gamma \mathbb{E}_{s' \sim P}[ \max_{a'} Q^*(s',a') ]</span>
-                </div>
-                <p class="text-gray-400">In offline RL we only have samples from a behavior policy μ. We cannot query P anymore.</p>
-                
-                <div class="mt-8 p-4 bg-black/30 rounded-2xl text-xs font-mono leading-relaxed">
-                    Offline objective becomes:<br>
-                    <span class="math"> \min_\theta \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \Big[ \big( Q_\theta(s,a) - (r + \gamma \max_{a'} Q_\theta(s',a')) \big)^2 \Big] </span>
-                </div>
-            </div>
-            
-            <!-- Key theoretical issue -->
-            <div class="lg:col-span-2 bg-white/5 border border-white/10 rounded-3xl p-10">
-                <div class="flex flex-col md:flex-row gap-8 items-start">
-                    <div class="flex-1">
-                        <h3 class="text-3xl font-semibold">The Core Problem: Distributional Shift</h3>
-                        <p class="mt-6 text-lg text-gray-300">The learned policy π may choose actions <strong>outside</strong> the support of the dataset. This causes <span class="text-red-400">extrapolation error</span> → massive overestimation of Q-values.</p>
-                    </div>
-                    <div class="flex-1 text-sm space-y-6">
-                        <div class="flex gap-x-4">
-                            <div class="font-mono bg-red-400/10 text-red-400 px-4 h-fit rounded-2xl py-1">OOD</div>
-                            <p>Out-Of-Distribution actions are evaluated using the Bellman backup → deadly overestimation</p>
-                        </div>
-                        <div class="h-px bg-white/10"></div>
-                        <p class="italic">“The fundamental challenge of offline RL is preventing the policy from selecting actions that are not well-covered by the dataset.”</p>
-                        <div class="text-xs text-cyan-400">— Sergey Levine, 2020</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ALGORITHMS -->
-    <section id="algorithms" class="bg-[#0a0a1f] py-24">
-        <div class="max-w-screen-2xl mx-auto px-8">
-            <h2 class="text-5xl font-semibold text-center mb-16">Pioneering Offline RL Algorithms</h2>
-            
-            <div class="grid md:grid-cols-3 gap-8">
-                <!-- BCQ -->
-                <div onclick="showAlgorithmDetail(0)" class="card-hover cursor-pointer bg-white/5 rounded-3xl p-8 group">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="text-cyan-400 font-mono text-sm">2018 • Fujimoto et al.</div>
-                            <h4 class="text-3xl font-semibold mt-2 group-hover:text-cyan-400">BCQ</h4>
-                            <p class="text-gray-400">Batch-Constrained Q-learning</p>
-                        </div>
-                        <span class="text-6xl opacity-30 group-hover:opacity-100">📦</span>
-                    </div>
-                    <p class="mt-8 text-sm">Constrains the policy to only generate actions that are “close” to the behavior dataset using a generative model.</p>
-                    <div class="text-xs mt-10 inline-block bg-cyan-400/10 text-cyan-400 px-4 py-2 rounded-3xl">First practical deep offline RL</div>
-                </div>
-                
-                <!-- CQL -->
-                <div onclick="showAlgorithmDetail(1)" class="card-hover cursor-pointer bg-white/5 rounded-3xl p-8 group">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="text-cyan-400 font-mono text-sm">2020 • Kumar et al.</div>
-                            <h4 class="text-3xl font-semibold mt-2 group-hover:text-cyan-400">CQL</h4>
-                            <p class="text-gray-400">Conservative Q-Learning</p>
-                        </div>
-                        <span class="text-6xl opacity-30 group-hover:opacity-100">🛡️</span>
-                    </div>
-                    <p class="mt-8 text-sm">Adds a conservative penalty that pushes down Q-values for out-of-distribution actions. Provably lower-bounds the true value.</p>
-                    <div class="text-xs mt-10 inline-block bg-purple-400/10 text-purple-400 px-4 py-2 rounded-3xl">State-of-the-art theoretical guarantees</div>
-                </div>
-                
-                <!-- BEAR / Others -->
-                <div onclick="showAlgorithmDetail(2)" class="card-hover cursor-pointer bg-white/5 rounded-3xl p-8 group">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="text-cyan-400 font-mono text-sm">2019 • Kumar et al.</div>
-                            <h4 class="text-3xl font-semibold mt-2 group-hover:text-cyan-400">BEAR + Diffusion-RL</h4>
-                            <p class="text-gray-400">Bootstrapping Error Accumulation Reduction</p>
-                        </div>
-                        <span class="text-6xl opacity-30 group-hover:opacity-100">🌊</span>
-                    </div>
-                    <p class="mt-8 text-sm">Uses adversarial training to keep policy inside dataset support. Newer diffusion policies (2023+) generate high-quality actions directly.</p>
-                    <div class="text-xs mt-10 inline-block bg-pink-400/10 text-pink-400 px-4 py-2 rounded-3xl">Now used in real robots</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CHALLENGES -->
-    <section id="challenges" class="max-w-screen-2xl mx-auto px-8 py-24">
-        <h2 class="text-5xl font-semibold mb-8">Major Challenges &amp; Limitations</h2>
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="bg-white/5 rounded-3xl p-8 hover:bg-red-400/10 group">
-                <div class="text-red-400 text-6xl mb-4 group-hover:rotate-12">📉</div>
-                <h4 class="font-semibold text-2xl">Distribution Shift</h4>
-                <p class="mt-4">Policy and behavior policy diverge → deadly extrapolation errors</p>
-            </div>
-            <div class="bg-white/5 rounded-3xl p-8 hover:bg-amber-400/10 group">
-                <div class="text-amber-400 text-6xl mb-4 group-hover:rotate-12">🔄</div>
-                <h4 class="font-semibold text-2xl">No Exploration</h4>
-                <p class="mt-4">Cannot discover better actions than those already in the data</p>
-            </div>
-            <div class="bg-white/5 rounded-3xl p-8 hover:bg-violet-400/10 group">
-                <div class="text-violet-400 text-6xl mb-4 group-hover:rotate-12">📉</div>
-                <h4 class="font-semibold text-2xl">Reward Misspecification</h4>
-                <p class="mt-4">Data may contain suboptimal or biased rewards</p>
-            </div>
-            <div class="bg-white/5 rounded-3xl p-8 hover:bg-teal-400/10 group">
-                <div class="text-teal-400 text-6xl mb-4 group-hover:rotate-12">🧩</div>
-                <h4 class="font-semibold text-2xl">Partial Observability</h4>
-                <p class="mt-4">Real datasets are rarely perfect Markovian</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- APPLICATIONS -->
-    <section id="apps" class="bg-[#0a0a1f] py-24">
-        <div class="max-w-screen-2xl mx-auto px-8">
-            <h2 class="text-5xl font-semibold text-center">Real-World Applications</h2>
-            <div class="mt-16 grid md:grid-cols-3 gap-8">
-                <div class="p-8 border border-white/10 rounded-3xl hover:border-cyan-400">
-                    <div class="h-12 w-12 bg-orange-400 rounded-2xl mb-8 flex items-center justify-center text-3xl">🤖</div>
-                    <h4 class="text-2xl font-semibold">Robotics</h4>
-                    <p class="mt-3">Train dexterous manipulation from thousands of hours of human teleoperation logs</p>
-                </div>
-                <div class="p-8 border border-white/10 rounded-3xl hover:border-cyan-400">
-                    <div class="h-12 w-12 bg-emerald-400 rounded-2xl mb-8 flex items-center justify-center text-3xl">🩺</div>
-                    <h4 class="text-2xl font-semibold">Healthcare</h4>
-                    <p class="mt-3">Learn optimal treatment policies from electronic health records without risking patients</p>
-                </div>
-                <div class="p-8 border border-white/10 rounded-3xl hover:border-cyan-400">
-                    <div class="h-12 w-12 bg-blue-400 rounded-2xl mb-8 flex items-center justify-center text-3xl">📱</div>
-                    <h4 class="text-2xl font-semibold">Recommendation Systems</h4>
-                    <p class="mt-3">Optimize long-term user engagement from historical click &amp; watch logs</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- INTERACTIVE DEMO / LAB -->
-    <section id="demo" class="max-w-screen-2xl mx-auto px-8 py-24 border-t border-b border-white/10">
-        <h2 class="text-5xl font-semibold text-center mb-4">🧪 Interactive Lab: Offline vs Online</h2>
-        <p class="text-center text-gray-400 mb-12">Watch how offline RL behaves with a simulated cart-pole environment</p>
-        
-        <div class="bg-[#111827] rounded-3xl p-8 max-w-5xl mx-auto">
-            <div class="flex flex-wrap justify-center gap-6 mb-8">
-                <button onclick="runDemo('online')" 
-                        class="demo-btn px-8 py-4 bg-emerald-400 text-black font-semibold rounded-3xl flex items-center gap-x-2 active:scale-95">
-                    <span>▶️</span> Run Online RL (live interaction)
-                </button>
-                <button onclick="runDemo('offline')" 
-                        class="demo-btn px-8 py-4 bg-cyan-400 text-black font-semibold rounded-3xl flex items-center gap-x-2 active:scale-95">
-                    <span>📦</span> Run Offline RL (fixed dataset)
-                </button>
-                <button onclick="resetDemo()" class="px-8 py-4 border border-white/30 hover:border-white rounded-3xl">Reset Simulation</button>
-            </div>
-            
-            <!-- Canvas visualization -->
-            <canvas id="demo-canvas" width="800" height="340" class="mx-auto bg-black rounded-2xl shadow-inner"></canvas>
-            
-            <div class="flex justify-between text-sm font-mono mt-4 px-4">
-                <div id="demo-status" class="text-emerald-400">Ready</div>
-                <div class="flex gap-x-8">
-                    <div>Episode: <span id="episode-count" class="font-semibold">0</span></div>
-                    <div>Avg Reward: <span id="avg-reward" class="font-semibold text-cyan-400">—</span></div>
-                </div>
-            </div>
-            
-            <p id="demo-explain" class="text-center text-gray-400 mt-4 text-sm max-w-md mx-auto">
-                Click a button above to simulate. Online RL explores freely. Offline RL is constrained to the dataset — safer but potentially sub-optimal.
-            </p>
-        </div>
-    </section>
-
-    <!-- QUIZ -->
-    <section id="quiz" class="max-w-screen-2xl mx-auto px-8 py-24">
-        <h2 class="text-5xl font-semibold text-center mb-12">❓ Test Your Offline RL Knowledge</h2>
-        
-        <div id="quiz-container" class="max-w-2xl mx-auto bg-white/5 rounded-3xl p-10">
-            <div id="question-text" class="text-2xl font-medium mb-10"></div>
-            
-            <div id="options" class="space-y-4"></div>
-            
-            <div class="mt-10 flex justify-between items-center">
-                <button onclick="nextQuestion()" id="next-btn"
-                        class="hidden px-8 py-4 bg-cyan-400 text-black font-semibold rounded-3xl">Next Question →</button>
-                <div id="score-display" class="text-2xl font-semibold"></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- FOOTER -->
-<footer class="bg-black py-12 border-t border-white/10">
-    <div class="max-w-screen-2xl mx-auto px-8 text-center text-gray-400 text-sm">
-        © <span id="year"></span> Soumyadeep Roy
+<!-- ===== OVERVIEW ===== -->
+<section id="overview">
+  <div class="fade-in">
+    <div class="section-label">Introduction</div>
+    <h2 class="hero-title">Offline <span>Reinforcement</span> Learning</h2>
+    <p class="hero-subtitle">Learn optimal policies purely from pre-collected datasets — without any interaction with the environment. The paradigm shift that makes RL practical for the real world.</p>
+    <div class="hero-tags">
+      <span class="badge badge-blue">No Environment Interaction</span>
+      <span class="badge badge-purple">Dataset-Driven</span>
+      <span class="badge badge-green">Safety-Critical Domains</span>
+      <span class="badge badge-amber">Also: Batch RL</span>
     </div>
-</footer>
+  </div>
 
-    <!-- ALGORITHM MODAL -->
-    <div onclick="if(event.target.id === 'modal'){hideModal()}" 
-         id="modal" class="hidden fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center">
-        <div onclick="event.stopImmediatePropagation()" 
-             class="bg-[#111827] max-w-2xl w-full mx-4 rounded-3xl p-10">
-            <div id="modal-content" class="prose prose-invert"></div>
-            <button onclick="hideModal()" 
-                    class="mt-8 w-full py-5 text-lg font-semibold bg-white text-black rounded-3xl">Close</button>
-        </div>
+  <div class="fade-in">
+    <div class="card-grid">
+      <div class="card">
+        <div style="font-size:2rem;margin-bottom:0.75rem;">🎮</div>
+        <h3>What is Offline RL?</h3>
+        <p>Offline RL (also called Batch RL) learns a policy from a <strong>fixed, static dataset</strong> of previously logged transitions <code style="background:var(--surface2);padding:2px 5px;border-radius:4px;font-size:13px;">(s, a, r, s')</code> collected by some behavior policy.</p>
+        <p>No trial-and-error. No exploring the environment. Just pure supervised-like learning from historical data — with the full complexity of sequential decision-making.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:2rem;margin-bottom:0.75rem;">⚡</div>
+        <h3>Why It Matters</h3>
+        <p>In the real world, exploration is <strong>expensive, dangerous, or impossible</strong>. You can't let an RL agent crash a robot 10,000 times to learn locomotion, or administer dangerous drug combinations to patients.</p>
+        <p>Offline RL unlocks RL for healthcare, autonomous driving, robotics, and recommendation systems using historical logs.</p>
+      </div>
     </div>
 
-    <script>
-        document.getElementById("year").textContent = new Date().getFullYear();
-        /**
-         * Main script for the complete Offline RL educational HTML
-         * Everything is self-contained except the two CDNs (Tailwind + KaTeX)
-         * Fully interactive, animated, hoverable, and beautiful
-         */
+    <div class="compare-grid">
+      <div class="compare-card compare-online">
+        <h4>🔄 Online RL</h4>
+        <ul>
+          <li>Interacts with environment in real-time</li>
+          <li>Can explore to gather new data</li>
+          <li>Policy improves iteratively</li>
+          <li>Requires a simulator or live system</li>
+          <li>Unsafe in high-stakes domains</li>
+          <li>Can recover from suboptimal behavior</li>
+        </ul>
+      </div>
+      <div class="compare-card compare-offline">
+        <h4>📦 Offline RL</h4>
+        <ul>
+          <li>Fixed dataset — no env interaction</li>
+          <li>Cannot explore — bounded by data</li>
+          <li>Must extract the best policy from data</li>
+          <li>Works with historical logs</li>
+          <li>Safe, deployable in critical domains</li>
+          <li>Bottlenecked by dataset quality</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
 
-        // Tailwind initialization
-        function initTailwind() {
-            return {
-                config(userConfig = {}) {
-                    return {
-                        content: [],
-                        theme: {
-                            extend: {},
-                        },
-                        plugins: [],
-                        ...userConfig,
-                    }
-                },
-                theme: {
-                    extend: {},
-                },
-            }
-        }
-        
-        // Render all KaTeX equations
-        function renderMath() {
-            const mathElements = document.querySelectorAll('.math')
-            mathElements.forEach(el => {
-                const displayMode = el.classList.contains('block') || el.tagName === 'DIV'
-                katex.render(el.textContent.trim(), el, {
-                    throwOnError: false,
-                    displayMode: displayMode
-                })
-            })
-        }
-        
-        // Particle background for hero
-        function initParticles() {
-            const canvas = document.getElementById('particle-canvas')
-            if (!canvas) return
-            const ctx = canvas.getContext('2d')
-            
-            let width, height
-            let particles = []
-            
-            class Particle {
-                constructor() {
-                    this.x = Math.random() * width
-                    this.y = Math.random() * height
-                    this.vx = (Math.random() - 0.5) * 0.6
-                    this.vy = (Math.random() - 0.5) * 0.6
-                    this.radius = Math.random() * 2.5 + 0.8
-                }
-                
-                update() {
-                    this.x += this.vx
-                    this.y += this.vy
-                    
-                    if (this.x < 0 || this.x > width) this.vx *= -1
-                    if (this.y < 0 || this.y > height) this.vy *= -1
-                }
-                
-                draw() {
-                    ctx.fillStyle = '#00f5ff'
-                    ctx.shadowBlur = 12
-                    ctx.shadowColor = '#00f5ff'
-                    ctx.beginPath()
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
-                    ctx.fill()
-                }
-            }
-            
-            function resize() {
-                width = window.innerWidth
-                height = window.innerHeight
-                canvas.width = width
-                canvas.height = height
-            }
-            
-            function connectParticles() {
-                for (let i = 0; i < particles.length; i++) {
-                    for (let j = i + 1; j < particles.length; j++) {
-                        const dx = particles[i].x - particles[j].x
-                        const dy = particles[i].y - particles[j].y
-                        const distance = Math.sqrt(dx * dx + dy * dy)
-                        
-                        if (distance < 130) {
-                            ctx.strokeStyle = `rgba(0, 245, 255, ${1 - distance / 130})`
-                            ctx.lineWidth = 0.8
-                            ctx.shadowBlur = 0
-                            ctx.beginPath()
-                            ctx.moveTo(particles[i].x, particles[i].y)
-                            ctx.lineTo(particles[j].x, particles[j].y)
-                            ctx.stroke()
-                        }
-                    }
-                }
-            }
-            
-            function animate() {
-                ctx.clearRect(0, 0, width, height)
-                
-                for (let i = 0; i < particles.length; i++) {
-                    particles[i].update()
-                    particles[i].draw()
-                }
-                
-                connectParticles()
-                requestAnimationFrame(animate)
-            }
-            
-            window.addEventListener('resize', () => {
-                resize()
-                particles = []
-                for (let i = 0; i < 120; i++) particles.push(new Particle())
-            })
-            
-            resize()
-            for (let i = 0; i < 120; i++) particles.push(new Particle())
-            animate()
-        }
-        
-        // Scroll fade-in animation
-        function initScrollAnimations() {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible')
-                    }
-                })
-            }, { threshold: 0.15 })
-            
-            document.querySelectorAll('.fade-in').forEach(el => {
-                // We will add the class dynamically to sections
-                observer.observe(el)
-            })
-            
-            // Apply fade-in to all major sections
-            const sections = document.querySelectorAll('section')
-            sections.forEach(section => {
-                if (!section.classList.contains('fade-in')) {
-                    section.classList.add('fade-in')
-                    observer.observe(section)
-                }
-            })
-        }
-        
-        // Simple smooth navigation
-        function navigateToSection(id) {
-            const el = document.getElementById(id)
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth' })
-            }
-        }
-        
-        // Mobile menu
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobile-menu')
-            menu.classList.toggle('hidden')
-        }
-        
-        // Dark / Light toggle (demo only)
-        function toggleDarkMode() {
-            // Already dark by default - this just gives a fun flash
-            const body = document.body
-            body.style.transitionDuration = '600ms'
-            body.style.filter = 'invert(1) hue-rotate(180deg)'
-            setTimeout(() => {
-                body.style.filter = 'none'
-                body.style.transitionDuration = '150ms'
-            }, 400)
-        }
-        
-        // Demo canvas simulation
-        let demoInterval = null
-        let episode = 0
-        let totalReward = 0
-        
-        function runDemo(mode) {
-            const canvas = document.getElementById('demo-canvas')
-            const ctx = canvas.getContext('2d')
-            const status = document.getElementById('demo-status')
-            const rewardEl = document.getElementById('avg-reward')
-            const episodeEl = document.getElementById('episode-count')
-            
-            clearInterval(demoInterval)
-            
-            episode = 0
-            totalReward = 0
-            
-            let x = 380   // cart position
-            let poleAngle = 0
-            let velocity = 0
-            
-            status.textContent = mode === 'online' ? '🔴 LIVE INTERACTION' : '📦 OFFLINE MODE'
-            status.style.color = mode === 'online' ? '#10b981' : '#22d3ee'
-            
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height)
-                
-                // Background grid
-                ctx.strokeStyle = '#334155'
-                ctx.lineWidth = 1
-                for (let i = 40; i < canvas.width; i += 40) {
-                    ctx.beginPath()
-                    ctx.moveTo(i, 0)
-                    ctx.lineTo(i, canvas.height)
-                    ctx.stroke()
-                }
-                for (let i = 40; i < canvas.height; i += 40) {
-                    ctx.beginPath()
-                    ctx.moveTo(0, i)
-                    ctx.lineTo(canvas.width, i)
-                    ctx.stroke()
-                }
-                
-                // Cart
-                ctx.fillStyle = '#64748b'
-                ctx.fillRect(x - 40, 240, 80, 30)
-                
-                // Pole
-                ctx.save()
-                ctx.translate(x, 255)
-                ctx.rotate(poleAngle)
-                ctx.fillStyle = mode === 'online' ? '#10b981' : '#22d3ee'
-                ctx.fillRect(-8, -8, 16, 160)
-                ctx.restore()
-                
-                // Base track
-                ctx.fillStyle = '#1e2937'
-                ctx.fillRect(30, 265, canvas.width - 60, 12)
-                
-                // Fake reward bar
-                const rewardBarWidth = (totalReward / (episode + 10)) * 300
-                ctx.fillStyle = '#67e8f9'
-                ctx.fillRect(250, 30, rewardBarWidth, 14)
-                ctx.fillStyle = '#fff'
-                ctx.font = '500 13px monospace'
-                ctx.fillText('Cumulative Reward', 250, 22)
-            }
-            
-            demoInterval = setInterval(() => {
-                episode++
-                episodeEl.textContent = episode
-                
-                // Simulate physics
-                if (mode === 'online') {
-                    // More chaotic = online
-                    velocity += (Math.random() * 4 - 2)
-                    poleAngle += velocity * 0.03
-                    x += velocity * 2.8
-                } else {
-                    // More stable but lower reward = offline
-                    velocity *= 0.92
-                    poleAngle += velocity * 0.015
-                    x += velocity * 1.2
-                    totalReward += Math.random() * 1.8 + 0.8   // conservative reward
-                }
-                
-                // Clamp
-                x = Math.max(80, Math.min(canvas.width - 80, x))
-                poleAngle = Math.max(-1.2, Math.min(1.2, poleAngle))
-                
-                totalReward += mode === 'online' ? (Math.random() * 4) : (Math.random() * 2.2)
-                rewardEl.textContent = totalReward.toFixed(0)
-                
-                draw()
-                
-                if (episode > 80) {
-                    clearInterval(demoInterval)
-                    document.getElementById('demo-explain').innerHTML = mode === 'online' 
-                        ? '✅ Online RL reached high reward but risked instability!' 
-                        : '✅ Offline RL was safer but plateaued earlier — classic trade-off!'
-                }
-            }, 32)
-            
-            draw()
-        }
-        
-        function resetDemo() {
-            clearInterval(demoInterval)
-            const canvas = document.getElementById('demo-canvas')
-            const ctx = canvas.getContext('2d')
-            ctx.clearRect(0, 0, canvas.width, canvas.height)
-            document.getElementById('episode-count').textContent = '0'
-            document.getElementById('avg-reward').textContent = '—'
-            document.getElementById('demo-status').textContent = 'Ready'
-            document.getElementById('demo-explain').innerHTML = 'Click a button above to simulate. Online RL explores freely. Offline RL is constrained to the dataset — safer but potentially sub-optimal.'
-        }
-        
-        // Algorithm modal
-        function showAlgorithmDetail(n) {
-            const modal = document.getElementById('modal')
-            const content = document.getElementById('modal-content')
-            
-            const algorithms = [
-                {
-                    title: "BCQ — Batch-Constrained Q-learning",
-                    html: `<h2 class="text-4xl font-semibold mb-6">Batch-Constrained Q-learning (2018)</h2>
-                    <p class="text-cyan-400 font-medium">Key innovation: constrain the policy to stay inside the support of the data</p>
-                    <div class="my-8 bg-black/50 p-6 rounded-2xl text-sm font-mono">π(a|s) = argmax_{a ∈ A_μ(s)} Q(s,a)</div>
-                    <p>Uses a generative model (VAE) to sample only plausible actions. First algorithm that reliably outperformed simple behavioral cloning on continuous control tasks.</p>`
-                },
-                {
-                    title: "CQL — Conservative Q-Learning",
-                    html: `<h2 class="text-4xl font-semibold mb-6">Conservative Q-Learning (2020)</h2>
-                    <p class="text-purple-400 font-medium">Theoretical guarantee: learned Q is a lower bound on the true value</p>
-                    <div class="my-8 flex justify-center"><span class="math block">min_θ [ E_{(s,a)∼D} [Q_θ(s,a)] − α ⋅ E_{(s,a)∼μ} [Q_θ(s,a)] ]</span></div>
-                    <p>Adds a regularization term that penalizes Q-values for actions not seen in the dataset. Became the de-facto baseline for offline RL.</p>`
-                },
-                {
-                    title: "BEAR &amp; Modern Diffusion Policies",
-                    html: `<h2 class="text-4xl font-semibold mb-6">BEAR + Diffusion-RL (2019–2023)</h2>
-                    <p class="text-pink-400 font-medium">Bootstrapping Error Accumulation Reduction + modern generative policies</p>
-                    <p class="mt-6">BEAR uses adversarial training to minimize bootstrapping error.<br>Latest diffusion policies treat action generation as a denoising process — extremely powerful for high-dimensional offline control.</p>`
-                }
-            ]
-            
-            content.innerHTML = algorithms[n].html
-            modal.style.display = 'flex'
-            renderMath() // re-render any new math
-        }
-        
-        function hideModal() {
-            document.getElementById('modal').style.display = 'none'
-        }
-        
-        // Quiz data
-        let currentQuestion = 0
-        let score = 0
-        
-        const quizQuestions = [
-            {
-                q: "What is the biggest risk in offline RL?",
-                options: [
-                    "The agent will explore too much",
-                    "Distributional shift and overestimation on OOD actions",
-                    "The environment changes too fast",
-                    "It requires too much compute"
-                ],
-                correct: 1
-            },
-            {
-                q: "Which algorithm adds a conservatism penalty to Q-values?",
-                options: ["BCQ", "CQL", "DQN", "PPO"],
-                correct: 1
-            },
-            {
-                q: "Offline RL is also known as…",
-                options: ["Online RL", "Batch RL", "Model-free RL", "Imitation Learning only"],
-                correct: 1
-            },
-            {
-                q: "Why is offline RL safer than online RL?",
-                options: ["It never touches the real environment", "It uses more data", "It has better exploration", "It runs faster"],
-                correct: 0
-            }
-        ]
-        
-        function startQuiz() {
-            currentQuestion = 0
-            score = 0
-            showQuestion()
-        }
-        
-        function showQuestion() {
-            const container = document.getElementById('quiz-container')
-            const qEl = document.getElementById('question-text')
-            const optionsEl = document.getElementById('options')
-            const nextBtn = document.getElementById('next-btn')
-            
-            qEl.textContent = quizQuestions[currentQuestion].q
-            optionsEl.innerHTML = ''
-            
-            quizQuestions[currentQuestion].options.forEach((option, i) => {
-                const btn = document.createElement('button')
-                btn.className = "w-full text-left px-6 py-6 bg-white/5 hover:bg-white/10 rounded-3xl text-xl flex justify-between items-center"
-                btn.innerHTML = `
-                    ${option}
-                    <span class="text-xs px-4 h-8 flex items-center bg-white/10 rounded-3xl">select</span>
-                `
-                btn.onclick = () => {
-                    if (i === quizQuestions[currentQuestion].correct) {
-                        score++
-                        btn.style.backgroundColor = '#67e8f9'
-                        btn.style.color = '#0f172a'
-                    } else {
-                        btn.style.backgroundColor = '#f43f5e'
-                    }
-                    // Disable all buttons
-                    Array.from(optionsEl.children).forEach(b => b.onclick = null)
-                    nextBtn.classList.remove('hidden')
-                }
-                optionsEl.appendChild(btn)
-            })
-            
-            nextBtn.classList.add('hidden')
-        }
-        
-        function nextQuestion() {
-            currentQuestion++
-            if (currentQuestion >= quizQuestions.length) {
-                // Show final score
-                const container = document.getElementById('quiz-container')
-                container.innerHTML = `
-                    <h3 class="text-5xl font-semibold mb-8 text-center">Quiz Complete!</h3>
-                    <div class="text-center">
-                        <div class="text-8xl font-bold text-cyan-400 mb-4">${score}/${quizQuestions.length}</div>
-                        <p class="text-2xl">You understand Offline RL!</p>
-                        <button onclick="location.reload()" class="mt-12 px-10 py-6 bg-white text-black text-2xl rounded-3xl font-semibold">Restart the whole page</button>
-                    </div>
-                `
-                return
-            }
-            showQuestion()
-        }
-        
-        // Download the entire HTML (offline save)
-        function downloadHTML() {
-            const htmlContent = document.documentElement.outerHTML
-            const blob = new Blob([htmlContent], { type: 'text/html' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'OfflineRL_Interactive_Guide.html'
-            a.click()
-            URL.revokeObjectURL(url)
-        }
-        
-        // Main initialization
-        window.onload = function () {
-            initTailwind().config({ darkMode: 'class' })
-            initParticles()
-            renderMath()
-            initScrollAnimations()
-            startQuiz() // pre-load quiz
-            
-            console.log('%c✅ Offline RL Interactive HTML loaded successfully! Fully animated, interactive, and offline-ready.', 'color:#22d3ee; font-size:13px; font-family:monospace')
-        }
-    </script>
+<!-- ===== HISTORY ===== -->
+<section id="history">
+  <div class="fade-in">
+    <div class="section-label">Background</div>
+    <h2>A Brief History</h2>
+    <p>Offline RL didn't emerge overnight — it evolved from decades of research in batch learning, approximate dynamic programming, and eventually deep RL.</p>
+  </div>
+  <div class="timeline fade-in">
+    <div class="timeline-item">
+      <div class="timeline-dot">90s</div>
+      <div class="timeline-content">
+        <div class="timeline-year">Early 1990s</div>
+        <h4>Fitted Value Iteration & Batch RL Origins</h4>
+        <p>Ernst, Lagoudakis, and Parr formalize <strong>Batch Reinforcement Learning</strong>. Fitted Q-Iteration (FQI) applies supervised regression to approximate Q-values from a fixed dataset.</p>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot">00s</div>
+      <div class="timeline-content">
+        <div class="timeline-year">2000s</div>
+        <h4>Neural Fitted Q-Iteration & LSTD</h4>
+        <p>Neural networks replace linear function approximators. Least-Squares TD (LSTD) provides stable off-policy evaluation. The field recognizes the distribution shift problem more concretely.</p>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot">18</div>
+      <div class="timeline-content">
+        <div class="timeline-year">2018–2019</div>
+        <h4>Deep Offline RL — The Problem Becomes Clear</h4>
+        <p>Fujimoto et al. demonstrate that naively applying deep RL off-policy (like TD3, SAC) to static datasets catastrophically fails due to <strong>extrapolation error</strong>. BCQ (2019) is the first deep offline RL algorithm to explicitly address this.</p>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot">20</div>
+      <div class="timeline-content">
+        <div class="timeline-year">2020–2021</div>
+        <h4>Modern Offline RL — CQL, BEAR, IQL</h4>
+        <p>A wave of principled algorithms: Conservative Q-Learning (CQL), BEAR, TD3+BC, and Implicit Q-Learning (IQL). Levine et al. publish a comprehensive survey formalizing the offline RL problem. D4RL benchmark introduced.</p>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot">22+</div>
+      <div class="timeline-content">
+        <div class="timeline-year">2022–Present</div>
+        <h4>Transformers, Foundation Models & RLHF</h4>
+        <p>Decision Transformer treats offline RL as sequence modeling. RLHF uses offline RL ideas to align LLMs. Foundation models for control emerge. Offline-to-online fine-tuning becomes a key research direction.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PROBLEM SETUP ===== -->
+<section id="setup">
+  <div class="fade-in">
+    <div class="section-label">Formalism</div>
+    <h2>Problem Setup</h2>
+    <p>Offline RL is grounded in the standard MDP framework, with one crucial difference: the agent has no access to the environment at training time.</p>
+  </div>
+
+  <div class="card fade-in" style="margin-bottom:1.5rem;">
+    <h3>Markov Decision Process (MDP)</h3>
+    <div class="card-grid-3">
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;">
+        <div class="badge badge-blue" style="margin-bottom:8px;">𝒮</div>
+        <h4>State Space</h4>
+        <p style="font-size:14px;">Set of all possible world states. Sensor readings, positions, inventory levels.</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;">
+        <div class="badge badge-green" style="margin-bottom:8px;">𝒜</div>
+        <h4>Action Space</h4>
+        <p style="font-size:14px;">Set of agent actions. Continuous (torques) or discrete (move left/right).</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:1rem;">
+        <div class="badge badge-amber" style="margin-bottom:8px;">T, R</div>
+        <h4>Dynamics & Reward</h4>
+        <p style="font-size:14px;"><strong>T(s'|s,a)</strong> transition probability. <strong>R(s,a,s')</strong> immediate reward signal.</p>
+      </div>
+    </div>
+    <div style="margin-top:1rem;background:var(--surface2);border-radius:8px;padding:1rem;">
+      <h4 style="margin-bottom:6px;">Goal: Maximize Expected Return</h4>
+      <div class="math-box">π* = argmax<sub>π</sub> 𝔼<sub>τ~π</sub> [ Σ<sub>t=0</sub><sup>∞</sup> γ<sup>t</sup> · <em>r</em>(s<sub>t</sub>, a<sub>t</sub>) ]</div>
+      <p style="font-size:13px;margin-top:8px;">where γ ∈ [0,1) is the discount factor and τ is a trajectory sampled under policy π.</p>
+    </div>
+  </div>
+
+  <div class="fade-in">
+    <h3>The Offline Dataset</h3>
+    <p>Instead of interacting with the environment, we have access only to a fixed dataset collected by some <strong>behavior policy</strong> β(a|s):</p>
+    <div class="math-box" style="margin:1rem 0;">𝒟 = { (s<sub>i</sub>, a<sub>i</sub>, r<sub>i</sub>, s'<sub>i</sub>) }<sub>i=1</sub><sup>N</sup> &nbsp;&nbsp; where &nbsp; a<sub>i</sub> ~ β(·|s<sub>i</sub>)</div>
+
+    <div class="flow-diagram">
+      <p style="text-align:center;font-weight:600;margin-bottom:1.5rem;font-size:15px;">Data Collection → Offline Training → Deployment</p>
+      <div class="flow-row" style="margin-bottom:1rem;">
+        <div class="flow-node blue">
+          <div class="fn-label">Environment</div>
+          <div class="fn-sub">Real / Simulator</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node amber">
+          <div class="fn-label">Behavior Policy β</div>
+          <div class="fn-sub">Human / Scripted / Any</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="background:#fff3bf;border-color:#ffd43b;">
+          <div class="fn-label">Dataset 𝒟</div>
+          <div class="fn-sub">{s,a,r,s'} × N</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:20px;color:var(--text3);margin:0.5rem 0;">↓</div>
+      <div class="flow-row" style="margin-bottom:1rem;">
+        <div class="flow-node purple">
+          <div class="fn-label">Offline RL Algorithm</div>
+          <div class="fn-sub">CQL / BCQ / IQL / ...</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node green">
+          <div class="fn-label">Learned Policy π</div>
+          <div class="fn-sub">No env queries!</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:20px;color:var(--text3);margin:0.5rem 0;">↓</div>
+      <div class="flow-row">
+        <div class="flow-node blue">
+          <div class="fn-label">Deployment</div>
+          <div class="fn-sub">Real environment</div>
+        </div>
+      </div>
+      <div class="flow-data" style="margin-top:1rem;">⚠️ The learned policy π may never query the environment during training</div>
+    </div>
+  </div>
+
+  <div class="card fade-in" style="margin-top:1.5rem;">
+    <h3>Dataset Types in Practice</h3>
+    <div class="card-grid-3">
+      <div style="text-align:center;padding:0.75rem;background:var(--surface2);border-radius:8px;">
+        <div style="font-size:1.5rem;margin-bottom:6px;">🎯</div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Expert Data</div>
+        <div style="font-size:12px;color:var(--text3);">High quality, near-optimal. Behavior cloning works. Small distribution.</div>
+      </div>
+      <div style="text-align:center;padding:0.75rem;background:var(--surface2);border-radius:8px;">
+        <div style="font-size:1.5rem;margin-bottom:6px;">🔀</div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Mixed Data</div>
+        <div style="font-size:12px;color:var(--text3);">Expert + random. Challenging but realistic. Wide coverage.</div>
+      </div>
+      <div style="text-align:center;padding:0.75rem;background:var(--surface2);border-radius:8px;">
+        <div style="font-size:1.5rem;margin-bottom:6px;">🎲</div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Random / Suboptimal</div>
+        <div style="font-size:12px;color:var(--text3);">Wide but low quality. Requires strong credit assignment.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CHALLENGES ===== -->
+<section id="challenges">
+  <div class="fade-in">
+    <div class="section-label">The Hard Part</div>
+    <h2>Core Challenges</h2>
+    <p>Offline RL is deceptively difficult. The same algorithms that work online can catastrophically fail offline — and here's exactly why.</p>
+  </div>
+
+  <div class="challenge-card fade-in">
+    <div class="challenge-title">
+      <div class="challenge-icon" style="background:#ffe3e3;">🌊</div>
+      <h3 style="margin:0;">Distributional Shift</h3>
+      <span class="badge badge-red">Critical</span>
+    </div>
+    <p>The learned policy π may induce a <strong>different state-action distribution</strong> than the behavior policy β that collected the data. The Q-function was trained on (s,a) pairs from β's distribution, but at test time we query it at points π might visit — which could be far from the training distribution.</p>
+    <div style="background:var(--surface2);border-radius:8px;padding:1rem;margin-top:1rem;">
+      <div class="math-box">d<sup>π</sup>(s,a) ≠ d<sup>β</sup>(s,a) &nbsp;→&nbsp; Trained Q may be <em>unreliable</em> on π's trajectory</div>
+    </div>
+  </div>
+
+  <div class="challenge-card fade-in">
+    <div class="challenge-title">
+      <div class="challenge-icon" style="background:#fff3bf;">📈</div>
+      <h3 style="margin:0;">Extrapolation Error & OOD Actions</h3>
+      <span class="badge badge-amber">Severe</span>
+    </div>
+    <p>Q-networks trained with Bellman backups can <strong>overestimate</strong> Q-values for out-of-distribution (OOD) actions — actions not seen in the dataset. Policy improvement greedily selects high-Q actions, which may be exactly the OOD actions with erroneously high estimated values.</p>
+    <p>This creates a <strong>deadly feedback loop</strong>: high Q-estimates → policy takes OOD actions → Bellman targets use these overestimated values → Q values diverge.</p>
+  </div>
+
+  <!-- Interactive OOD Demo -->
+  <div class="demo-container fade-in">
+    <h3 style="margin-bottom:0.5rem;">🔬 Interactive: OOD Extrapolation Demo</h3>
+    <p style="font-size:14px;margin-bottom:1rem;">The grid below shows a 1D action space. <strong>Blue cells</strong> = actions in the dataset. <strong>Red cells</strong> = OOD actions with overestimated Q-values. Drag the slider to see how a greedy policy gets seduced by OOD actions.</p>
+    <div class="demo-canvas-wrap">
+      <canvas id="oodCanvas" width="840" height="180" style="width:100%;max-width:840px;border-radius:8px;background:#f7f6f2;"></canvas>
+    </div>
+    <div class="demo-controls">
+      <label>
+        <span>Extrapolation severity (how much Q overestimates OOD actions)</span>
+        <span id="extrapVal" style="color:var(--accent);font-weight:700;">Medium</span>
+      </label>
+      <input type="range" id="extrapSlider" min="0" max="100" value="50">
+      <label>
+        <span>Dataset coverage (% of action space observed)</span>
+        <span id="coverageVal" style="color:var(--green);font-weight:700;">40%</span>
+      </label>
+      <input type="range" id="coverageSlider" min="10" max="90" value="40">
+    </div>
+    <div class="demo-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b5bdb;"></div><span>In-distribution action</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e03131;"></div><span>OOD action (overestimated Q)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59f00;width:16px;height:3px;border-radius:2px;"></div><span>True Q-value</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e03131;width:16px;height:3px;border-radius:2px;"></div><span>Estimated Q-value (greedy selects ★)</span></div>
+    </div>
+    <div id="oodWarning" style="margin-top:1rem;padding:10px 14px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:8px;font-size:13px;color:#b51f1f;display:none;">
+      ⚠️ <strong>Greedy policy now selects an OOD action!</strong> The policy is exploiting the overestimated Q-value of an action that was never seen in the dataset.
+    </div>
+  </div>
+
+  <div class="challenge-card fade-in">
+    <div class="challenge-title">
+      <div class="challenge-icon" style="background:#f3d9fa;">🔁</div>
+      <h3 style="margin:0;">Bootstrapping Error Accumulation</h3>
+      <span class="badge badge-purple">Compounding</span>
+    </div>
+    <p>Temporal Difference learning bootstraps — it uses Q̂(s',a') to update Q̂(s,a). In offline settings, the target Q̂(s',a') may be evaluated at an OOD (s',a') pair, producing <strong>garbage targets</strong>. These errors accumulate across multi-step backups and can diverge.</p>
+    <div style="background:var(--surface2);border-radius:8px;padding:1rem;margin-top:1rem;font-size:14px;">
+      <strong>Bellman Backup:</strong>
+      <div class="math-box" style="margin-top:8px;">Q(s,a) ← r + γ · max<sub>a'</sub> Q(s', a') &nbsp;&nbsp; ← <em>a' might be OOD!</em></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ALGORITHMS ===== -->
+<section id="algorithms">
+  <div class="fade-in">
+    <div class="section-label">Methods</div>
+    <h2>Algorithms</h2>
+    <p>Offline RL algorithms differ in how they address extrapolation error — through behavior cloning, conservative value estimation, policy constraints, or a mix.</p>
+  </div>
+
+  <!-- BC -->
+  <div class="algo-section fade-in">
+    <div class="algo-header">
+      <div class="algo-num" style="background:#5c7cfa;">A</div>
+      <h3 style="margin:0;">Behavior Cloning (BC)</h3>
+      <span class="badge badge-blue">Baseline</span>
+    </div>
+    <div class="card">
+      <p>The simplest approach: <strong>treat it as supervised learning</strong>. Clone the behavior policy by maximizing log-likelihood of actions in the dataset. Ignores the reward signal entirely.</p>
+      <div class="math-box">min<sub>π</sub> 𝔼<sub>(s,a)~𝒟</sub> [ -log π(a|s) ]</div>
+      <p style="font-size:14px;margin-top:1rem;"><strong>Strengths:</strong> Simple, stable, no OOD issue (by design). <strong>Weaknesses:</strong> Cannot improve beyond the behavior policy. Compounding errors in sequential settings (DAgger problem).</p>
+      <div class="pseudo-block">
+<span class="kw">for</span> each (s, a, r, s') in 𝒟:
+    loss = <span class="fn">cross_entropy</span>(π(s), a)  <span class="cm"># or MSE for continuous</span>
+    <span class="fn">gradient_step</span>(loss)
+<span class="cm"># Note: reward r is completely ignored!</span></div>
+    </div>
+  </div>
+
+  <!-- Value-Based -->
+  <div class="algo-section fade-in">
+    <div class="algo-header">
+      <div class="algo-num" style="background:#2f9e44;">B</div>
+      <h3 style="margin:0;">Value-Based Methods</h3>
+    </div>
+    <div class="algo-grid">
+      <div class="algo-card">
+        <div class="algo-card-header">
+          <div class="algo-name">Conservative Q-Learning (CQL)</div>
+          <span class="algo-tag badge-green" style="background:#d3f9d8;color:#1e6f30;">CQL</span>
+        </div>
+        <p class="algo-desc">Penalizes Q-values on OOD (state, action) pairs by adding a regularization term that <em>lowers</em> Q-values for actions not in the dataset, while raising them for in-distribution actions.</p>
+        <div class="algo-key">
+          <strong>Key idea:</strong> Learn a <em>conservative</em> Q-function such that Q(s,a) is a lower-bound on the true Q<sup>π</sup>(s,a) for π, preventing overestimation.
+        </div>
+        <div class="math-box" style="margin-top:1rem;font-size:12px;">ℒ<sub>CQL</sub> = α · [𝔼<sub>a~μ</sub>[Q(s,a)] - 𝔼<sub>a~β</sub>[Q(s,a)]] + ℒ<sub>TD</sub></div>
+        <!-- CQL visualization -->
+        <div style="margin-top:1rem;">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Q-value estimates: Standard vs CQL</p>
+          <div class="cql-vis">
+            <div class="cql-panel">
+              <h5 style="color:var(--red);">Standard TD ❌</h5>
+              <div class="q-bar-container">
+                <div class="q-bar-row"><span class="q-bar-label">In-dist a₁</span><div class="q-bar-track"><div class="q-bar-fill" style="width:55%;background:#74c7ec;"></div></div></div>
+                <div class="q-bar-row"><span class="q-bar-label">In-dist a₂</span><div class="q-bar-track"><div class="q-bar-fill" style="width:70%;background:#74c7ec;"></div></div></div>
+                <div class="q-bar-row"><span class="q-bar-label" style="color:var(--red);">OOD a₃</span><div class="q-bar-track"><div class="q-bar-fill" style="width:95%;background:#f38ba8;"></div></div></div>
+                <div class="q-bar-row"><span class="q-bar-label" style="color:var(--red);">OOD a₄</span><div class="q-bar-track"><div class="q-bar-fill" style="width:88%;background:#f38ba8;"></div></div></div>
+              </div>
+            </div>
+            <div class="cql-panel">
+              <h5 style="color:var(--green);">CQL ✓</h5>
+              <div class="q-bar-container">
+                <div class="q-bar-row"><span class="q-bar-label">In-dist a₁</span><div class="q-bar-track"><div class="q-bar-fill" style="width:52%;background:#a6e3a1;"></div></div></div>
+                <div class="q-bar-row"><span class="q-bar-label">In-dist a₂</span><div class="q-bar-track"><div class="q-bar-fill" style="width:66%;background:#a6e3a1;"></div></div></div>
+                <div class="q-bar-row"><span class="q-bar-label" style="color:var(--green);">OOD a₃</span><div class="q-bar-track"><div class="q-bar-fill" style="width:28%;background:#45475a;"></div></div></div>
+                <div class="q-bar-row"><span class="q-bar-label" style="color:var(--green);">OOD a₄</span><div class="q-bar-track"><div class="q-bar-fill" style="width:22%;background:#45475a;"></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="algo-card">
+        <div class="algo-card-header">
+          <div class="algo-name">Fitted Q-Iteration (FQI)</div>
+          <span class="algo-tag badge-blue">Classic</span>
+        </div>
+        <p class="algo-desc">Repeatedly regresses a Q-function onto Bellman targets computed from the fixed dataset. A foundational algorithm that modern methods build upon.</p>
+        <div class="algo-key">
+          <strong>Key idea:</strong> Treat each Bellman backup as a supervised regression problem over the fixed dataset. Iterate until convergence.
+        </div>
+        <div class="pseudo-block">
+<span class="cm"># Initialize Q arbitrarily</span>
+<span class="kw">for</span> k = <span class="num">1</span> to K:
+    y_i = r_i + γ·max<sub>a'</sub> Q<sub>k</sub>(s'_i, a')
+    Q<sub>k+1</sub> ← <span class="fn">regress</span>(Q, {(s_i,a_i) → y_i})
+<span class="cm"># Policy: π(s) = argmax_a Q_K(s,a)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Policy Constraint -->
+  <div class="algo-section fade-in">
+    <div class="algo-header">
+      <div class="algo-num" style="background:#7048e8;">C</div>
+      <h3 style="margin:0;">Policy Constraint Methods</h3>
+    </div>
+    <div class="algo-grid">
+      <div class="algo-card">
+        <div class="algo-card-header">
+          <div class="algo-name">BCQ</div>
+          <span class="algo-tag badge-purple">Batch-Constrained Q</span>
+        </div>
+        <p class="algo-desc">Fujimoto et al. (2019). Restricts the policy to only select actions <em>similar</em> to those in the dataset, using a generative model (VAE) to model the behavior policy distribution.</p>
+        <div class="algo-key">
+          <strong>Key idea:</strong> Generate candidate actions from a VAE trained on 𝒟, then perturb slightly, then select the highest-Q candidate. Never queries OOD actions by construction.
+        </div>
+        <div class="math-box" style="font-size:12px;">π(s) = argmax<sub>a∈G(s)</sub> Q(s,a) &nbsp; where G(s) ⊆ support(β(·|s))</div>
+      </div>
+
+      <div class="algo-card">
+        <div class="algo-card-header">
+          <div class="algo-name">BEAR</div>
+          <span class="algo-tag badge-purple">MMD Constraint</span>
+        </div>
+        <p class="algo-desc">Kumar et al. (2019). Instead of hard support constraints, BEAR uses <strong>Maximum Mean Discrepancy (MMD)</strong> to softly constrain the learned policy to stay close to the behavior policy in distribution.</p>
+        <div class="algo-key">
+          <strong>Key idea:</strong> Add a kernel-based MMD penalty between the learned policy π and behavior policy β. More flexible than BCQ — allows some deviation from data distribution.
+        </div>
+        <div class="math-box" style="font-size:12px;">min<sub>π</sub> -J(π) + λ · MMD(π(·|s), β(·|s))</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actor-Critic -->
+  <div class="algo-section fade-in">
+    <div class="algo-header">
+      <div class="algo-num" style="background:#e67700;">D</div>
+      <h3 style="margin:0;">Actor-Critic Offline Methods</h3>
+    </div>
+    <div class="algo-grid">
+      <div class="algo-card">
+        <div class="algo-card-header">
+          <div class="algo-name">TD3+BC</div>
+          <span class="algo-tag badge-amber">Simple & Strong</span>
+        </div>
+        <p class="algo-desc">Fujimoto & Gu (2021). Surprisingly simple: add a behavior cloning term to the TD3 actor loss. The BC term prevents the policy from deviating too far from the data distribution.</p>
+        <div class="algo-key">
+          <strong>Key idea:</strong> Normalize Q-values and add a weighted BC term. The α hyperparameter balances exploitation (Q) vs conservatism (BC).
+        </div>
+        <div class="math-box" style="font-size:12px;">π = argmax<sub>a</sub> [ λ·Q(s,a) - (a - π<sub>β</sub>(s))² ]</div>
+        <p style="font-size:12px;color:var(--text3);margin-top:8px;">where λ = α / (1/N · Σ|Q(s,a)|) normalizes Q magnitudes.</p>
+      </div>
+
+      <div class="algo-card">
+        <div class="algo-card-header">
+          <div class="algo-name">IQL</div>
+          <span class="algo-tag badge-amber">Implicit Q-Learning</span>
+        </div>
+        <p class="algo-desc">Kostrikov et al. (2021). Avoids querying OOD actions entirely during training by using <strong>expectile regression</strong> to implicitly optimize for in-sample actions only.</p>
+        <div class="algo-key">
+          <strong>Key idea:</strong> Learn a value function V(s) and advantage A(s,a) without ever evaluating the policy on OOD actions. Extract the policy via advantage-weighted regression.
+        </div>
+        <div class="math-box" style="font-size:12px;">ℒ<sub>V</sub> = 𝔼<sub>(s,a)~𝒟</sub> [L<sub>τ</sub><sup>2</sup>(Q(s,a) - V(s))]
+<br><br>π = argmax<sub>a</sub> 𝔼 [exp(β·A(s,a)) · log π(a|s)]</div>
+        <p style="font-size:12px;color:var(--text3);margin-top:8px;">L<sub>τ</sub> is the asymmetric expectile loss (τ &gt; 0.5 picks upper quantile).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== THEORY ===== -->
+<section id="theory">
+  <div class="fade-in">
+    <div class="section-label">Theoretical Foundations</div>
+    <h2>Theory</h2>
+    <p>Understanding offline RL theoretically requires analyzing how distributional mismatch propagates through Bellman backups and corrupts policy evaluation and improvement.</p>
+  </div>
+
+  <div class="theory-block fade-in">
+    <div class="theory-header" onclick="toggleTheory(this)">
+      <h4>📐 Error Decomposition in Offline Policy Evaluation</h4>
+      <span class="theory-toggle">+</span>
+    </div>
+    <div class="theory-body">
+      <p>The policy evaluation error for offline RL can be decomposed into two terms:</p>
+      <div class="math-box">|V<sup>π</sup>(s) - V̂<sup>π</sup>(s)| ≤ <em>ε<sub>approx</sub></em>/(1-γ) + γ·C<sup>π/β</sup>·<em>ε<sub>data</sub></em>/(1-γ)²</div>
+      <p>where:</p>
+      <ul style="list-style:none;margin:1rem 0;display:flex;flex-direction:column;gap:8px;">
+        <li style="background:var(--surface2);padding:10px 14px;border-radius:8px;font-size:14px;"><strong>ε<sub>approx</sub></strong> — function approximation error of Q̂</li>
+        <li style="background:var(--surface2);padding:10px 14px;border-radius:8px;font-size:14px;"><strong>C<sup>π/β</sup></strong> — concentration coefficient: how much π can deviate from β</li>
+        <li style="background:var(--surface2);padding:10px 14px;border-radius:8px;font-size:14px;"><strong>ε<sub>data</sub></strong> — estimation error from finite dataset samples</li>
+      </ul>
+      <p>The concentration coefficient C<sup>π/β</sup> is defined as the maximum density ratio:</p>
+      <div class="math-box">C<sup>π/β</sup> = max<sub>s,a</sub> d<sup>π</sup>(s,a) / d<sup>β</sup>(s,a)</div>
+      <p>This can be <strong>unbounded</strong> if π visits states not covered by β — this is why offline RL is fundamentally hard. Policy constraint methods aim to keep C<sup>π/β</sup> bounded.</p>
+      <!-- Error decomp visual -->
+      <div class="decomp-bar" id="errorDecomp">
+        <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Error contribution breakdown:</p>
+        <div class="decomp-row">
+          <span class="decomp-label">Approximation error</span>
+          <div class="decomp-track"><div class="decomp-fill" style="width:30%;background:#5c7cfa;"></div></div>
+        </div>
+        <div class="decomp-row">
+          <span class="decomp-label">Distribution shift</span>
+          <div class="decomp-track"><div class="decomp-fill" style="width:65%;background:#e03131;"></div></div>
+        </div>
+        <div class="decomp-row">
+          <span class="decomp-label">Finite-sample noise</span>
+          <div class="decomp-track"><div class="decomp-fill" style="width:20%;background:#f59f00;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block fade-in">
+    <div class="theory-header" onclick="toggleTheory(this)">
+      <h4>🎯 Concentration Coefficients & Coverage</h4>
+      <span class="theory-toggle">+</span>
+    </div>
+    <div class="theory-body">
+      <p>A dataset 𝒟 has <strong>good coverage</strong> of a policy π if the density ratio is bounded:</p>
+      <div class="math-box">C<sup>π/β</sup> = ‖ d<sup>π</sup> / d<sup>β</sup> ‖<sub>∞</sub> &lt; ∞</div>
+      <p>In practice, we can only guarantee this if β has <strong>full support</strong> over the state-action space (every (s,a) has positive probability under β). This is rarely true — hence offline RL is hard.</p>
+      <p>Stronger algorithms (like CQL) achieve <strong>data-dependent bounds</strong> that degrade gracefully with partial coverage:</p>
+      <div class="math-box">V<sup>π*</sup>(s) - V̂<sup>π̂</sup>(s) ≤ O( C<sub>π*/β</sub> · √(1/|𝒟|) )</div>
+      <p>where π* is the optimal policy and π̂ is CQL's learned policy.</p>
+    </div>
+  </div>
+
+  <div class="theory-block fade-in">
+    <div class="theory-header" onclick="toggleTheory(this)">
+      <h4>🔄 Bellman Backup Error Propagation</h4>
+      <span class="theory-toggle">+</span>
+    </div>
+    <div class="theory-body">
+      <p>In standard (online) RL, the Bellman operator 𝒯<sup>π</sup> is a contraction:</p>
+      <div class="math-box">‖ 𝒯<sup>π</sup>Q - 𝒯<sup>π</sup>Q' ‖ ≤ γ ‖ Q - Q' ‖</div>
+      <p>But in offline RL, we approximate 𝒯<sup>π</sup> using the dataset, introducing error. After k Bellman backups, errors accumulate:</p>
+      <div class="math-box">‖ Q<sub>k</sub> - Q<sup>π</sup> ‖ ≤ γ<sup>k</sup>‖ Q<sub>0</sub> - Q<sup>π</sup> ‖ + Σ<sub>t=0</sub><sup>k-1</sup> γ<sup>t</sup> · ε<sub>t</sub></div>
+      <p>where ε<sub>t</sub> is the approximation error at each step. The error geometrically accumulates — for OOD actions, ε<sub>t</sub> can be large, leading to divergence in practice.</p>
+      <p><strong>Key insight:</strong> Single-step methods (like BC) have no bootstrapping errors but cannot generalize beyond the data. Multi-step methods can improve but risk compounding errors.</p>
+    </div>
+  </div>
+
+  <div class="theory-block fade-in">
+    <div class="theory-header" onclick="toggleTheory(this)">
+      <h4>📊 Pessimism Principle & Lower-Bound Guarantees</h4>
+      <span class="theory-toggle">+</span>
+    </div>
+    <div class="theory-body">
+      <p>The <strong>pessimism principle</strong> (Jin et al., 2021; Rashidinejad et al., 2021) provides a principled solution: be pessimistic about uncertain (OOD) state-action pairs.</p>
+      <div class="math-box">Q̂(s,a) = Q̂<sub>MLE</sub>(s,a) - Γ(s,a)</div>
+      <p>where Γ(s,a) is a <strong>uncertainty bonus</strong> (large for OOD pairs). The pessimistic policy:</p>
+      <div class="math-box">π̂ = argmax<sub>π</sub> V̂<sup>π</sup> &nbsp; (with pessimistic Q̂)</div>
+      <p>Under single-policy concentrability, this achieves <strong>near-optimal</strong> performance without requiring full coverage:</p>
+      <div class="math-box">V<sup>π*</sup> - V<sup>π̂</sup> ≤ O( √(C<sup>π*/β</sup> / |𝒟|) )</div>
+      <p>CQL and IQL can be seen as practical realizations of this pessimism principle.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRACTICAL ===== -->
+<section id="practical">
+  <div class="fade-in">
+    <div class="section-label">Engineering</div>
+    <h2>Practical Considerations</h2>
+    <p>Getting offline RL to work in practice requires more than just picking a good algorithm. Dataset quality, evaluation methodology, and hyperparameter sensitivity all matter enormously.</p>
+  </div>
+
+  <div class="practical-grid fade-in">
+    <div class="practical-card">
+      <div class="practical-icon">📊</div>
+      <h3>Dataset Quality</h3>
+      <p style="font-size:14px;">The quality of 𝒟 directly caps what any offline RL algorithm can learn. Key properties:</p>
+      <ul style="list-style:none;margin-top:0.75rem;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>Coverage:</strong> Are relevant state-action pairs represented?</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>Quality:</strong> What fraction are near-optimal transitions?</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>Diversity:</strong> Multiple behavior policies → richer data</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>Size:</strong> Larger datasets → tighter bounds</li>
+      </ul>
+    </div>
+
+    <div class="practical-card">
+      <div class="practical-icon">🔍</div>
+      <h3>Off-Policy Evaluation (OPE)</h3>
+      <p style="font-size:14px;">How do you evaluate your learned policy without deploying it? This is a fundamental research problem (OPE).</p>
+      <ul style="list-style:none;margin-top:0.75rem;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>IS / WIS:</strong> Importance sampling methods</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>DM:</strong> Direct model-based estimation</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>DR / DRaIPS:</strong> Doubly-robust methods</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>FQE:</strong> Fitted Q-Evaluation</li>
+      </ul>
+    </div>
+
+    <div class="practical-card">
+      <div class="practical-icon">⚙️</div>
+      <h3>Hyperparameter Sensitivity</h3>
+      <p style="font-size:14px;">Offline RL algorithms can be brittle to hyperparameter choices:</p>
+      <ul style="list-style:none;margin-top:0.75rem;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>α in CQL:</strong> Too large → over-conservative; too small → OOD issues</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>τ in IQL:</strong> Expectile quantile controls optimism level</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;"><strong>Normalization:</strong> Q-value normalization in TD3+BC is critical</li>
+      </ul>
+    </div>
+
+    <div class="practical-card">
+      <div class="practical-icon">🏋️</div>
+      <h3>Benchmarks (D4RL)</h3>
+      <p style="font-size:14px;">The D4RL benchmark (Fu et al., 2020) is the standard evaluation suite:</p>
+      <ul style="list-style:none;margin-top:0.75rem;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;">Locomotion: HalfCheetah, Hopper, Walker2d</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;">Antmaze: navigation with sparse rewards</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;">Adroit: dexterous manipulation tasks</li>
+        <li style="font-size:13px;color:var(--text2);padding:6px 10px;background:var(--surface2);border-radius:6px;">Kitchen: multi-task manipulation</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Performance comparison -->
+  <div class="card fade-in">
+    <h3>Algorithm Comparison at a Glance</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border2);">
+            <th style="text-align:left;padding:10px 12px;color:var(--text);">Algorithm</th>
+            <th style="text-align:center;padding:10px 12px;color:var(--text);">OOD Handling</th>
+            <th style="text-align:center;padding:10px 12px;color:var(--text);">Complexity</th>
+            <th style="text-align:center;padding:10px 12px;color:var(--text);">Continuous</th>
+            <th style="text-align:center;padding:10px 12px;color:var(--text);">Convergence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 12px;font-weight:600;">BC</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-green">✓ By Design</span></td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-green">Simple</span></td>
+            <td style="text-align:center;padding:10px 12px;">✓</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-green">Stable</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 12px;font-weight:600;">BCQ</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-green">✓ VAE</span></td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-amber">Medium</span></td>
+            <td style="text-align:center;padding:10px 12px;">✓</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-amber">Good</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 12px;font-weight:600;">CQL</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-blue">✓ Penalty</span></td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-amber">Medium</span></td>
+            <td style="text-align:center;padding:10px 12px;">✓</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-blue">Strong</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 12px;font-weight:600;">TD3+BC</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-amber">✓ BC Term</span></td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-green">Simple</span></td>
+            <td style="text-align:center;padding:10px 12px;">✓</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-blue">Strong</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;font-weight:600;">IQL</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-blue">✓ In-sample</span></td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-amber">Medium</span></td>
+            <td style="text-align:center;padding:10px 12px;">✓</td>
+            <td style="text-align:center;padding:10px 12px;"><span class="badge badge-blue">SOTA</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LIMITATIONS ===== -->
+<section id="limitations">
+  <div class="fade-in">
+    <div class="section-label">Honest Assessment</div>
+    <h2>Limitations</h2>
+    <p>Offline RL is powerful but not a silver bullet. Understanding these limitations is crucial for knowing when to use it and what to expect.</p>
+  </div>
+
+  <ul class="limit-list fade-in">
+    <li class="limit-item danger">
+      <div class="li-icon">🚫</div>
+      <div class="li-text">
+        <h4>Bounded by Data Quality — Cannot Recover</h4>
+        <p>If the behavior policy collected suboptimal or irrelevant data, offline RL cannot recover. Unlike online RL, there is no mechanism to seek out better data. Garbage in, garbage out — but often subtly so.</p>
+      </div>
+    </li>
+    <li class="limit-item danger">
+      <div class="li-icon">📉</div>
+      <div class="li-text">
+        <h4>Conservative Policies Under-Perform</h4>
+        <p>The conservatism required to prevent OOD exploitation leads to overly cautious policies. In practice, algorithms like CQL and BCQ are often pessimistic even on tasks where the data is sufficient to learn more aggressively.</p>
+      </div>
+    </li>
+    <li class="limit-item warn">
+      <div class="li-icon">🗺️</div>
+      <div class="li-text">
+        <h4>Hard Exploration Tasks Remain Unsolved</h4>
+        <p>Tasks requiring deep exploration (e.g., Antmaze long-horizon) are extremely challenging offline. Without ever observing successful trajectories in the data, offline RL cannot stitch together a solution from suboptimal fragments.</p>
+      </div>
+    </li>
+    <li class="limit-item warn">
+      <div class="li-icon">🔧</div>
+      <div class="li-text">
+        <h4>Hyperparameter Tuning Without Online Rollouts</h4>
+        <p>Tuning offline RL algorithms is hard because you cannot evaluate the policy directly. OPE methods are noisy and can mislead. This makes model selection and hyperparameter tuning a research problem in itself.</p>
+      </div>
+    </li>
+    <li class="limit-item warn">
+      <div class="li-icon">📐</div>
+      <div class="li-text">
+        <h4>Reward Sparsity & Long Horizons</h4>
+        <p>Sparse rewards and long horizons amplify all the issues above. Credit assignment becomes extremely difficult, and Bellman backup errors accumulate over more steps.</p>
+      </div>
+    </li>
+    <li class="limit-item danger">
+      <div class="li-icon">🎭</div>
+      <div class="li-text">
+        <h4>Distribution Shift at Deployment</h4>
+        <p>Even a successfully trained offline policy may degrade if the deployment environment differs from the one that generated the data (covariate shift). This is the offline RL analogue of train-test mismatch.</p>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- ===== RESEARCH ===== -->
+<section id="research">
+  <div class="fade-in">
+    <div class="section-label">Frontier</div>
+    <h2>Modern Research Directions</h2>
+    <p>Offline RL is an active research area with strong connections to language models, foundation models, and real-world deployment. Here are the most exciting current directions.</p>
+  </div>
+
+  <div class="card-grid fade-in">
+    <div class="research-card c1">
+      <div class="research-tag">Offline → Online</div>
+      <h3>Offline-to-Online RL</h3>
+      <p style="font-size:14px;">Use offline pre-training to initialize a policy, then fine-tune with online interaction. Combining the safety of offline training with the adaptability of online exploration. Methods like IQL, Cal-QL, and PEX tackle this transition.</p>
+      <div style="margin-top:1rem;padding:10px;background:var(--surface2);border-radius:8px;font-size:13px;">
+        <strong>Key challenge:</strong> Avoiding catastrophic forgetting and distribution shift during the offline→online transition.
+      </div>
+    </div>
+
+    <div class="research-card c2">
+      <div class="research-tag">Language Models</div>
+      <h3>RLHF & Offline RL</h3>
+      <p style="font-size:14px;">Reinforcement Learning from Human Feedback (RLHF) — used to align GPT-4, Claude, and Gemini — is fundamentally an offline RL problem. Preference data forms a static dataset; the reward model and policy optimization mirror offline RL concepts.</p>
+      <div style="margin-top:1rem;padding:10px;background:#ebfbee;border-radius:8px;font-size:13px;">
+        <strong>Connection:</strong> DPO (Direct Preference Optimization) can be viewed as offline RL with implicit rewards from human comparisons.
+      </div>
+    </div>
+
+    <div class="research-card c3">
+      <div class="research-tag">Sequence Modeling</div>
+      <h3>Decision Transformer</h3>
+      <p style="font-size:14px;">Chen et al. (2021) reframe offline RL as a conditional sequence modeling problem. Instead of value functions, a GPT-like transformer is trained to predict actions conditioned on return-to-go targets. Surprisingly competitive with value-based methods.</p>
+      <div style="margin-top:1rem;padding:10px;background:#f3d9fa;border-radius:8px;font-size:13px;color:#5530b5;">
+        <strong>Variants:</strong> Gato, Trajectory Transformer, Q-Transformer — scaling this idea to multi-task and multi-domain settings.
+      </div>
+    </div>
+
+    <div class="research-card c4">
+      <div class="research-tag">Foundation Models</div>
+      <h3>Generalist Agents</h3>
+      <p style="font-size:14px;">Large pre-trained models (RT-2, Gato, VPT) are trained on massive multi-task offline datasets and fine-tuned for specific tasks. The bet: enough data diversity enables generalization to novel tasks at deployment.</p>
+      <div style="margin-top:1rem;padding:10px;background:#fff3bf;border-radius:8px;font-size:13px;color:#895600;">
+        <strong>Challenge:</strong> Scaling laws for offline RL are less understood than for language models. Data quality vs quantity tradeoffs remain open.
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in" style="margin-top:1.5rem;background:linear-gradient(135deg,#eef2ff,#f3e8ff);border:1px solid #c5b4f7;">
+    <h3 style="color:#4c3d99;">🔭 Open Problems Worth Your PhD</h3>
+    <div class="card-grid-3" style="margin-top:1rem;">
+      <div style="background:white;border-radius:8px;padding:1rem;border:1px solid #e5dbff;">
+        <div style="font-weight:700;color:#7048e8;font-size:14px;margin-bottom:6px;">Partial Observability</div>
+        <p style="font-size:13px;">Offline RL in POMDPs — the behavior policy may have had access to information not captured in the logged observations.</p>
+      </div>
+      <div style="background:white;border-radius:8px;padding:1rem;border:1px solid #e5dbff;">
+        <div style="font-weight:700;color:#7048e8;font-size:14px;margin-bottom:6px;">Data Augmentation</div>
+        <p style="font-size:13px;">Model-based data augmentation to artificially expand offline datasets (MOPO, MOReL). Tradeoff between model bias and coverage.</p>
+      </div>
+      <div style="background:white;border-radius:8px;padding:1rem;border:1px solid #e5dbff;">
+        <div style="font-weight:700;color:#7048e8;font-size:14px;margin-bottom:6px;">Multi-Task & Few-Shot</div>
+        <p style="font-size:13px;">Meta-offline RL — pre-train on diverse tasks offline, then adapt to new tasks with minimal online interaction.</p>
+      </div>
+      <div style="background:white;border-radius:8px;padding:1rem;border:1px solid #e5dbff;">
+        <div style="font-weight:700;color:#7048e8;font-size:14px;margin-bottom:6px;">Scalable OPE</div>
+        <p style="font-size:13px;">Reliable off-policy evaluation at scale. Current methods have high variance or require strong assumptions.</p>
+      </div>
+      <div style="background:white;border-radius:8px;padding:1rem;border:1px solid #e5dbff;">
+        <div style="font-weight:700;color:#7048e8;font-size:14px;margin-bottom:6px;">Reward Learning</div>
+        <p style="font-size:13px;">Offline RL from unlabeled data or human preferences, without a well-defined reward signal in the dataset.</p>
+      </div>
+      <div style="background:white;border-radius:8px;padding:1rem;border:1px solid #e5dbff;">
+        <div style="font-weight:700;color:#7048e8;font-size:14px;margin-bottom:6px;">Safety Guarantees</div>
+        <p style="font-size:13px;">Constrained offline RL — learning policies that satisfy safety constraints provably, without environment interaction.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:3rem 0 1rem;color:var(--text3);font-size:13px;">
+    <p>Built for researchers & students exploring Offline RL</p>
+    <p style="margin-top:4px;">Key papers: BCQ (Fujimoto 2019) · CQL (Kumar 2020) · IQL (Kostrikov 2021) · DT (Chen 2021) · D4RL (Fu 2020)</p>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ===== PROGRESS BAR =====
+window.addEventListener('scroll', () => {
+  const scrollTop = document.documentElement.scrollTop;
+  const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  const progress = (scrollTop / scrollHeight) * 100;
+  document.getElementById('progress-bar').style.width = progress + '%';
+});
+
+// ===== SCROLL SPY =====
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-links a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const active = document.querySelector(`.nav-links a[href="#${entry.target.id}"]`);
+      if (active) {
+        active.classList.add('active');
+        active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      }
+    }
+  });
+}, { threshold: 0.3, rootMargin: '-60px 0px -40% 0px' });
+sections.forEach(s => observer.observe(s));
+
+// ===== FADE IN ANIMATIONS =====
+const fadeObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) { entry.target.classList.add('visible'); }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+document.querySelectorAll('.fade-in').forEach(el => fadeObserver.observe(el));
+
+// ===== THEORY EXPAND =====
+function toggleTheory(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.theory-toggle');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.classList.toggle('open', !isOpen);
+}
+
+// ===== OOD INTERACTIVE DEMO =====
+const canvas = document.getElementById('oodCanvas');
+const ctx = canvas.getContext('2d');
+let extrapolation = 50, coverage = 40;
+
+document.getElementById('extrapSlider').addEventListener('input', function() {
+  extrapolation = +this.value;
+  const labels = ['None','Low','Medium','High','Extreme'];
+  const idx = Math.floor(extrapolation / 25);
+  document.getElementById('extrapVal').textContent = labels[Math.min(idx, 4)];
+  drawOOD();
+});
+document.getElementById('coverageSlider').addEventListener('input', function() {
+  coverage = +this.value;
+  document.getElementById('coverageVal').textContent = coverage + '%';
+  drawOOD();
+});
+
+function drawOOD() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  
+  const N = 20;
+  const margin = 60, topPad = 40, chartH = 100;
+  const barW = (W - 2 * margin) / N;
+  
+  const inDistCount = Math.round(N * coverage / 100);
+  const inDistStart = Math.floor((N - inDistCount) / 2);
+  
+  const trueQ = [], estQ = [];
+  for (let i = 0; i < N; i++) {
+    const isInDist = i >= inDistStart && i < inDistStart + inDistCount;
+    const base = 0.3 + 0.4 * Math.sin((i / N) * Math.PI * 1.5) + 0.1 * Math.random() * 0;
+    trueQ.push(base);
+    if (isInDist) {
+      estQ.push(base + 0.05 * (Math.random() - 0.5));
+    } else {
+      const boost = (extrapolation / 100) * 0.6 * (0.7 + 0.6 * Math.random() * 0);
+      estQ.push(Math.min(base + boost, 1.0));
+    }
+  }
+  
+  const maxEstQ = Math.max(...estQ);
+  let greedyIdx = estQ.indexOf(maxEstQ);
+  const greedyInDist = greedyIdx >= inDistStart && greedyIdx < inDistStart + inDistCount;
+  
+  // Draw bars
+  for (let i = 0; i < N; i++) {
+    const isInDist = i >= inDistStart && i < inDistStart + inDistCount;
+    const x = margin + i * barW;
+    const barH = estQ[i] * chartH;
+    
+    ctx.fillStyle = isInDist ? 'rgba(59,91,219,0.15)' : 'rgba(224,49,49,0.12)';
+    ctx.fillRect(x + 2, topPad, barW - 4, chartH);
+    
+    ctx.fillStyle = isInDist ? '#3b5bdb' : '#e03131';
+    ctx.fillRect(x + 3, topPad + chartH - barH, barW - 6, barH);
+    
+    if (i === greedyIdx) {
+      ctx.fillStyle = '#f59f00';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('★', x + barW / 2, topPad + chartH - barH - 6);
+    }
+  }
+  
+  // True Q line
+  ctx.beginPath();
+  ctx.strokeStyle = '#f59f00';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  for (let i = 0; i < N; i++) {
+    const x = margin + i * barW + barW / 2;
+    const y = topPad + chartH - trueQ[i] * chartH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // Estimated Q line
+  ctx.beginPath();
+  ctx.strokeStyle = '#e03131';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([2, 2]);
+  for (let i = 0; i < N; i++) {
+    const isInDist = i >= inDistStart && i < inDistStart + inDistCount;
+    if (!isInDist) {
+      const x = margin + i * barW + barW / 2;
+      const y = topPad + chartH - estQ[i] * chartH;
+      if (i === 0 || (i > 0 && (i-1 >= inDistStart && i-1 < inDistStart + inDistCount))) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // Labels
+  ctx.fillStyle = '#5a574f';
+  ctx.font = '11px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Action index (1D action space)', W / 2, H - 8);
+  
+  ctx.save();
+  ctx.translate(20, H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText('Q-value', 0, 0);
+  ctx.restore();
+  
+  // Dataset region bracket
+  const bracketX1 = margin + inDistStart * barW;
+  const bracketX2 = margin + (inDistStart + inDistCount) * barW;
+  ctx.strokeStyle = '#3b5bdb';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(bracketX1, topPad + chartH + 12);
+  ctx.lineTo(bracketX1, topPad + chartH + 18);
+  ctx.lineTo(bracketX2, topPad + chartH + 18);
+  ctx.lineTo(bracketX2, topPad + chartH + 12);
+  ctx.stroke();
+  ctx.fillStyle = '#3b5bdb';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('📦 Dataset support', (bracketX1 + bracketX2) / 2, topPad + chartH + 32);
+  
+  // Warning
+  document.getElementById('oodWarning').style.display = (!greedyInDist && extrapolation > 20) ? 'block' : 'none';
+}
+
+drawOOD();
+</script>
 </body>
 </html>
