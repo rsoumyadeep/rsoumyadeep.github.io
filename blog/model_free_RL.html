@@ -1,1 +1,2019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Model-Free Reinforcement Learning </title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)'], ['$','$']], displayMath: [['\\[','\\]'], ['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<style>
+:root {
+  --bg: #ffffff;
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --text-light: #888;
+  --accent: #c0392b;
+  --accent2: #2980b9;
+  --accent3: #27ae60;
+  --accent4: #8e44ad;
+  --border: #e8e8e8;
+  --surface: #f8f8f8;
+  --surface2: #f0f0f0;
+  --code-bg: #f5f5f5;
+  --sidebar-w: 240px;
+  --content-max: 780px;
+}
 
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+/* Progress bar */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: var(--accent); width: 0%; z-index: 1000;
+  transition: width 0.1s linear;
+}
+
+/* Navbar */
+nav {
+  position: fixed; top: 3px; left: 0; right: 0;
+  background: rgba(255,255,255,0.96);
+  border-bottom: 1px solid var(--border);
+  z-index: 999;
+  backdrop-filter: blur(8px);
+  padding: 0 2rem;
+  height: 52px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-brand {
+  font-family: 'Lora', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+}
+.nav-links { display: flex; gap: 1.5rem; list-style: none; }
+.nav-links a {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--accent); }
+
+/* Layout */
+.layout {
+  display: flex;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 55px;
+}
+
+/* Sidebar TOC */
+.toc-sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  position: sticky;
+  top: 55px;
+  height: calc(100vh - 55px);
+  overflow-y: auto;
+  padding: 2rem 0 2rem 1.5rem;
+  border-right: 1px solid var(--border);
+}
+.toc-sidebar h3 {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.toc-list { list-style: none; }
+.toc-list li { margin-bottom: 0.1rem; }
+.toc-list a {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  display: block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+  line-height: 1.4;
+  font-weight: 400;
+}
+.toc-list a:hover { color: var(--text); background: var(--surface); }
+.toc-list a.active { color: var(--accent); font-weight: 500; background: #fff0ee; }
+.toc-sub { padding-left: 0.75rem; }
+.toc-sub a { font-size: 0.73rem; color: var(--text-light); }
+
+/* Main content */
+main {
+  flex: 1;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 3rem 2.5rem;
+}
+
+/* Hero */
+.hero {
+  padding: 3rem 0 2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 3rem;
+}
+.hero-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.hero h1 {
+  font-family: 'Lora', serif;
+  font-size: 2.6rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text);
+  margin-bottom: 1.25rem;
+}
+.hero p {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  max-width: 650px;
+}
+.hero-meta {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--text-light);
+  flex-wrap: wrap;
+}
+.hero-meta span { display: flex; align-items: center; gap: 0.3rem; }
+
+/* Sections */
+section {
+  margin-bottom: 4rem;
+  scroll-margin-top: 70px;
+}
+h2 {
+  font-family: 'Lora', serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1.25rem;
+  line-height: 1.3;
+}
+h3 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 2rem 0 0.75rem;
+}
+h4 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 1.5rem 0 0.5rem;
+}
+p { margin-bottom: 1rem; color: var(--text-muted); }
+p:last-child { margin-bottom: 0; }
+
+/* Section number */
+.sec-num {
+  display: inline-block;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+/* Callout boxes */
+.callout {
+  border-left: 3px solid var(--accent);
+  background: #fff8f7;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 0 6px 6px 0;
+}
+.callout.blue { border-color: var(--accent2); background: #f0f7ff; }
+.callout.green { border-color: var(--accent3); background: #f0fff5; }
+.callout.purple { border-color: var(--accent4); background: #f8f0ff; }
+.callout-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+.callout.blue .callout-label { color: var(--accent2); }
+.callout.green .callout-label { color: var(--accent3); }
+.callout.purple .callout-label { color: var(--accent4); }
+.callout p { margin: 0; font-size: 0.93rem; }
+
+/* Math display */
+.math-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  font-size: 1.02rem;
+}
+.math-block .label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-light);
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+}
+
+/* Toggle buttons */
+.toggle-group {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+.toggle-btn {
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: white;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+.toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.toggle-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+.toggle-btn.active.blue { background: var(--accent2); border-color: var(--accent2); }
+.toggle-btn.active.green { background: var(--accent3); border-color: var(--accent3); }
+
+.toggle-content { display: none; }
+.toggle-content.visible { display: block; }
+
+/* Collapsible */
+.collapsible {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  overflow: hidden;
+}
+.collapsible-header {
+  padding: 0.85rem 1.25rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  user-select: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 0.2s;
+}
+.collapsible-header:hover { background: var(--surface2); }
+.collapsible-arrow {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  transition: transform 0.25s;
+}
+.collapsible-header.open .collapsible-arrow { transform: rotate(180deg); }
+.collapsible-body {
+  display: none;
+  padding: 1.25rem;
+  border-top: 1px solid var(--border);
+  background: white;
+}
+.collapsible-body.open { display: block; }
+
+/* Canvas / Viz containers */
+.viz-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+}
+.viz-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 1rem;
+}
+.viz-controls {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.viz-btn {
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: white;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+}
+.viz-btn:hover { background: var(--text); color: white; border-color: var(--text); }
+.viz-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+.viz-btn.primary:hover { opacity: 0.85; }
+canvas { display: block; max-width: 100%; }
+.viz-label { font-size: 0.78rem; color: var(--text-light); }
+
+/* Tooltip */
+.tooltip-wrapper { position: relative; display: inline; }
+.has-tooltip {
+  border-bottom: 1.5px dashed var(--accent2);
+  cursor: help;
+  color: var(--accent2);
+}
+.tooltip-box {
+  display: none;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: white;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  width: 240px;
+  line-height: 1.5;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.tooltip-wrapper:hover .tooltip-box { display: block; }
+
+/* Code */
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  background: var(--code-bg);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+  color: #c0392b;
+}
+pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1.25rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  margin: 1.5rem 0;
+  line-height: 1.6;
+}
+
+/* Comparison table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.88rem;
+}
+thead th {
+  background: var(--surface2);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  border-bottom: 2px solid var(--border);
+}
+td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: var(--surface); }
+
+/* Algo box */
+.algo-box {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+.algo-header {
+  background: var(--text);
+  color: white;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.algo-body {
+  padding: 1rem 1.25rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.83rem;
+  line-height: 2;
+  background: var(--surface);
+}
+.algo-comment { color: var(--text-light); }
+.algo-kw { color: var(--accent); font-weight: 600; }
+.algo-num { color: var(--accent2); }
+
+/* Step-size slider */
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  margin: 0.5rem 0;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Two-col grid */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin: 1.5rem 0; }
+.info-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.1rem;
+}
+.info-card h4 { margin-top: 0; font-size: 0.9rem; }
+.info-card p { font-size: 0.85rem; }
+
+/* HR divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 3rem 0;
+}
+
+/* Footnote */
+.footnote { font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem; }
+
+/* SA term table */
+.sa-term-table { width: 100%; font-size: 0.88rem; margin: 1rem 0; }
+.sa-term-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+.sa-term-table td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 500; }
+.sa-term-table td:last-child { color: var(--text-muted); }
+
+/* Tag badge */
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.2em 0.6em;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+.badge-red { background: #fef2f2; color: var(--accent); }
+.badge-blue { background: #eff6ff; color: var(--accent2); }
+.badge-green { background: #f0fdf4; color: var(--accent3); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Animation */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadeIn 0.4s ease; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .toc-sidebar { display: none; }
+  .two-col { grid-template-columns: 1fr; }
+  main { padding: 2rem 1.25rem; }
+  .hero h1 { font-size: 1.9rem; }
+}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav>
+  <span class="nav-brand">Model-Free RL</span>
+  <ul class="nav-links">
+    <li><a href="#motivation">Motivation</a></li>
+    <li><a href="#mc">Monte Carlo</a></li>
+    <li><a href="#td">TD Learning</a></li>
+    <li><a href="#sa">Stoch. Approx.</a></li>
+    <li><a href="#deep">Deep RL</a></li>
+  </ul>
+</nav>
+
+<div class="layout">
+
+<!-- TOC Sidebar -->
+<aside class="toc-sidebar">
+  <h3>Contents</h3>
+  <ul class="toc-list" id="toc">
+    <li><a href="#motivation">1. Motivation</a></li>
+    <li><a href="#history">2. History</a></li>
+    <li><a href="#setup">3. Formal Setup</a></li>
+    <li><a href="#mc">4. Monte Carlo</a>
+      <ul class="toc-sub toc-list">
+        <li><a href="#mc-intuition">Intuition</a></li>
+        <li><a href="#mc-math">Mathematics</a></li>
+        <li><a href="#mc-tradeoffs">Pros & Cons</a></li>
+      </ul>
+    </li>
+    <li><a href="#td">5. TD Learning</a>
+      <ul class="toc-sub toc-list">
+        <li><a href="#td-bootstrap">Bootstrapping</a></li>
+        <li><a href="#td0">TD(0)</a></li>
+        <li><a href="#bv">Bias-Variance</a></li>
+      </ul>
+    </li>
+    <li><a href="#comparison">6. MC vs TD</a></li>
+    <li><a href="#control">7. TD Control</a></li>
+    <li><a href="#sa">8. Stochastic Approx.</a>
+      <ul class="toc-sub toc-list">
+        <li><a href="#sa-intuition">Intuition</a></li>
+        <li><a href="#sa-form">Canonical Form</a></li>
+        <li><a href="#rm">Robbins-Monro</a></li>
+        <li><a href="#sa-td">SA → TD</a></li>
+        <li><a href="#ode">ODE Method</a></li>
+        <li><a href="#sa-conv">Convergence</a></li>
+        <li><a href="#sa-rl">Challenges in RL</a></li>
+        <li><a href="#deadly-triad">Deadly Triad</a></li>
+      </ul>
+    </li>
+    <li><a href="#fa">9. Function Approx.</a></li>
+    <li><a href="#deep">10. Modern RL</a></li>
+    <li><a href="#summary">11. Summary</a></li>
+  </ul>
+</aside>
+
+<!-- Main content -->
+<main>
+
+<!-- HERO -->
+<div class="hero" id="top">
+  <span class="hero-tag">Research-Grade Guide</span>
+  <h1>Model-Free Reinforcement Learning</h1>
+  <p>A complete conceptual and theoretical treatment — from intuition to stochastic approximation theory — designed for MTech (Research) and PhD students.</p>
+  <div class="hero-meta">
+    <span>📖 ~90 min read</span>
+    <span>🔢 MathJax equations</span>
+    <span>🎛️ Interactive visualizations</span>
+    <span>🧪 Research depth</span>
+  </div>
+</div>
+
+<!-- 1. MOTIVATION -->
+<section id="motivation">
+  <span class="sec-num">§ 1</span>
+  <h2>Motivation & Intuition</h2>
+
+  <p>Consider a robot learning to walk. The robot does not know the physics of its body — its joint torques, friction coefficients, or how the ground responds. Yet, through repeated trial and error, it can still learn a good walking policy. This is the essence of <strong>model-free reinforcement learning</strong>: learning to act optimally <em>without</em> ever explicitly constructing a model of the environment.</p>
+
+  <div class="toggle-group">
+    <button class="toggle-btn active" onclick="toggleView('motiv', 'intuition', this)">Show Intuition</button>
+    <button class="toggle-btn" onclick="toggleView('motiv', 'formal', this)">Show Formal View</button>
+  </div>
+
+  <div id="motiv-intuition" class="toggle-content visible fade-in">
+    <div class="callout">
+      <div class="callout-label">Core Intuition</div>
+      <p>An agent interacts with an environment, observing <em>states</em>, taking <em>actions</em>, and receiving <em>rewards</em>. In model-free RL, the agent learns the <strong>value of states or actions</strong> directly from this experience stream, without ever fitting a transition model \(P(s'|s,a)\) or reward model \(R(s,a)\).</p>
+    </div>
+
+    <h3>Why Avoid Models?</h3>
+    <p>Model-based RL sounds appealing — if you know the model, you can plan. But models are hard to learn correctly, especially in high-dimensional continuous spaces. Errors in the model compound: a slightly wrong transition model leads to systematically biased value estimates, which leads to bad policies. Model-free methods bypass this entirely.</p>
+
+    <div class="two-col">
+      <div class="info-card">
+        <h4>⚙️ Model-Based RL</h4>
+        <p>Learns \(\hat{P}(s'|s,a)\) and \(\hat{R}(s,a)\), then plans using dynamic programming. <em>More sample efficient</em> but errors in model can mislead. Works well when model is learnable and accurate.</p>
+      </div>
+      <div class="info-card">
+        <h4>🎯 Model-Free RL</h4>
+        <p>Learns value functions or policies <em>directly</em> from experience. <em>More robust</em> to complex dynamics. Works even when the environment is a black box. The focus of this guide.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="motiv-formal" class="toggle-content fade-in">
+    <p>Formally, in model-free RL, we never compute or estimate the transition kernel \(P: \mathcal{S} \times \mathcal{A} \to \Delta(\mathcal{S})\). Instead, we estimate value functions:</p>
+    <div class="math-block">
+      <div class="label">Value Function (Model-Free Target)</div>
+      \[ V^\pi(s) = \mathbb{E}_\pi \left[ \sum_{t=0}^{\infty} \gamma^t R_{t+1} \;\bigg|\; S_0 = s \right] \]
+    </div>
+    <p>This expectation is estimated purely from <em>sample trajectories</em> \( (S_0, A_0, R_1, S_1, A_1, \ldots)\) obtained by running policy \(\pi\) in the environment.</p>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- 2. HISTORY -->
+<section id="history">
+  <span class="sec-num">§ 2</span>
+  <h2>Historical Context</h2>
+
+  <p>Model-free RL has a rich intellectual genealogy spanning six decades, with contributions from mathematics, psychology, neuroscience, and computer science.</p>
+
+  <div class="viz-container">
+    <div class="viz-title">Timeline of Key Ideas</div>
+    <canvas id="timeline-canvas" width="700" height="120"></canvas>
+  </div>
+
+  <h3>Key Milestones</h3>
+
+  <div class="callout blue">
+    <div class="callout-label">1950s — Bellman & Dynamic Programming</div>
+    <p>Richard Bellman formulated the optimality equations that bear his name. The Bellman equation is the theoretical heart of all value-based RL, but requires a known model to apply directly.</p>
+  </div>
+
+  <div class="callout green">
+    <div class="callout-label">1950s–60s — Robbins-Monro & Stochastic Approximation</div>
+    <p>Herbert Robbins and Sutton Monro introduced <em>stochastic approximation</em> — iterative algorithms for root-finding under noise. This would become the theoretical backbone of all model-free RL algorithms.</p>
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">1988 — Sutton's TD Learning</div>
+    <p>Richard Sutton introduced Temporal Difference learning in his landmark 1988 paper, bridging Monte Carlo methods and dynamic programming. This paper essentially founded modern model-free RL.</p>
+  </div>
+
+  <div class="callout purple">
+    <div class="callout-label">1989 — Q-Learning (Watkins)</div>
+    <p>Chris Watkins introduced Q-learning, the first provably convergent off-policy model-free control algorithm. The convergence proof, completed by Watkins and Dayan in 1992, used stochastic approximation theory.</p>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- 3. FORMAL SETUP -->
+<section id="setup">
+  <span class="sec-num">§ 3</span>
+  <h2>Formal Setup: MDPs & Value Functions</h2>
+
+  <h3>Markov Decision Process</h3>
+  <p>A <span class="tooltip-wrapper"><span class="has-tooltip">Markov Decision Process</span><span class="tooltip-box">A mathematical framework for sequential decision-making where outcomes are partly random and partly controllable by an agent.</span></span> (MDP) is a tuple \(\mathcal{M} = (\mathcal{S}, \mathcal{A}, P, R, \gamma)\):</p>
+
+  <div class="math-block">
+    <div class="label">MDP Components</div>
+    \[
+    \begin{aligned}
+    \mathcal{S} &: \text{State space} \\
+    \mathcal{A} &: \text{Action space} \\
+    P(s'|s,a) &: \text{Transition kernel (unknown in model-free RL)} \\
+    R(s,a) &: \text{Expected reward function} \\
+    \gamma \in [0,1) &: \text{Discount factor}
+    \end{aligned}
+    \]
+  </div>
+
+  <h3>Bellman Equations</h3>
+  <p>The <span class="tooltip-wrapper"><span class="has-tooltip">Bellman equation</span><span class="tooltip-box">The Bellman equation decomposes the value of a state into the immediate reward plus the discounted value of the next state — a recursive relationship that defines optimal behavior.</span></span> expresses the value of a state in terms of successor states:</p>
+
+  <div class="math-block">
+    <div class="label">Bellman Expectation Equation</div>
+    \[
+    V^\pi(s) = \sum_a \pi(a|s) \left[ R(s,a) + \gamma \sum_{s'} P(s'|s,a) V^\pi(s') \right]
+    \]
+  </div>
+
+  <div class="math-block">
+    <div class="label">Bellman Optimality Equation</div>
+    \[
+    V^*(s) = \max_a \left[ R(s,a) + \gamma \sum_{s'} P(s'|s,a) V^*(s') \right]
+    \]
+  </div>
+
+  <p>In model-free RL, we cannot evaluate these equations directly because we do not know \(P(s'|s,a)\). We must estimate these values from samples. This leads to Monte Carlo and TD methods.</p>
+
+  <h3>Action-Value Functions</h3>
+  <div class="math-block">
+    <div class="label">Q-Function</div>
+    \[
+    Q^\pi(s,a) = R(s,a) + \gamma \sum_{s'} P(s'|s,a) V^\pi(s') = \mathbb{E}_\pi\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \;\Big|\; S_0=s, A_0=a\right]
+    \]
+  </div>
+  <p>Q-functions are more convenient for control because the greedy policy update is \(\pi'(s) = \arg\max_a Q(s,a)\), requiring no model knowledge.</p>
+</section>
+
+<hr class="divider"/>
+
+<!-- 4. MONTE CARLO -->
+<section id="mc">
+  <span class="sec-num">§ 4</span>
+  <h2>Monte Carlo Methods</h2>
+
+  <section id="mc-intuition">
+    <h3>Intuition</h3>
+    <p>Imagine you want to estimate the average height of people in a city. You can't measure everyone, but you can sample a large number of people and average the measurements. The law of large numbers guarantees your estimate converges to the truth.</p>
+
+    <p>Monte Carlo (MC) RL applies exactly this idea: run an episode to completion, collect the return, and use it as a sample estimate of the true value.</p>
+
+    <div class="callout green">
+      <div class="callout-label">Key Insight</div>
+      <p>Because \(V^\pi(s) = \mathbb{E}[G_t | S_t = s]\), we can estimate it by averaging many observed returns \(G_t\) from visits to state \(s\). This is just empirical averaging — no model needed.</p>
+    </div>
+  </section>
+
+  <section id="mc-math">
+    <h3>Mathematics</h3>
+
+    <div class="math-block">
+      <div class="label">Return from time t</div>
+      \[
+      G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots = \sum_{k=0}^\infty \gamma^k R_{t+k+1}
+      \]
+    </div>
+
+    <p>For an episodic task (terminal state reached at time \(T\)), this simplifies to:</p>
+
+    <div class="math-block">
+      \[
+      G_t = R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{T-t-1} R_T
+      \]
+    </div>
+
+    <h4>First-Visit MC Estimation</h4>
+    <div class="algo-box">
+      <div class="algo-header">Algorithm: First-Visit MC Policy Evaluation</div>
+      <div class="algo-body">
+        <span class="algo-comment">// Initialize</span><br/>
+        Initialize \(V(s) = 0\), Returns\((s) = []\) for all \(s \in \mathcal{S}\)<br/><br/>
+        <span class="algo-kw">for</span> each episode:<br/>
+        &nbsp;&nbsp;Generate episode: \(S_0, A_0, R_1, S_1, A_1, R_2, \ldots, S_T\)<br/>
+        &nbsp;&nbsp;\(G \leftarrow 0\)<br/>
+        &nbsp;&nbsp;<span class="algo-kw">for</span> \(t = T-1, T-2, \ldots, 0\):<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;\(G \leftarrow \gamma G + R_{t+1}\)<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="algo-kw">if</span> \(S_t\) not in \(\{S_0, \ldots, S_{t-1}\}\):<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns\((S_t)\).append\((G)\)<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\(V(S_t) \leftarrow \) average(Returns\((S_t)\))
+      </div>
+    </div>
+
+    <h4>Incremental Update Form</h4>
+    <p>Instead of storing all returns, we can update incrementally. After collecting \(G_t\) from the \(n\)-th visit to state \(s\):</p>
+    <div class="math-block">
+      <div class="label">Incremental MC Update</div>
+      \[
+      V(s) \leftarrow V(s) + \frac{1}{N(s)} \left[ G_t - V(s) \right]
+      \]
+    </div>
+    <p>This has the form of a <em>stochastic approximation</em> update — a preview of the theory in Section 8.</p>
+  </section>
+
+  <!-- MC VISUALIZATION -->
+  <div class="viz-container">
+    <div class="viz-title">🎲 Monte Carlo Return Estimation</div>
+    <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:0.75rem;">Watch the running average of returns converge to the true value. Each episode generates one noisy return sample.</p>
+    <canvas id="mc-canvas" width="680" height="200"></canvas>
+    <div class="viz-controls">
+      <button class="viz-btn primary" onclick="runMCSimulation()">▶ Run Episode</button>
+      <button class="viz-btn" onclick="runMCBatch()">Run 20 Episodes</button>
+      <button class="viz-btn" onclick="resetMC()">↺ Reset</button>
+      <span class="viz-label" id="mc-stats">Episodes: 0 | Estimate: — | True Value: 3.33</span>
+    </div>
+  </div>
+
+  <section id="mc-tradeoffs">
+    <h3>Pros & Cons</h3>
+    <div class="two-col">
+      <div class="info-card">
+        <h4>✅ Advantages</h4>
+        <p>• Unbiased estimates of \(V^\pi(s)\)<br/>• No bootstrapping — no propagation of estimate errors<br/>• Simple and easy to implement<br/>• Works with non-Markov environments</p>
+      </div>
+      <div class="info-card">
+        <h4>❌ Disadvantages</h4>
+        <p>• High variance (full trajectories can vary enormously)<br/>• Must wait for episode completion<br/>• Slow convergence — \(O(1/\sqrt{n})\) variance reduction<br/>• Cannot handle continuing tasks without truncation</p>
+      </div>
+    </div>
+  </section>
+</section>
+
+<hr class="divider"/>
+
+<!-- 5. TD LEARNING -->
+<section id="td">
+  <span class="sec-num">§ 5</span>
+  <h2>Temporal Difference Learning</h2>
+
+  <section id="td-bootstrap">
+    <h3>The Key Idea: Bootstrapping</h3>
+    <p>MC methods wait for the full return. Can we do better? Yes — by using our <em>current estimate</em> of future values to update the current estimate. This is called <span class="tooltip-wrapper"><span class="has-tooltip">bootstrapping</span><span class="tooltip-box">Bootstrapping means updating estimates based on other estimates, rather than waiting for the final ground-truth outcome. Like pulling yourself up by your own bootstraps — using current knowledge to improve current knowledge.</span></span>.</p>
+
+    <div class="callout">
+      <div class="callout-label">Bootstrapping Intuition</div>
+      <p>Instead of waiting until the end of an episode to see the total return \(G_t\), TD uses the <em>one-step return</em>: the observed reward plus the discounted estimated value of the next state. This is <strong>biased but lower variance</strong>.</p>
+    </div>
+  </section>
+
+  <section id="td0">
+    <h3>TD(0): The Simplest TD Algorithm</h3>
+    <p>After observing the transition \((S_t, A_t, R_{t+1}, S_{t+1})\), TD(0) performs the update:</p>
+
+    <div class="math-block">
+      <div class="label">TD(0) Update Rule</div>
+      \[
+      V(S_t) \leftarrow V(S_t) + \alpha \underbrace{\left[ R_{t+1} + \gamma V(S_{t+1}) - V(S_t) \right]}_{\delta_t: \text{ TD error}}
+      \]
+    </div>
+
+    <p>The term \(\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)\) is called the <strong>TD error</strong>. It measures the discrepancy between the current estimate and the one-step estimate. When \(\delta_t = 0\) for all states, the values satisfy the Bellman equation.</p>
+
+    <div class="callout blue">
+      <div class="callout-label">Target vs. Estimate</div>
+      <p><strong>MC target:</strong> \(G_t = R_{t+1} + \gamma R_{t+2} + \cdots\) (unbiased, high variance)<br/><strong>TD target:</strong> \(R_{t+1} + \gamma V(S_{t+1})\) (biased, lower variance)</p>
+    </div>
+
+    <!-- TD VISUALIZATION -->
+    <div class="viz-container">
+      <div class="viz-title">⚡ TD(0) Value Update Animation</div>
+      <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:0.75rem;">Each step shows a single TD update. The value estimates converge toward the true values over time.</p>
+      <canvas id="td-canvas" width="680" height="220"></canvas>
+      <div class="viz-controls">
+        <button class="viz-btn primary" onclick="runTDStep()">▶ One TD Step</button>
+        <button class="viz-btn" onclick="runTDBatch()">Run 50 Steps</button>
+        <button class="viz-btn" onclick="resetTD()">↺ Reset</button>
+        <div style="flex:1 1 200px;">
+          <label style="font-size:0.78rem;color:var(--text-muted);">Step size α = <span id="alpha-val">0.10</span></label>
+          <input type="range" min="1" max="50" value="10" id="alpha-slider" oninput="updateAlpha(this.value)"/>
+        </div>
+        <span class="viz-label" id="td-stats">Steps: 0</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="bv">
+    <h3>Bias-Variance Tradeoff</h3>
+    <p>This is one of the most important conceptual tensions in RL:</p>
+    <table>
+      <thead><tr><th>Property</th><th>Monte Carlo</th><th>TD(0)</th></tr></thead>
+      <tbody>
+        <tr><td>Bias</td><td>Zero (uses true return)</td><td>Biased (depends on current \(V\))</td></tr>
+        <tr><td>Variance</td><td>High (long horizon, many random steps)</td><td>Low (one-step lookahead only)</td></tr>
+        <tr><td>Data efficiency</td><td>Lower</td><td>Higher (online updates)</td></tr>
+        <tr><td>Convergence</td><td>Guaranteed (with enough samples)</td><td>Guaranteed (tabular, on-policy)</td></tr>
+        <tr><td>Markov property required?</td><td>No</td><td>Yes (to be unbiased in the limit)</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Unifying View: TD(λ)</h4>
+    <p>TD(λ) interpolates between TD(0) and MC by mixing n-step returns:</p>
+    <div class="math-block">
+      <div class="label">λ-return</div>
+      \[
+      G_t^\lambda = (1-\lambda) \sum_{n=1}^\infty \lambda^{n-1} G_t^{(n)}, \quad \text{where } G_t^{(n)} = \sum_{k=0}^{n-1} \gamma^k R_{t+k+1} + \gamma^n V(S_{t+n})
+      \]
+    </div>
+    <p>At \(\lambda=0\): pure TD(0). At \(\lambda=1\): equivalent to MC. Values in between trade bias for variance.</p>
+  </section>
+</section>
+
+<hr class="divider"/>
+
+<!-- 6. MC vs TD COMPARISON -->
+<section id="comparison">
+  <span class="sec-num">§ 6</span>
+  <h2>Monte Carlo vs. Temporal Difference <span class="badge badge-red">Critical</span></h2>
+
+  <p>This comparison is arguably the most important conceptual distinction in model-free RL.</p>
+
+  <div class="callout green">
+    <div class="callout-label">Sutton's Key Insight (1988)</div>
+    <p>TD methods combine the sampling idea of Monte Carlo with the bootstrapping idea of Dynamic Programming. They are neither — and better than both in many practical settings.</p>
+  </div>
+
+  <h3>When to prefer MC?</h3>
+  <p>MC is preferred when: (1) episodes are short, (2) the Markov property may not hold, (3) you need unbiased estimates, or (4) the environment is non-stationary in complex ways.</p>
+
+  <h3>When to prefer TD?</h3>
+  <p>TD is preferred when: (1) episodes are long or continuing, (2) online learning is important, (3) the Markov property holds, or (4) sample efficiency matters.</p>
+
+  <div class="collapsible">
+    <div class="collapsible-header" onclick="toggleCollapsible(this)">
+      📐 Theoretical Comparison: Convergence Properties <span class="collapsible-arrow">▼</span>
+    </div>
+    <div class="collapsible-body">
+      <p>Both MC and TD(0) converge to \(V^\pi\) under appropriate conditions. However, their convergence properties differ:</p>
+      <div class="math-block">
+        <div class="label">MC Convergence (LLN)</div>
+        \[ \hat{V}_n(s) = \frac{1}{n}\sum_{i=1}^n G_t^{(i)} \xrightarrow{a.s.} V^\pi(s) \text{ as } n\to\infty \]
+      </div>
+      <div class="math-block">
+        <div class="label">TD(0) Convergence (Tsitsiklis, 1994)</div>
+        \[ V_t(s) \xrightarrow{a.s.} V^\pi(s) \text{ under Robbins-Monro step sizes and ergodicity} \]
+      </div>
+      <p>TD convergence is more subtle and requires stochastic approximation theory (Section 8). MC convergence is a direct application of the law of large numbers.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- 7. TD CONTROL -->
+<section id="control">
+  <span class="sec-num">§ 7</span>
+  <h2>TD Control: SARSA & Q-Learning</h2>
+
+  <p>To find an optimal policy, we need <em>control</em> algorithms — algorithms that improve the policy, not just evaluate it. In model-free settings, we typically learn Q-values and apply greedy improvement.</p>
+
+  <h3>SARSA: On-Policy TD Control</h3>
+  <p>SARSA learns Q-values using the <em>actual</em> action taken by the current policy (on-policy):</p>
+  <div class="math-block">
+    <div class="label">SARSA Update (S, A, R, S', A' → update)</div>
+    \[
+    Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha \left[ R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t) \right]
+    \]
+  </div>
+  <p>SARSA converges to the optimal Q-function under the condition that all state-action pairs are visited infinitely often (e.g., with ε-greedy exploration with decaying ε).</p>
+
+  <h3>Q-Learning: Off-Policy TD Control</h3>
+  <p>Q-learning learns the <em>optimal</em> Q-function, regardless of the policy being followed (off-policy):</p>
+  <div class="math-block">
+    <div class="label">Q-Learning Update (Watkins, 1989)</div>
+    \[
+    Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha \left[ R_{t+1} + \gamma \max_{a'} Q(S_{t+1}, a') - Q(S_t, A_t) \right]
+    \]
+  </div>
+
+  <div class="callout blue">
+    <div class="callout-label">Key Difference</div>
+    <p><strong>SARSA</strong> bootstraps off the <em>next action actually taken</em> \(A_{t+1} \sim \pi\). <strong>Q-learning</strong> bootstraps off the <em>greedy best action</em> \(\max_{a'} Q(S_{t+1}, a')\), making it off-policy.</p>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header" onclick="toggleCollapsible(this)">
+      🔬 Q-Learning Convergence Theorem <span class="collapsible-arrow">▼</span>
+    </div>
+    <div class="collapsible-body">
+      <p><strong>Theorem (Watkins & Dayan, 1992):</strong> Q-learning converges to \(Q^*\) almost surely if:</p>
+      <div class="math-block">
+        \[
+        \sum_{t=0}^\infty \alpha_t(s,a) = \infty, \quad \sum_{t=0}^\infty \alpha_t^2(s,a) < \infty \quad \forall (s,a)
+        \]
+      </div>
+      <p>and all state-action pairs are visited infinitely often. This is a consequence of stochastic approximation theory, which we study in depth next.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- 8. STOCHASTIC APPROXIMATION -->
+<section id="sa">
+  <span class="sec-num">§ 8</span>
+  <h2>Stochastic Approximation <span class="badge badge-red">Core Theory</span></h2>
+
+  <p>Stochastic approximation (SA) is the mathematical theory underlying the convergence of all model-free RL algorithms. Understanding it is essential for anyone doing RL research. This section is the theoretical core of the guide.</p>
+
+  <!-- SA INTUITION -->
+  <section id="sa-intuition">
+    <h3>(A) Intuition: Learning from Noisy Observations</h3>
+
+    <div class="toggle-group">
+      <button class="toggle-btn active" onclick="toggleView('sa-int', 'simple', this)">Simple View</button>
+      <button class="toggle-btn" onclick="toggleView('sa-int', 'deep', this)">Deep View</button>
+    </div>
+
+    <div id="sa-int-simple" class="toggle-content visible fade-in">
+      <p>Suppose you want to find the temperature at which a chemical reaction reaches equilibrium — but your thermometer is noisy. You can't solve it analytically. Instead, you make repeated noisy measurements and average them. Each noisy measurement is a "stochastic approximation" to the truth.</p>
+
+      <p>Now generalize: suppose you want to find \(\theta^*\) such that \(h(\theta^*) = 0\), but you can only observe \(h(\theta) + \text{noise}\). Can you still find \(\theta^*\)? Yes — with the right iterative algorithm.</p>
+    </div>
+
+    <div id="sa-int-deep" class="toggle-content fade-in">
+      <p>The deeper connection: TD learning is <em>trying to solve the Bellman equation</em>. The Bellman operator \(\mathcal{T}^\pi V\) satisfies \(\mathcal{T}^\pi V^\pi = V^\pi\), so finding \(V^\pi\) is equivalent to finding a fixed point. But we cannot apply \(\mathcal{T}^\pi\) directly — we only have noisy one-step samples from the environment.</p>
+
+      <p>Stochastic approximation is the framework for finding fixed points (or zeros) of operators when you only have noisy, sampled access to them.</p>
+
+      <div class="callout purple">
+        <div class="callout-label">Core Correspondence</div>
+        <p>
+          DP: \(V \leftarrow \mathcal{T}^\pi V\) (requires model) <br/>
+          SA: \(V \leftarrow V + \alpha[\text{noisy sample of } \mathcal{T}^\pi V - V]\) (model-free)
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SA CANONICAL FORM -->
+  <section id="sa-form">
+    <h3>(B) Canonical Form of Stochastic Approximation</h3>
+
+    <p>The standard SA recursion takes the following form:</p>
+
+    <div class="math-block" style="border-color: var(--accent); border-left-width: 3px;">
+      <div class="label">Stochastic Approximation Recursion</div>
+      \[
+      \theta_{t+1} = \theta_t + \alpha_t \left( h(\theta_t) + \xi_t \right)
+      \]
+    </div>
+
+    <table class="sa-term-table">
+      <tr><td>\(\theta_t\)</td><td>Current parameter estimate at iteration \(t\)</td></tr>
+      <tr><td>\(\alpha_t\)</td><td>Step size (learning rate) at time \(t\) — must satisfy Robbins-Monro conditions</td></tr>
+      <tr><td>\(h(\theta_t)\)</td><td>The "mean field" — what the update is <em>trying</em> to do on average; related to solving \(h(\theta^*)=0\)</td></tr>
+      <tr><td>\(\xi_t\)</td><td>Noise term — zero-mean perturbation due to stochasticity in the data/environment</td></tr>
+    </table>
+
+    <p>The goal: under appropriate conditions on \(h\), \(\alpha_t\), and \(\xi_t\), we want \(\theta_t \to \theta^*\) almost surely, where \(h(\theta^*) = 0\).</p>
+  </section>
+
+  <!-- ROBBINS-MONRO -->
+  <section id="rm">
+    <h3>(C) The Robbins-Monro Algorithm</h3>
+
+    <p>The original SA paper by Robbins & Monro (1951) addressed the following problem: find \(\theta^*\) such that \(M(\theta^*) = \alpha\), given only noisy observations of \(M(\theta)\).</p>
+
+    <div class="callout blue">
+      <div class="callout-label">Problem Setup (Robbins & Monro, 1951)</div>
+      <p>Given a function \(M: \mathbb{R} \to \mathbb{R}\) with \(M(\theta^*) = \alpha\), but we can only observe \(Y = M(\theta) + \epsilon\) with \(\mathbb{E}[\epsilon|\theta] = 0\). Find \(\theta^*\).</p>
+    </div>
+
+    <div class="math-block">
+      <div class="label">Robbins-Monro Update</div>
+      \[
+      \theta_{t+1} = \theta_t - \alpha_t \left( Y_t - \alpha \right), \quad Y_t = M(\theta_t) + \epsilon_t
+      \]
+    </div>
+
+    <p>Setting \(h(\theta) = \alpha - M(\theta)\), this fits the canonical SA form. If \(M\) is non-decreasing, the algorithm converges to \(\theta^*\).</p>
+
+    <div class="collapsible">
+      <div class="collapsible-header" onclick="toggleCollapsible(this)">
+        📐 Convergence of Robbins-Monro (Sketch) <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <p><strong>Theorem (Robbins-Monro, 1951):</strong> If (1) \(M\) is non-decreasing with \(M(\theta^*) = \alpha\), (2) \(\sum_t \alpha_t = \infty\), (3) \(\sum_t \alpha_t^2 < \infty\), and (4) \(\text{Var}(Y_t|\theta_t) \leq C\) for some constant \(C\), then:</p>
+        <div class="math-block">
+          \[ \mathbb{E}[(\theta_t - \theta^*)^2] \to 0 \text{ as } t \to \infty \]
+        </div>
+        <p><strong>Proof sketch:</strong> Define \(e_t = \theta_t - \theta^*\). Then:</p>
+        <div class="math-block">
+          \[ e_{t+1} = e_t + \alpha_t h(\theta_t) + \alpha_t \xi_t \]
+        </div>
+        <p>Squaring and taking expectations, using the decay of \(\alpha_t\) to control the noise term and the sign of \(h\) to show the mean term drives \(e_t \to 0\).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SA → TD CONNECTION -->
+  <section id="sa-td">
+    <h3>(D) Connection to TD Learning</h3>
+
+    <p>Now we reveal why TD learning works. Let us show that TD(0) is exactly a stochastic approximation algorithm.</p>
+
+    <p>Recall the TD(0) update for state \(s\):</p>
+    <div class="math-block">
+      \[ V(s) \leftarrow V(s) + \alpha \left[ R + \gamma V(s') - V(s) \right] \]
+    </div>
+
+    <p>Now, what is the <em>expected</em> update? Taking expectation over the random transition \((R, s')\):</p>
+    <div class="math-block">
+      <div class="label">Mean Field of TD(0)</div>
+      \[
+      \mathbb{E}[R + \gamma V(s') - V(s) \;|\; S_t = s] = \underbrace{\left(\mathcal{T}^\pi V\right)(s) - V(s)}_{h(V)(s)}
+      \]
+    </div>
+
+    <p>where \(\mathcal{T}^\pi\) is the Bellman operator. So TD(0) fits the SA form with:</p>
+
+    <table class="sa-term-table">
+      <tr><td>\(\theta_t\)</td><td>Current value function \(V_t\)</td></tr>
+      <tr><td>\(h(\theta_t)\)</td><td>\(\mathcal{T}^\pi V_t - V_t\) (Bellman residual — zero exactly at \(V^\pi\))</td></tr>
+      <tr><td>\(\xi_t\)</td><td>\(\left[R_{t+1} + \gamma V_t(S_{t+1}) - V_t(S_t)\right] - h(V_t)(S_t)\) (deviation from mean)</td></tr>
+    </table>
+
+    <div class="callout green">
+      <div class="callout-label">Fundamental Insight</div>
+      <p>TD learning is a stochastic approximation for solving the Bellman fixed-point equation \(\mathcal{T}^\pi V = V\). Each TD update is a noisy step in the direction of the Bellman operator. The noise comes from using a single sample transition instead of the full expectation.</p>
+    </div>
+  </section>
+
+  <!-- ODE METHOD -->
+  <section id="ode">
+    <h3>(E) The ODE Method <span class="badge badge-blue">Key Tool</span></h3>
+
+    <p>The most powerful technique for analyzing SA algorithms is the <strong>Ordinary Differential Equation (ODE) method</strong>, introduced by Ljung (1977) and developed by Kushner & Clark, Borkar, and others.</p>
+
+    <div class="callout purple">
+      <div class="callout-label">Core Idea</div>
+      <p>As the step sizes \(\alpha_t \to 0\), the SA trajectory \(\{\theta_t\}\) starts to look like the continuous-time flow of the ODE \(\dot{\theta} = h(\theta)\). The discrete stochastic system "shadows" the deterministic ODE.</p>
+    </div>
+
+    <div class="math-block" style="border-color: var(--accent4); border-left-width: 3px;">
+      <div class="label">Limiting ODE</div>
+      \[
+      \frac{d\theta}{dt} = h(\theta)
+      \]
+    </div>
+
+    <p><strong>Informal statement:</strong> If the ODE \(\dot{\theta} = h(\theta)\) has a globally asymptotically stable equilibrium \(\theta^*\) (i.e., \(h(\theta^*) = 0\) and the Jacobian at \(\theta^*\) has eigenvalues with negative real parts), then under appropriate conditions, \(\theta_t \to \theta^*\) almost surely.</p>
+
+    <!-- ODE VISUALIZATION -->
+    <div class="viz-container">
+      <div class="viz-title">🌀 SA Convergence vs. ODE Flow</div>
+      <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:0.75rem;">The stochastic SA iterate (blue) follows the deterministic ODE trajectory (red dashed). As α decreases, the SA path hugs the ODE more closely.</p>
+      <canvas id="ode-canvas" width="680" height="250"></canvas>
+      <div class="viz-controls">
+        <button class="viz-btn primary" onclick="runODE()">▶ Run Simulation</button>
+        <button class="viz-btn" onclick="resetODE()">↺ Reset</button>
+        <div style="flex:1 1 200px;">
+          <label style="font-size:0.78rem;color:var(--text-muted);">Noise level σ = <span id="ode-noise-val">0.30</span></label>
+          <input type="range" min="5" max="80" value="30" id="ode-noise-slider" oninput="updateODENoise(this.value)"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="collapsible">
+      <div class="collapsible-header" onclick="toggleCollapsible(this)">
+        📐 ODE Method: Formal Statement (Borkar-Meyn, 2000) <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <p><strong>Theorem:</strong> Consider the SA recursion \(\theta_{t+1} = \theta_t + \alpha_t(h(\theta_t) + \xi_t)\). Assume:</p>
+        <ol style="padding-left:1.25rem;color:var(--text-muted);font-size:0.9rem;line-height:2;">
+          <li>\(h\) is Lipschitz continuous</li>
+          <li>Robbins-Monro step sizes: \(\sum \alpha_t = \infty\), \(\sum \alpha_t^2 < \infty\)</li>
+          <li>Noise: \(\mathbb{E}[\xi_{t+1} | \mathcal{F}_t] = 0\), \(\sup_t \mathbb{E}[\|\xi_t\|^2 | \mathcal{F}_{t-1}] < \infty\) a.s.</li>
+          <li>The ODE \(\dot{\theta} = h(\theta)\) has a globally asymptotically stable equilibrium \(\theta^*\)</li>
+          <li>The iterates \(\{\theta_t\}\) are bounded almost surely</li>
+        </ol>
+        <p>Then \(\theta_t \to \theta^*\) almost surely.</p>
+        <p style="font-size:0.85rem;color:var(--text-light);">The key technical tool is the "martingale difference" property of the noise and the Kushner-Clark lemma showing the iterate's interpolated trajectory stays close to the ODE flow.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONVERGENCE CONDITIONS -->
+  <section id="sa-conv">
+    <h3>(F) Conditions for Convergence</h3>
+
+    <h4>1. Robbins-Monro Step Size Conditions</h4>
+    <p>The step sizes \(\{\alpha_t\}\) must satisfy:</p>
+
+    <div class="math-block" style="border-left: 3px solid var(--accent3); border-radius: 0 6px 6px 0;">
+      <div class="label">Robbins-Monro Conditions</div>
+      \[
+      \sum_{t=0}^\infty \alpha_t = \infty \quad \text{(divergence: enough total learning)}
+      \]
+      \[
+      \sum_{t=0}^\infty \alpha_t^2 < \infty \quad \text{(square-summability: noise dies out)}
+      \]
+    </div>
+
+    <div class="two-col">
+      <div class="info-card">
+        <h4>Why \(\sum \alpha_t = \infty\)?</h4>
+        <p>The algorithm must be able to "reach" the solution from any starting point. If the total step size is finite, the algorithm can only move a bounded distance from initialization — and may stop before reaching \(\theta^*\).</p>
+      </div>
+      <div class="info-card">
+        <h4>Why \(\sum \alpha_t^2 < \infty\)?</h4>
+        <p>The noise contribution at step \(t\) is \(\alpha_t \xi_t\). The variance grows like \(\alpha_t^2 \sigma^2\). For the total accumulated noise variance to be finite (and hence for the noise to not dominate), we need \(\sum \alpha_t^2 < \infty\).</p>
+      </div>
+    </div>
+
+    <h4>Typical Step Size Choices</h4>
+    <table>
+      <thead><tr><th>Schedule</th><th>Formula</th><th>Satisfies RM?</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Harmonic (standard)</td><td>\(\alpha_t = \frac{1}{t+1}\)</td><td>✅ Yes</td><td>Optimal rate, \(\sum 1/t = \infty\), \(\sum 1/t^2 < \infty\)</td></tr>
+        <tr><td>Constant</td><td>\(\alpha_t = \alpha\)</td><td>❌ No</td><td>Fails \(\sum \alpha^2 < \infty\); converges to a neighborhood, not exact solution</td></tr>
+        <tr><td>Polynomial decay</td><td>\(\alpha_t = \frac{1}{(t+1)^\beta}\), \(\beta \in (0.5, 1]\)</td><td>✅ Yes</td><td>Faster for \(\beta < 1\), but noise reduction slower</td></tr>
+        <tr><td>Too fast decay</td><td>\(\alpha_t = \frac{1}{(t+1)^{1.5}}\)</td><td>❌ No</td><td>Fails \(\sum \alpha_t = \infty\); algorithm freezes</td></tr>
+      </tbody>
+    </table>
+
+    <h4>2. Noise Conditions</h4>
+    <p>The noise \(\xi_t\) must be a <em>martingale difference sequence</em>: \(\mathbb{E}[\xi_{t+1} | \mathcal{F}_t] = 0\), where \(\mathcal{F}_t\) is the natural filtration. Additionally, the second moments must be bounded: \(\mathbb{E}[\|\xi_t\|^2 | \mathcal{F}_{t-1}] \leq C(1 + \|\theta_t\|^2)\).</p>
+
+    <h4>3. Boundedness</h4>
+    <p>A technically subtle requirement: the iterate \(\theta_t\) must remain bounded almost surely. In practice, this is often ensured by projection onto a compact set, or by showing that \(h\) has certain stability properties. The Borkar-Meyn theorem gives conditions under which boundedness can be established.</p>
+  </section>
+
+  <!-- CHALLENGES IN RL -->
+  <section id="sa-rl">
+    <h3>(G) Challenges in Applying SA to RL</h3>
+
+    <p>Standard SA theory assumes i.i.d. noise. RL violates this in fundamental ways.</p>
+
+    <div class="two-col">
+      <div class="info-card">
+        <h4>🔴 Markov Noise</h4>
+        <p>In RL, the noise \(\xi_t\) comes from the Markov chain of states. It is <em>not</em> i.i.d. — consecutive samples are correlated. The theory must be extended to handle "Markov noise" using mixing time arguments.</p>
+      </div>
+      <div class="info-card">
+        <h4>🟠 Bootstrapping</h4>
+        <p>TD learning updates toward a target that itself depends on the current estimate. This creates a "moving target" effect — the function \(h\) is effectively changing over time, which is not handled by basic SA theory.</p>
+      </div>
+      <div class="info-card">
+        <h4>🟡 Function Approximation</h4>
+        <p>With function approximation (e.g., neural networks), the SA iterate lives in parameter space, not value function space. The effective mean field \(h\) becomes non-contractive, and convergence can fail.</p>
+      </div>
+      <div class="info-card">
+        <h4>🔵 Off-Policy Distribution Shift</h4>
+        <p>In off-policy learning, the data distribution (behavior policy) doesn't match the target policy. This violates the stationarity assumption needed for the noise to be martingale difference.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEADLY TRIAD -->
+  <section id="deadly-triad">
+    <h3>(H) The Deadly Triad</h3>
+
+    <div class="callout" style="border-color: #c0392b; border-left-width: 4px;">
+      <div class="callout-label">Sutton & Barto (2018): The Deadly Triad</div>
+      <p>Instability and divergence of value function estimation arise when all three of the following are combined:</p>
+    </div>
+
+    <div class="two-col">
+      <div class="info-card" style="border-left: 3px solid var(--accent);">
+        <h4>1. Function Approximation</h4>
+        <p>Using a parameterized function class (linear, neural net) to represent \(V\) or \(Q\). Necessary for large state spaces, but introduces approximation error.</p>
+      </div>
+      <div class="info-card" style="border-left: 3px solid var(--accent2);">
+        <h4>2. Bootstrapping</h4>
+        <p>Using current estimates as targets (as in TD). Efficient but creates feedback loops in the SA updates that can destabilize.</p>
+      </div>
+    </div>
+    <div class="info-card" style="border-left: 3px solid var(--accent3); margin: 0.5rem 0;">
+      <h4>3. Off-Policy Learning</h4>
+      <p>Learning about a target policy using data from a different behavior policy. Efficient for data reuse, but the distribution mismatch breaks the martingale difference structure of the noise.</p>
+    </div>
+
+    <p>From an SA perspective: the deadly triad violates the ODE method's key assumption that the mean field \(h\) drives the system to a stable equilibrium. When all three are combined, \(h\) can be non-contractive, leading to divergence. Baird's counterexample (1995) gives a simple linear FA + TD + off-policy setting that diverges provably.</p>
+
+    <!-- SA CONVERGENCE VIZ -->
+    <div class="viz-container">
+      <div class="viz-title">💥 SA Convergence: Good vs. Deadly Triad</div>
+      <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:0.75rem;">Compare stable SA iteration (left) with an unstable situation analogous to the deadly triad (right).</p>
+      <canvas id="triad-canvas" width="680" height="220"></canvas>
+      <div class="viz-controls">
+        <button class="viz-btn primary" onclick="runTriad()">▶ Run</button>
+        <button class="viz-btn" onclick="resetTriad()">↺ Reset</button>
+        <span class="viz-label">Left: stable (Robbins-Monro satisfied). Right: divergent (constant α + non-contractive h).</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRACTICAL INTERPRETATION -->
+  <div class="collapsible">
+    <div class="collapsible-header" onclick="toggleCollapsible(this)">
+      💡 (I) Practical Interpretation: Why Learning Rates Matter <span class="collapsible-arrow">▼</span>
+    </div>
+    <div class="collapsible-body">
+      <h4>Too large α</h4>
+      <p>The noise term \(\alpha \xi_t\) dominates — the algorithm oscillates wildly. The SA iterate never settles. In deep RL, this manifests as divergence of Q-values or unstable training curves.</p>
+      <h4>Too small α (decays too fast)</h4>
+      <p>If \(\alpha_t \to 0\) too fast (e.g., \(\alpha_t = 1/t^2\)), the algorithm loses the ability to update. The iterate "freezes" before reaching the optimum. This is the failure mode \(\sum \alpha_t < \infty\).</p>
+      <h4>Optimal: slow polynomial decay</h4>
+      <p>The harmonic schedule \(\alpha_t = 1/(t+1)\) is asymptotically optimal for quadratic SA problems. In practice, constant step sizes are used with experience replay to break correlations and reduce effective variance — a pragmatic alternative to the theoretical schedule.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- 9. FUNCTION APPROXIMATION -->
+<section id="fa">
+  <span class="sec-num">§ 9</span>
+  <h2>Function Approximation</h2>
+
+  <p>Tabular RL (one value per state) is impractical for large or continuous state spaces. Function approximation replaces the table with a parameterized function \(\hat{V}(s; \theta) \approx V^\pi(s)\).</p>
+
+  <h3>Linear Function Approximation</h3>
+  <div class="math-block">
+    <div class="label">Linear Value Function</div>
+    \[ \hat{V}(s; \theta) = \theta^\top \phi(s) \]
+  </div>
+  <p>where \(\phi(s) \in \mathbb{R}^d\) is a feature vector. The TD(0) update with linear FA becomes:</p>
+  <div class="math-block">
+    <div class="label">Semi-gradient TD(0) with Linear FA</div>
+    \[
+    \theta_{t+1} = \theta_t + \alpha_t \underbrace{\left[ R_{t+1} + \gamma \theta_t^\top \phi(S_{t+1}) - \theta_t^\top \phi(S_t) \right]}_{\delta_t \text{ (TD error)}} \phi(S_t)
+    \]
+  </div>
+
+  <p>This is a stochastic approximation in \(\theta\)-space. The mean field becomes \(h(\theta) = \mathbb{E}[\delta_t \phi(S_t)]\), and the ODE method applies — provided we are on-policy (to avoid the deadly triad).</p>
+
+  <div class="callout blue">
+    <div class="callout-label">Why "Semi-Gradient"?</div>
+    <p>True gradient descent on \(\|\hat{V}(\cdot;\theta) - \mathcal{T}^\pi \hat{V}(\cdot;\theta)\|^2\) would require differentiating through the target \(\mathcal{T}^\pi \hat{V}\). Semi-gradient TD stops this gradient, treating the target as fixed. This is crucial for stability in the on-policy case.</p>
+  </div>
+
+  <h3>Connection to SA Theory</h3>
+  <p>With on-policy linear FA, the mean field can be written as \(h(\theta) = A\theta + b\) where:</p>
+  <div class="math-block">
+    \[
+    A = \mathbb{E}\left[\phi(S_t)\left(\gamma\phi(S_{t+1}) - \phi(S_t)\right)^\top\right], \quad b = \mathbb{E}\left[R_{t+1}\phi(S_t)\right]
+    \]
+  </div>
+  <p>Under on-policy sampling, \(A\) has eigenvalues with negative real parts — ensuring the ODE \(\dot{\theta} = A\theta + b\) is stable and converges to the unique fixed point \(\theta^* = -A^{-1}b\).</p>
+</section>
+
+<hr class="divider"/>
+
+<!-- 10. DEEP RL -->
+<section id="deep">
+  <span class="sec-num">§ 10</span>
+  <h2>Modern RL: Deep RL as Large-Scale SA</h2>
+
+  <p>Deep RL uses neural networks as function approximators. From an SA perspective, this is simply replacing linear \(\theta^\top \phi(s)\) with a deep network \(f_\theta(s)\). The theoretical landscape becomes much harder, but the SA intuition remains.</p>
+
+  <h3>DQN and Its Instability Fixes</h3>
+  <p>Deep Q-Network (Mnih et al., 2015) combines Q-learning with deep neural networks. Two critical tricks stabilize the SA dynamics:</p>
+
+  <div class="two-col">
+    <div class="info-card" style="border-left: 3px solid var(--accent);">
+      <h4>🎯 Target Networks</h4>
+      <p>A separate "target" network \(\theta^-\) is used for bootstrap targets, updated slowly. This prevents the "moving target" problem — it stabilizes the mean field \(h\) by fixing it for a period, approximating the SA assumption of a time-invariant target.</p>
+    </div>
+    <div class="info-card" style="border-left: 3px solid var(--accent2);">
+      <h4>🔄 Experience Replay</h4>
+      <p>Transitions are stored in a replay buffer and sampled randomly. This breaks temporal correlations in the Markov noise, approximately restoring the i.i.d. assumption needed for SA convergence. It also improves data efficiency.</p>
+    </div>
+  </div>
+
+  <h3>Actor-Critic as Two-Timescale SA</h3>
+  <p>Actor-critic methods maintain two parameterized functions:</p>
+  <ul style="padding-left:1.5rem;margin:0.75rem 0;color:var(--text-muted);">
+    <li><strong>Critic:</strong> \(V_w(s)\) — estimates the value function (parameter \(w\))</li>
+    <li><strong>Actor:</strong> \(\pi_\theta(a|s)\) — the policy being learned (parameter \(\theta\))</li>
+  </ul>
+
+  <div class="math-block">
+    <div class="label">Two-Timescale SA (Borkar, 1997; Konda & Tsitsiklis, 2000)</div>
+    \[
+    w_{t+1} = w_t + \beta_t \left[\delta_t \nabla_w V_w(S_t)\right] \quad \text{(fast timescale)}
+    \]
+    \[
+    \theta_{t+1} = \theta_t + \alpha_t \left[\delta_t \nabla_\theta \log \pi_\theta(A_t|S_t)\right] \quad \text{(slow timescale)}
+    \]
+    \[ \beta_t \gg \alpha_t \quad (\beta_t/\alpha_t \to \infty) \]
+  </div>
+
+  <p>The key insight from two-timescale SA theory (Borkar, 1997): on the slow timescale, the fast iterate has already converged (approximately), so the slow iterate sees the converged fast value. This decouples the two updates and allows separate convergence analysis.</p>
+
+  <div class="callout green">
+    <div class="callout-label">Modern A3C/PPO/SAC</div>
+    <p>All modern actor-critic algorithms (A3C, PPO, SAC, TD3) are variations of two-timescale SA, with sophisticated tricks to handle the deep network function approximation. The SA theoretical lens explains why they work and why they sometimes fail.</p>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- 11. SUMMARY -->
+<section id="summary">
+  <span class="sec-num">§ 11</span>
+  <h2>Summary</h2>
+
+  <p>We have built a complete picture of model-free RL, from intuition to deep theory. Here is the conceptual hierarchy:</p>
+
+  <div class="viz-container">
+    <div class="viz-title">🗺️ Conceptual Map</div>
+    <canvas id="map-canvas" width="680" height="300"></canvas>
+  </div>
+
+  <div class="callout purple">
+    <div class="callout-label">The Big Picture</div>
+    <p>Model-free RL is fundamentally about <strong>approximating the Bellman operator</strong> from samples. Monte Carlo does this with full-trajectory estimates (unbiased, high variance). TD does it with one-step estimates (biased, low variance). Both are instances of <strong>stochastic approximation</strong> — iterative algorithms that converge almost surely under the Robbins-Monro step-size conditions, as analyzed via the <strong>ODE method</strong>.</p>
+  </div>
+
+  <h3>Key Takeaways</h3>
+  <table>
+    <thead><tr><th>Concept</th><th>One-line summary</th></tr></thead>
+    <tbody>
+      <tr><td>Model-Free RL</td><td>Learn value/policy directly from experience, no transition model needed</td></tr>
+      <tr><td>Monte Carlo</td><td>Average full-episode returns; unbiased but high variance</td></tr>
+      <tr><td>TD Learning</td><td>Bootstrap off one-step estimates; biased but efficient and online</td></tr>
+      <tr><td>Q-Learning / SARSA</td><td>TD control: off-policy / on-policy Q-value estimation + greedy improvement</td></tr>
+      <tr><td>SA recursion</td><td>\(\theta_{t+1} = \theta_t + \alpha_t(h(\theta_t) + \xi_t)\)</td></tr>
+      <tr><td>Robbins-Monro</td><td>\(\sum \alpha_t = \infty\), \(\sum \alpha_t^2 < \infty\) ensures convergence</td></tr>
+      <tr><td>ODE Method</td><td>SA trajectory approximates the flow of \(\dot{\theta} = h(\theta)\)</td></tr>
+      <tr><td>Deadly Triad</td><td>FA + bootstrapping + off-policy together cause instability / divergence</td></tr>
+      <tr><td>Deep RL</td><td>Large-scale SA with non-linear FA; target networks + replay restore stability</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Further Reading</h3>
+  <div class="callout blue">
+    <div class="callout-label">Essential References</div>
+    <p>
+      • Sutton & Barto (2018). <em>Reinforcement Learning: An Introduction</em>. 2nd ed.<br/>
+      • Borkar, V.S. (2008). <em>Stochastic Approximation: A Dynamical Systems Viewpoint</em>.<br/>
+      • Tsitsiklis, J. (1994). Asynchronous stochastic approximation and Q-learning. <em>Machine Learning</em>.<br/>
+      • Konda & Tsitsiklis (2000). Actor-critic algorithms. <em>NIPS</em>.<br/>
+      • Mnih et al. (2015). Human-level control through DRL. <em>Nature</em>.<br/>
+      • Baird (1995). Residual algorithms. <em>ICML</em>. [Deadly triad counterexample]
+    </p>
+  </div>
+</section>
+
+<!-- Footer -->
+<div style="padding: 2rem 0; border-top: 1px solid var(--border); margin-top: 2rem; text-align: center; color: var(--text-light); font-size: 0.8rem;">
+  Model-Free Reinforcement Learning — Research Guide<br/>
+  Built for MTech (Research) / PhD students in RL
+</div>
+
+</main>
+</div>
+
+<script>
+// ========================
+// UTILITIES
+// ========================
+function toggleView(prefix, key, btn) {
+  const parent = btn.closest('.toggle-group');
+  parent.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const section = btn.closest('section') || btn.parentElement.parentElement;
+  section.querySelectorAll('.toggle-content').forEach(el => el.classList.remove('visible'));
+  const target = document.getElementById(prefix + '-' + key);
+  if (target) { target.classList.add('visible'); }
+}
+
+function toggleCollapsible(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ========================
+// PROGRESS BAR
+// ========================
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  const pct = (window.scrollY / total) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  updateTOC();
+});
+
+function updateTOC() {
+  const sections = document.querySelectorAll('section[id], .hero[id]');
+  let current = '';
+  sections.forEach(sec => {
+    if (window.scrollY >= sec.offsetTop - 100) current = sec.id;
+  });
+  document.querySelectorAll('.toc-list a').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+
+// ========================
+// TIMELINE VISUALIZATION
+// ========================
+function drawTimeline() {
+  const c = document.getElementById('timeline-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const events = [
+    { year: '1951', label: 'Robbins-Monro\nSA Algorithm', x: 0.08, color: '#27ae60' },
+    { year: '1957', label: "Bellman's\nDyn. Programming", x: 0.25, color: '#c0392b' },
+    { year: '1988', label: "Sutton's\nTD Learning", x: 0.50, color: '#2980b9' },
+    { year: '1989', label: "Watkins'\nQ-Learning", x: 0.62, color: '#8e44ad' },
+    { year: '2013', label: "DQN\n(DeepMind)", x: 0.80, color: '#c0392b' },
+    { year: '2016', label: "AlphaGo /\nA3C", x: 0.93, color: '#27ae60' },
+  ];
+
+  const lineY = H * 0.55;
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(30, lineY); ctx.lineTo(W - 20, lineY); ctx.stroke();
+
+  events.forEach(ev => {
+    const x = 30 + ev.x * (W - 50);
+    ctx.fillStyle = ev.color;
+    ctx.beginPath(); ctx.arc(x, lineY, 6, 0, Math.PI * 2); ctx.fill();
+
+    ctx.strokeStyle = ev.color; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, lineY - 6); ctx.lineTo(x, lineY - 22); ctx.stroke();
+
+    ctx.font = 'bold 9px DM Sans, sans-serif';
+    ctx.fillStyle = '#888';
+    ctx.textAlign = 'center';
+    ctx.fillText(ev.year, x, lineY + 18);
+
+    ctx.font = '9px DM Sans, sans-serif';
+    ctx.fillStyle = '#333';
+    const lines = ev.label.split('\n');
+    lines.forEach((line, i) => ctx.fillText(line, x, lineY - 26 - (lines.length - 1 - i) * 12));
+  });
+}
+drawTimeline();
+
+// ========================
+// MC SIMULATION
+// ========================
+let mcData = { episodes: 0, estimates: [], trueVal: 3.33 };
+
+function getMCReturn() {
+  let r = 0, gamma = 0.9;
+  const steps = 3 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < steps; i++) {
+    r += Math.pow(gamma, i) * (1 + 3 * Math.random());
+  }
+  return r;
+}
+
+function drawMCCanvas() {
+  const c = document.getElementById('mc-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { l: 50, r: 20, t: 20, b: 35 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+
+  ctx.strokeStyle = '#eee'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * iH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + iW, y); ctx.stroke();
+    const v = (4 - i) * 2;
+    ctx.font = '10px DM Sans'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(1), pad.l - 5, y + 4);
+  }
+
+  const maxY = 8, minY = 0;
+  const toY = v => pad.t + iH - ((v - minY) / (maxY - minY)) * iH;
+
+  // True value line
+  ctx.strokeStyle = '#27ae60'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, toY(mcData.trueVal)); ctx.lineTo(pad.l + iW, toY(mcData.trueVal)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '10px DM Sans'; ctx.fillStyle = '#27ae60'; ctx.textAlign = 'left';
+  ctx.fillText('True V = 3.33', pad.l + 5, toY(mcData.trueVal) - 5);
+
+  if (mcData.estimates.length > 0) {
+    // Individual samples (dots)
+    mcData.estimates.forEach((est, i) => {
+      if (est.raw !== undefined) {
+        const x = pad.l + (i / Math.max(mcData.estimates.length - 1, 1)) * iW;
+        ctx.fillStyle = 'rgba(41, 128, 185, 0.3)';
+        ctx.beginPath(); ctx.arc(x, toY(est.raw), 3, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+
+    // Running estimate
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+    ctx.beginPath();
+    mcData.estimates.forEach((est, i) => {
+      const x = pad.l + (i / Math.max(mcData.estimates.length - 1, 1)) * iW;
+      if (i === 0) ctx.moveTo(x, toY(est.avg));
+      else ctx.lineTo(x, toY(est.avg));
+    });
+    ctx.stroke();
+
+    // Current estimate dot
+    const last = mcData.estimates[mcData.estimates.length - 1];
+    const lastX = pad.l + iW;
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath(); ctx.arc(lastX, toY(last.avg), 5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.font = '10px DM Sans'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
+  ctx.fillText('Episode', pad.l + iW / 2, H - 5);
+  ctx.save(); ctx.translate(12, pad.t + iH / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Value Estimate', 0, 0); ctx.restore();
+
+  // Legend
+  ctx.font = '10px DM Sans';
+  ctx.fillStyle = '#c0392b'; ctx.fillRect(W - 130, 15, 12, 3);
+  ctx.fillStyle = '#555'; ctx.textAlign = 'left'; ctx.fillText('Running avg', W - 113, 19);
+  ctx.fillStyle = 'rgba(41,128,185,0.5)';
+  ctx.beginPath(); ctx.arc(W - 124, 30, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#555'; ctx.fillText('Sample return', W - 113, 33);
+}
+
+function runMCSimulation() {
+  const ret = getMCReturn();
+  const n = mcData.episodes + 1;
+  const prevAvg = mcData.estimates.length > 0 ? mcData.estimates[mcData.estimates.length - 1].avg : 0;
+  const newAvg = prevAvg + (ret - prevAvg) / n;
+  mcData.estimates.push({ raw: ret, avg: newAvg });
+  mcData.episodes = n;
+  drawMCCanvas();
+  document.getElementById('mc-stats').textContent =
+    `Episodes: ${n} | Estimate: ${newAvg.toFixed(3)} | True Value: 3.33`;
+}
+
+function runMCBatch() { for (let i = 0; i < 20; i++) runMCSimulation(); }
+function resetMC() {
+  mcData = { episodes: 0, estimates: [], trueVal: 3.33 };
+  drawMCCanvas();
+  document.getElementById('mc-stats').textContent = 'Episodes: 0 | Estimate: — | True Value: 3.33';
+}
+drawMCCanvas();
+
+// ========================
+// TD SIMULATION
+// ========================
+let tdAlpha = 0.1;
+let tdState = {
+  steps: 0,
+  // 5-state chain, true values
+  trueV: [0, 1, 2, 3, 4],
+  estV: [0, 0, 0, 0, 0],
+  curState: 2
+};
+
+function updateAlpha(v) {
+  tdAlpha = v / 100;
+  document.getElementById('alpha-val').textContent = tdAlpha.toFixed(2);
+}
+
+function drawTDCanvas() {
+  const c = document.getElementById('td-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const n = 5;
+  const stateW = 80, stateH = 50, startX = (W - n * stateW - (n - 1) * 20) / 2, stateY = 40;
+
+  tdState.estV.forEach((v, i) => {
+    const x = startX + i * (stateW + 20);
+    const isActive = tdState.curState === i;
+
+    ctx.fillStyle = isActive ? '#2980b9' : '#f0f0f0';
+    ctx.strokeStyle = isActive ? '#1a5f7a' : '#ddd';
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.beginPath();
+    ctx.roundRect(x, stateY, stateW, stateH, 6);
+    ctx.fill(); ctx.stroke();
+
+    ctx.font = 'bold 11px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillStyle = isActive ? 'white' : '#333';
+    ctx.fillText(`s${i}`, x + stateW / 2, stateY + 18);
+    ctx.font = '11px DM Sans';
+    ctx.fillStyle = isActive ? 'rgba(255,255,255,0.9)' : '#888';
+    ctx.fillText(`V̂=${v.toFixed(2)}`, x + stateW / 2, stateY + 34);
+  });
+
+  // True value bars
+  const barAreaY = 120, barAreaH = 70;
+  ctx.font = '10px DM Sans'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
+  ctx.fillText('Value comparison per state', W / 2, barAreaY - 8);
+
+  tdState.estV.forEach((v, i) => {
+    const x = startX + i * (stateW + 20);
+    const barW = 28;
+    const maxV = 4;
+
+    // True value bar
+    const trueH = (tdState.trueV[i] / maxV) * barAreaH;
+    ctx.fillStyle = 'rgba(39, 174, 96, 0.25)';
+    ctx.fillRect(x + 8, barAreaY + barAreaH - trueH, barW, trueH);
+    ctx.strokeStyle = '#27ae60'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 8, barAreaY + barAreaH - trueH, barW, trueH);
+
+    // Estimated bar
+    const estH = (Math.max(0, v) / maxV) * barAreaH;
+    ctx.fillStyle = 'rgba(192, 57, 43, 0.3)';
+    ctx.fillRect(x + 42, barAreaY + barAreaH - estH, barW, estH);
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 42, barAreaY + barAreaH - estH, barW, estH);
+  });
+
+  // TD error label
+  const s = tdState.curState;
+  const nextS = Math.min(s + 1, 4);
+  const r = s === 4 ? 4 : 1;
+  const tdError = r + 0.9 * tdState.estV[nextS] - tdState.estV[s];
+
+  ctx.font = '11px DM Sans'; ctx.fillStyle = '#555'; ctx.textAlign = 'left';
+  ctx.fillText(`Steps: ${tdState.steps}  |  Current state: s${s}  |  TD error δ = ${tdError.toFixed(3)}`, 20, H - 12);
+
+  // Legend
+  ctx.fillStyle = 'rgba(39,174,96,0.4)'; ctx.fillRect(W - 170, 10, 14, 10);
+  ctx.fillStyle = '#555'; ctx.textAlign = 'left'; ctx.fillText('True V', W - 152, 19);
+  ctx.fillStyle = 'rgba(192,57,43,0.4)'; ctx.fillRect(W - 170, 24, 14, 10);
+  ctx.fillText('Estimated V̂', W - 152, 33);
+}
+
+function runTDStep() {
+  const s = tdState.curState;
+  const nextS = Math.min(s + 1, 4);
+  const r = s === 4 ? 4 : 1;
+  const tdError = r + 0.9 * tdState.estV[nextS] - tdState.estV[s];
+  tdState.estV[s] += tdAlpha * tdError;
+  tdState.curState = (s + 1) % 5;
+  tdState.steps++;
+  drawTDCanvas();
+  document.getElementById('td-stats').textContent = `Steps: ${tdState.steps}`;
+}
+
+function runTDBatch() { for (let i = 0; i < 50; i++) runTDStep(); }
+function resetTD() {
+  tdState = { steps: 0, trueV: [0,1,2,3,4], estV: [0,0,0,0,0], curState: 2 };
+  drawTDCanvas();
+  document.getElementById('td-stats').textContent = 'Steps: 0';
+}
+drawTDCanvas();
+
+// ========================
+// ODE SIMULATION
+// ========================
+let odeNoise = 0.3;
+let odeRunning = false;
+let odeData = { sa: [], ode: [], t: [] };
+
+function updateODENoise(v) {
+  odeNoise = v / 100;
+  document.getElementById('ode-noise-val').textContent = odeNoise.toFixed(2);
+}
+
+function h_ode(theta) { return -2 * (theta - 3); } // stable eq at theta* = 3
+
+async function runODE() {
+  resetODE();
+  const steps = 120;
+  let theta_sa = 0, theta_ode = 0;
+  for (let t = 0; t < steps; t++) {
+    const alpha = 2 / (t + 2);
+    const noise = (Math.random() - 0.5) * 2 * odeNoise / Math.sqrt(alpha);
+    theta_sa = theta_sa + alpha * (h_ode(theta_sa) + noise);
+    theta_ode = theta_ode + 0.05 * h_ode(theta_ode);
+    odeData.sa.push(theta_sa);
+    odeData.ode.push(theta_ode);
+    odeData.t.push(t);
+    if (t % 5 === 0) { drawODECanvas(); await sleep(30); }
+  }
+  drawODECanvas();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function resetODE() {
+  odeData = { sa: [], ode: [], t: [] };
+  drawODECanvas();
+}
+
+function drawODECanvas() {
+  const c = document.getElementById('ode-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { l: 55, r: 20, t: 20, b: 35 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+  const maxT = 120, minV = -2, maxV = 5;
+
+  ctx.strokeStyle = '#eee'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = pad.t + (i / 5) * iH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + iW, y); ctx.stroke();
+    const v = maxV - (i / 5) * (maxV - minV);
+    ctx.font = '10px DM Sans'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(1), pad.l - 5, y + 4);
+  }
+
+  const toX = t => pad.l + (t / maxT) * iW;
+  const toY = v => pad.t + iH - ((v - minV) / (maxV - minV)) * iH;
+
+  // Equilibrium
+  ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, toY(3)); ctx.lineTo(pad.l + iW, toY(3)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '10px DM Sans'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'left';
+  ctx.fillText('θ* = 3', pad.l + 5, toY(3) - 5);
+
+  if (odeData.sa.length > 1) {
+    // ODE path
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    odeData.ode.forEach((v, i) => {
+      const x = toX(odeData.t[i]), y = toY(v);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // SA path
+    ctx.strokeStyle = '#2980b9'; ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    odeData.sa.forEach((v, i) => {
+      const x = toX(odeData.t[i]), y = toY(Math.max(minV, Math.min(maxV, v)));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  ctx.font = '10px DM Sans'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
+  ctx.fillText('Iteration t', pad.l + iW / 2, H - 5);
+  ctx.save(); ctx.translate(12, pad.t + iH / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText('θ_t', 0, 0); ctx.restore();
+
+  // Legend
+  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(W - 170, 15); ctx.lineTo(W - 150, 15); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '10px DM Sans'; ctx.fillStyle = '#555'; ctx.textAlign = 'left';
+  ctx.fillText('ODE trajectory', W - 145, 19);
+
+  ctx.strokeStyle = '#2980b9'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W - 170, 30); ctx.lineTo(W - 150, 30); ctx.stroke();
+  ctx.fillText('SA iterate', W - 145, 34);
+}
+drawODECanvas();
+
+// ========================
+// DEADLY TRIAD SIMULATION
+// ========================
+let triadData = { stable: [], unstable: [], t: [] };
+
+async function runTriad() {
+  resetTriad();
+  let stable = 0, unstable = 0;
+  const steps = 100;
+  for (let t = 0; t < steps; t++) {
+    const alpha_rm = 1 / (t + 2); // Robbins-Monro
+    const alpha_const = 0.3;
+    const noise_s = (Math.random() - 0.5) * 0.5;
+    const noise_u = (Math.random() - 0.5) * 1.0;
+
+    // Stable: contractive h, decaying alpha
+    stable = stable + alpha_rm * (-0.8 * stable + noise_s);
+
+    // Unstable: non-contractive h (norm > 1), constant alpha
+    unstable = unstable + alpha_const * (0.3 * unstable + noise_u);
+
+    triadData.stable.push(stable);
+    triadData.unstable.push(Math.min(50, Math.max(-50, unstable)));
+    triadData.t.push(t);
+
+    if (t % 4 === 0) { drawTriadCanvas(); await sleep(30); }
+  }
+  drawTriadCanvas();
+}
+
+function resetTriad() {
+  triadData = { stable: [], unstable: [], t: [] };
+  drawTriadCanvas();
+}
+
+function drawTriadCanvas() {
+  const c = document.getElementById('triad-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const midX = W / 2;
+  const pad = { l: 45, r: 15, t: 30, b: 30 };
+  const iW = midX - pad.l - pad.r, iH = H - pad.t - pad.b;
+  const maxT = 100;
+
+  function drawPanel(data, xOff, minY, maxY, color, title) {
+    const toX = t => xOff + pad.l + (t / maxT) * iW;
+    const toY = v => pad.t + iH - ((v - minY) / (maxY - minY)) * iH;
+
+    ctx.fillStyle = '#f8f8f8';
+    ctx.fillRect(xOff + pad.l - 5, pad.t - 5, iW + 10, iH + 10);
+
+    ctx.strokeStyle = '#eee'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.t + (i / 4) * iH;
+      ctx.beginPath(); ctx.moveTo(xOff + pad.l - 5, y); ctx.lineTo(xOff + pad.l + iW + 5, y); ctx.stroke();
+      const v = maxY - (i / 4) * (maxY - minY);
+      ctx.font = '9px DM Sans'; ctx.fillStyle = '#bbb'; ctx.textAlign = 'right';
+      ctx.fillText(v.toFixed(1), xOff + pad.l - 7, y + 3);
+    }
+
+    // zero line
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(xOff + pad.l - 5, toY(0)); ctx.lineTo(xOff + pad.l + iW + 5, toY(0)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (data.length > 1) {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.beginPath();
+      data.forEach((v, i) => {
+        const x = toX(triadData.t[i]);
+        const y = toY(Math.max(minY, Math.min(maxY, v)));
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    ctx.font = 'bold 11px DM Sans'; ctx.fillStyle = '#333'; ctx.textAlign = 'center';
+    ctx.fillText(title, xOff + pad.l + iW / 2, 18);
+  }
+
+  drawPanel(triadData.stable, 0, -1, 1, '#27ae60', '✅ Stable SA (RM step sizes)');
+  drawPanel(triadData.unstable, midX, -50, 50, '#c0392b', '❌ Deadly Triad (constant α, non-contr.)');
+}
+drawTriadCanvas();
+
+// ========================
+// SUMMARY MAP
+// ========================
+function drawSummaryMap() {
+  const c = document.getElementById('map-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const nodes = [
+    { x: W/2, y: 30, label: 'Model-Free RL', color: '#1a1a1a', textColor: 'white', w: 140, h: 32, bold: true },
+    { x: W*0.25, y: 110, label: 'Monte Carlo', color: '#27ae60', textColor: 'white', w: 120, h: 30 },
+    { x: W*0.75, y: 110, label: 'TD Learning', color: '#2980b9', textColor: 'white', w: 120, h: 30 },
+    { x: W*0.12, y: 195, label: 'First-Visit MC', color: '#a8d8b9', textColor: '#1a1a1a', w: 110, h: 28 },
+    { x: W*0.38, y: 195, label: 'Every-Visit MC', color: '#a8d8b9', textColor: '#1a1a1a', w: 110, h: 28 },
+    { x: W*0.62, y: 195, label: 'SARSA', color: '#adc4de', textColor: '#1a1a1a', w: 90, h: 28 },
+    { x: W*0.88, y: 195, label: 'Q-Learning', color: '#adc4de', textColor: '#1a1a1a', w: 100, h: 28 },
+    { x: W*0.5, y: 260, label: 'Stochastic Approximation (SA)', color: '#8e44ad', textColor: 'white', w: 220, h: 30 },
+  ];
+
+  const edges = [
+    [0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6], [1, 7], [2, 7]
+  ];
+
+  ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5;
+  edges.forEach(([a, b]) => {
+    ctx.beginPath();
+    ctx.moveTo(nodes[a].x, nodes[a].y + nodes[a].h / 2);
+    ctx.lineTo(nodes[b].x, nodes[b].y - nodes[b].h / 2);
+    ctx.stroke();
+  });
+
+  nodes.forEach(n => {
+    ctx.fillStyle = n.color;
+    ctx.beginPath();
+    ctx.roundRect(n.x - n.w / 2, n.y - n.h / 2, n.w, n.h, 6);
+    ctx.fill();
+
+    ctx.font = (n.bold ? 'bold ' : '') + '11px DM Sans';
+    ctx.fillStyle = n.textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.label, n.x, n.y);
+  });
+
+  ctx.textBaseline = 'alphabetic';
+}
+drawSummaryMap();
+
+// Redraw on load
+window.addEventListener('load', () => {
+  drawTimeline();
+  drawMCCanvas();
+  drawTDCanvas();
+  drawODECanvas();
+  drawTriadCanvas();
+  drawSummaryMap();
+  if (window.MathJax) MathJax.typeset();
+});
+</script>
+</body>
+</html>
