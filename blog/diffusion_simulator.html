@@ -1,1 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diffusion Models — Interactive Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap');
 
+  :root {
+    --bg: #f5f2eb;
+    --bg2: #ede9e0;
+    --bg3: #e3dfd4;
+    --ink: #1a1714;
+    --ink2: #4a4540;
+    --ink3: #7a7470;
+    --accent: #c4402a;
+    --accent2: #2a6ec4;
+    --signal: #2a7c4f;
+    --noise: #c4402a;
+    --mixed: #6b4fc4;
+    --border: #ccc9be;
+    --shadow: rgba(26,23,20,0.08);
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'Fraunces', serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--ink);
+    color: var(--bg);
+    padding: 2.5rem 3rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--signal));
+  }
+  header h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+  header .subtitle {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: #a09a90;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 2rem;
+    padding: 2rem 0;
+  }
+  @media (max-width: 900px) {
+    .main-layout { grid-template-columns: 1fr; }
+    .sidebar { order: -1; }
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .card h2 {
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card h2 .badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    background: var(--bg2);
+    color: var(--ink2);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── CANVAS AREA ── */
+  .canvas-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .canvas-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  }
+  .canvas-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink3);
+  }
+  canvas {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: crosshair;
+    display: block;
+  }
+  #canvas-original { border-color: var(--signal); }
+  #canvas-noisy { border-color: var(--noise); }
+  #canvas-recon { border-color: var(--accent2); }
+
+  /* ── TIMELINE ── */
+  .timeline-wrap {
+    display: flex; align-items: center; gap: 1rem;
+    margin: 0.5rem 0;
+  }
+  .timeline-wrap label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--ink2);
+    white-space: nowrap;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--ink);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px var(--ink);
+  }
+  .t-display {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    min-width: 45px;
+    text-align: right;
+    font-weight: 500;
+  }
+
+  /* ── BUTTONS ── */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; }
+  button {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    padding: 7px 14px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--ink2); border-color: var(--ink2); }
+  button.outline {
+    background: transparent;
+    color: var(--ink);
+  }
+  button.outline:hover { background: var(--bg2); }
+  button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.signal { background: var(--signal); border-color: var(--signal); }
+  button.noise-btn { background: var(--noise); border-color: var(--noise); }
+
+  /* ── MATH PANEL ── */
+  .math-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.9;
+    display: none;
+  }
+  .math-panel.visible { display: block; }
+  .math-eq {
+    padding: 0.6rem 0.8rem;
+    background: white;
+    border-left: 3px solid var(--mixed);
+    margin: 0.4rem 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .math-eq .label { color: var(--ink3); font-size: 0.68rem; }
+  .math-eq .formula { color: var(--ink); font-size: 0.8rem; font-weight: 500; }
+  .math-eq .values { color: var(--ink2); font-size: 0.7rem; margin-top: 2px; }
+  .sig { color: var(--signal); font-weight: 500; }
+  .noi { color: var(--noise); font-weight: 500; }
+  .mix { color: var(--mixed); font-weight: 500; }
+
+  /* ── CONTROLS SIDEBAR ── */
+  .ctrl-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 4px;
+    display: flex; justify-content: space-between;
+  }
+  .ctrl-label span { color: var(--accent); font-weight: 500; }
+  .ctrl-group { margin-bottom: 1rem; }
+
+  /* ── TOGGLE ── */
+  .toggle-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin: 0.5rem 0;
+  }
+  .toggle {
+    position: relative; width: 36px; height: 20px;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider-toggle {
+    position: absolute; inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .slider-toggle::before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .toggle input:checked + .slider-toggle { background: var(--ink); }
+  .toggle input:checked + .slider-toggle::before { transform: translateX(16px); }
+  .toggle-label { font-family: var(--mono); font-size: 0.72rem; color: var(--ink2); }
+
+  /* ── SELECT ── */
+  select {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 3px;
+    color: var(--ink);
+    cursor: pointer;
+    width: 100%;
+  }
+
+  /* ── STATS ── */
+  .stat-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0.5rem; margin-top: 0.5rem;
+  }
+  .stat-box {
+    background: var(--bg2);
+    border-radius: 3px;
+    padding: 0.5rem 0.7rem;
+    text-align: center;
+  }
+  .stat-box .val {
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--ink);
+    display: block;
+  }
+  .stat-box .lbl {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── NOISE BAR ── */
+  .noise-bar-wrap {
+    height: 10px;
+    background: var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 4px 0 8px;
+  }
+  .noise-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--signal), var(--noise));
+    border-radius: 5px;
+    transition: width 0.1s;
+  }
+
+  /* ── HOVER TOOLTIP ── */
+  #tooltip {
+    position: fixed;
+    background: var(--ink);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    padding: 6px 10px;
+    border-radius: 3px;
+    pointer-events: none;
+    display: none;
+    z-index: 1000;
+    line-height: 1.6;
+    white-space: pre;
+  }
+
+  /* ── SCHEDULE VIZ ── */
+  #scheduleCanvas {
+    width: 100%;
+    height: 80px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  /* ── STATUS ── */
+  .status-bar {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--ink3);
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--border);
+    margin-top: 0.5rem;
+  }
+  .status-bar .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--signal);
+    margin-right: 5px;
+    animation: pulse 1.5s infinite;
+  }
+  .status-bar .dot.idle { background: var(--ink3); animation: none; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.5rem 0; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 0.68rem; color: var(--ink2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ── SECTION DIVIDER ── */
+  .section-note {
+    font-size: 0.82rem;
+    color: var(--ink3);
+    line-height: 1.6;
+    margin-bottom: 0.8rem;
+    font-style: italic;
+  }
+
+  footer {
+    background: var(--ink);
+    color: #a09a90;
+    padding: 1.5rem 3rem;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    margin-top: 2rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="subtitle">Interactive Research Simulator · DDPM · Denoising Diffusion Probabilistic Models</div>
+    <h1>Diffusion Models<br><em style="font-style:italic;font-weight:300;">from noise to structure</em></h1>
+  </div>
+</header>
+
+<div class="container">
+<div class="main-layout">
+
+<!-- ───── MAIN CONTENT ───── -->
+<div class="content">
+
+  <!-- VISUALIZATION CARD -->
+  <div class="card">
+    <h2>Visualization <span class="badge" id="phase-badge">READY</span></h2>
+    <p class="section-note">
+      Each canvas shows 16×16 pixels of structured data evolving through the diffusion process.
+      Hover over any canvas to inspect per-pixel values and noise contributions.
+    </p>
+
+    <div class="canvas-row">
+      <div class="canvas-wrap">
+        <div class="canvas-label" style="color:var(--signal)">● Original x₀</div>
+        <canvas id="canvas-original" width="160" height="160"></canvas>
+        <div class="canvas-label" id="snr-original">SNR: ∞</div>
+      </div>
+      <div class="canvas-wrap">
+        <div class="canvas-label" style="color:var(--noise)">● Noisy xₜ</div>
+        <canvas id="canvas-noisy" width="160" height="160"></canvas>
+        <div class="canvas-label" id="snr-noisy">SNR: –</div>
+      </div>
+      <div class="canvas-wrap">
+        <div class="canvas-label" style="color:var(--accent2)">● Reconstructed</div>
+        <canvas id="canvas-recon" width="160" height="160"></canvas>
+        <div class="canvas-label" id="snr-recon">SNR: –</div>
+      </div>
+    </div>
+
+    <!-- Noise level bar -->
+    <div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:0.5rem">
+      <span class="sig" style="font-family:var(--mono);font-size:0.7rem">Signal</span>
+      <div class="noise-bar-wrap" style="flex:1">
+        <div class="noise-bar" id="noise-bar" style="width:5%"></div>
+      </div>
+      <span class="noi" style="font-family:var(--mono);font-size:0.7rem">Noise</span>
+    </div>
+
+    <!-- Timeline slider -->
+    <div class="timeline-wrap">
+      <label>t =</label>
+      <input type="range" id="slider-t" min="0" max="999" value="0" step="1">
+      <div class="t-display" id="t-display">0</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="btn-row">
+      <button class="signal" id="btn-forward" onclick="startForward()">▶ Forward Diffusion</button>
+      <button class="noise-btn" id="btn-reverse" onclick="startReverse()">▶ Reverse Diffusion</button>
+      <button class="outline" onclick="stepBack()">◀ Prev Step</button>
+      <button class="outline" onclick="stepForward()">Next Step ▶</button>
+      <button class="outline" onclick="resetAll()">⟳ Reset</button>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar">
+      <span class="dot idle" id="status-dot"></span>
+      <span id="status-text">Idle — press "Forward Diffusion" to begin</span>
+    </div>
+  </div>
+
+  <!-- MATH PANEL CARD -->
+  <div class="card">
+    <h2>
+      Detailed Math Mode
+      <label class="toggle" style="margin-left:auto">
+        <input type="checkbox" id="math-toggle" onchange="toggleMath(this.checked)">
+        <span class="slider-toggle"></span>
+      </label>
+    </h2>
+
+    <div class="math-panel" id="math-panel">
+      <div id="math-forward-section">
+        <div class="math-eq">
+          <div class="label">CLOSED-FORM FORWARD PROCESS</div>
+          <div class="formula">
+            x<sub>t</sub> = √ᾱ<sub>t</sub> · x₀ + √(1 − ᾱ<sub>t</sub>) · ε
+          </div>
+          <div class="values" id="math-forward-vals">Awaiting computation…</div>
+        </div>
+        <div class="math-eq">
+          <div class="label">SIGNAL COMPONENT</div>
+          <div class="formula sig" id="math-signal">√ᾱ<sub>t</sub> · x₀  =  –</div>
+        </div>
+        <div class="math-eq">
+          <div class="label">NOISE COMPONENT</div>
+          <div class="formula noi" id="math-noise">√(1−ᾱ<sub>t</sub>) · ε  =  –</div>
+        </div>
+      </div>
+
+      <div id="math-reverse-section" style="margin-top:0.6rem">
+        <div class="math-eq">
+          <div class="label">REVERSE STEP (DDPM)</div>
+          <div class="formula">
+            x<sub>t−1</sub> = (1/√α<sub>t</sub>) · [x<sub>t</sub> − ((1−α<sub>t</sub>)/√(1−ᾱ<sub>t</sub>)) · ε̂<sub>θ</sub>(x<sub>t</sub>,t)] + σ<sub>t</sub>·z
+          </div>
+          <div class="values" id="math-reverse-vals">Not yet computed</div>
+        </div>
+        <div class="math-eq">
+          <div class="label">PREDICTED NOISE  ε̂<sub>θ</sub></div>
+          <div class="formula mix" id="math-eps-pred">–</div>
+        </div>
+        <div class="math-eq">
+          <div class="label">POSTERIOR VARIANCE  σ<sub>t</sub>²</div>
+          <div class="formula" id="math-sigma">β̃<sub>t</sub> = (1−ᾱ<sub>t−1</sub>)/(1−ᾱ<sub>t</sub>) · β<sub>t</sub>  =  –</div>
+        </div>
+      </div>
+
+      <div style="margin-top:0.6rem">
+        <div class="math-eq">
+          <div class="label">SCHEDULE PARAMETERS  (t = <span id="math-t-val">0</span>)</div>
+          <div class="formula" id="math-schedule-vals">α<sub>t</sub>=–, β<sub>t</sub>=–, ᾱ<sub>t</sub>=–</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOISE SCHEDULE CARD -->
+  <div class="card">
+    <h2>Noise Schedule</h2>
+    <canvas id="scheduleCanvas" height="80"></canvas>
+    <div class="legend" style="margin-top:0.5rem">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--signal)"></div> ᾱ<sub>t</sub> (signal)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--noise)"></div> 1−ᾱ<sub>t</sub> (noise)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--mixed)"></div> β<sub>t</sub> (step)</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ───── SIDEBAR ───── -->
+<div class="sidebar">
+
+  <!-- PARAMETERS -->
+  <div class="card">
+    <h2>Parameters</h2>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Timesteps T <span id="val-T">1000</span></div>
+      <input type="range" id="param-T" min="100" max="1000" value="1000" step="100"
+        oninput="document.getElementById('val-T').textContent=this.value; rebuildSchedule()">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">β<sub>start</sub> <span id="val-bstart">0.0001</span></div>
+      <input type="range" id="param-bstart" min="1" max="20" value="1" step="1"
+        oninput="document.getElementById('val-bstart').textContent=(this.value/10000).toFixed(4); rebuildSchedule()">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">β<sub>end</sub> <span id="val-bend">0.0200</span></div>
+      <input type="range" id="param-bend" min="50" max="500" value="200" step="10"
+        oninput="document.getElementById('val-bend').textContent=(this.value/10000).toFixed(4); rebuildSchedule()">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Schedule</div>
+      <select id="param-schedule" onchange="rebuildSchedule()">
+        <option value="linear">Linear</option>
+        <option value="cosine">Cosine</option>
+        <option value="sqrt">Square-root</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Animation Speed <span id="val-speed">30</span> ms/step</div>
+      <input type="range" id="param-speed" min="5" max="200" value="30" step="5"
+        oninput="document.getElementById('val-speed').textContent=this.value">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Model Quality</div>
+      <select id="param-model">
+        <option value="perfect">Perfect ε̂<sub>θ</sub> (true noise)</option>
+        <option value="imperfect">Imperfect (±5% error)</option>
+        <option value="bad">Poor (±30% error)</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Data Pattern</div>
+      <select id="param-data" onchange="rebuildData(); drawOriginal()">
+        <option value="checkerboard">Checkerboard</option>
+        <option value="cross">Cross / Plus</option>
+        <option value="gradient">Gradient</option>
+        <option value="rings">Concentric Rings</option>
+        <option value="letter">Letter "A"</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="card">
+    <h2>Live Statistics</h2>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <span class="val" id="stat-t">0</span>
+        <span class="lbl">timestep t</span>
+      </div>
+      <div class="stat-box">
+        <span class="val" id="stat-alpha">1.000</span>
+        <span class="lbl">ᾱ<sub>t</sub></span>
+      </div>
+      <div class="stat-box">
+        <span class="val" id="stat-snr">∞</span>
+        <span class="lbl">SNR (dB)</span>
+      </div>
+      <div class="stat-box">
+        <span class="val" id="stat-mse">0.000</span>
+        <span class="lbl">recon MSE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div class="card">
+    <h2>About</h2>
+    <p style="font-size:0.8rem;color:var(--ink2);line-height:1.7">
+      All computations are explicit — no black-box libraries. Gaussian noise via Box-Muller transform. 
+      DDPM equations from Ho et al. (2020). The "perfect model" knows the true ε used during forward diffusion; 
+      imperfect modes add scaled perturbation.
+    </p>
+    <div class="toggle-row" style="margin-top:0.8rem">
+      <label class="toggle">
+        <input type="checkbox" id="show-noise-map" onchange="drawNoisy()">
+        <span class="slider-toggle"></span>
+      </label>
+      <span class="toggle-label">Overlay noise map</span>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+<footer>
+  <div class="container">
+    DDPM Simulator · Explicit math · Box-Muller Gaussian · Ho et al. 2020 ·
+    All computations in pure JavaScript — no ML libraries
+  </div>
+</footer>
+
+<div id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//   GAUSSIAN NOISE  (Box-Muller)
+// ═══════════════════════════════════════════════════════
+function randn() {
+  let u, v;
+  do { u = Math.random(); } while (u === 0);
+  do { v = Math.random(); } while (v === 0);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+function randnArray(n) {
+  const a = new Float32Array(n);
+  for (let i = 0; i < n; i++) a[i] = randn();
+  return a;
+}
+
+// ═══════════════════════════════════════════════════════
+//   STATE
+// ═══════════════════════════════════════════════════════
+const N = 16;        // grid size
+const NPIX = N * N;  // total pixels
+
+let T = 1000;
+let betas, alphas, alphaBar;
+
+let x0 = new Float32Array(NPIX);          // original data [0,1]
+let epsilon = new Float32Array(NPIX);     // fixed noise sampled for forward
+let xSeq = [];                            // xSeq[t] = Float32Array, forward
+let xRevSeq = [];                         // reverse sequence
+
+let currentT = 0;
+let animationId = null;
+let isForwardRunning = false;
+let isReverseRunning = false;
+
+let mathModeOn = false;
+
+// ═══════════════════════════════════════════════════════
+//   SCHEDULE BUILDING
+// ═══════════════════════════════════════════════════════
+function rebuildSchedule() {
+  T = parseInt(document.getElementById('param-T').value);
+  const bStart = parseInt(document.getElementById('param-bstart').value) / 10000;
+  const bEnd = parseInt(document.getElementById('param-bend').value) / 10000;
+  const sched = document.getElementById('param-schedule').value;
+
+  betas = new Float32Array(T);
+  alphas = new Float32Array(T);
+  alphaBar = new Float32Array(T);
+
+  if (sched === 'linear') {
+    for (let t = 0; t < T; t++) {
+      betas[t] = bStart + (bEnd - bStart) * t / (T - 1);
+    }
+  } else if (sched === 'cosine') {
+    // cosine schedule: α̅ₜ = cos²(((t/T + s)/(1+s)) * π/2) / cos²((s/(1+s)) * π/2)
+    const s = 0.008;
+    const f0 = Math.cos((s / (1 + s)) * Math.PI / 2) ** 2;
+    let prevAb = 1.0;
+    for (let t = 0; t < T; t++) {
+      const ft = Math.cos((((t + 1) / T + s) / (1 + s)) * Math.PI / 2) ** 2;
+      alphaBar[t] = ft / f0;
+      alphaBar[t] = Math.max(0.0001, Math.min(0.9999, alphaBar[t]));
+      alphas[t] = t === 0 ? alphaBar[0] : alphaBar[t] / prevAb;
+      betas[t] = 1 - alphas[t];
+      prevAb = alphaBar[t];
+    }
+    drawScheduleCanvas(); return;
+  } else if (sched === 'sqrt') {
+    for (let t = 0; t < T; t++) {
+      const frac = t / (T - 1);
+      betas[t] = bStart + (bEnd - bStart) * Math.sqrt(frac);
+    }
+  }
+
+  // compute alphas and alphaBar from betas
+  let ab = 1.0;
+  for (let t = 0; t < T; t++) {
+    alphas[t] = 1 - betas[t];
+    ab *= alphas[t];
+    alphaBar[t] = ab;
+  }
+  drawScheduleCanvas();
+}
+
+// ═══════════════════════════════════════════════════════
+//   DATA PATTERNS
+// ═══════════════════════════════════════════════════════
+function rebuildData() {
+  const pattern = document.getElementById('param-data').value;
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const i = r * N + c;
+      const cr = c / (N - 1), rr = r / (N - 1);
+      if (pattern === 'checkerboard') {
+        x0[i] = ((Math.floor(r / 2) + Math.floor(c / 2)) % 2 === 0) ? 0.9 : 0.1;
+      } else if (pattern === 'cross') {
+        const cx = Math.abs(c - N / 2), cy = Math.abs(r - N / 2);
+        x0[i] = (cx < 3 || cy < 3) ? 0.9 : 0.1;
+      } else if (pattern === 'gradient') {
+        x0[i] = cr * rr;
+      } else if (pattern === 'rings') {
+        const dist = Math.sqrt((cr - 0.5) ** 2 + (rr - 0.5) ** 2) * 2;
+        x0[i] = (Math.floor(dist * 3) % 2 === 0) ? 0.85 : 0.15;
+      } else if (pattern === 'letter') {
+        // Pixel-art "A"
+        const A = [
+          "0011111100",
+          "0110000110",
+          "1100000011",
+          "1100000011",
+          "1111111111",
+          "1100000011",
+          "1100000011",
+          "1100000011",
+        ];
+        const rIdx = Math.floor(rr * A.length);
+        const cIdx = Math.floor(cr * 10);
+        const row = A[Math.min(rIdx, A.length - 1)] || "0000000000";
+        x0[i] = (row[Math.min(cIdx, 9)] === '1') ? 0.9 : 0.1;
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//   FORWARD DIFFUSION  (precompute all T steps)
+// ═══════════════════════════════════════════════════════
+function precomputeForward() {
+  epsilon = randnArray(NPIX);   // fixed noise for this run
+  xSeq = new Array(T + 1);
+  xSeq[0] = new Float32Array(x0);
+
+  for (let t = 1; t <= T; t++) {
+    const sqrtAbT = Math.sqrt(alphaBar[t - 1]);
+    const sqrtOneMinAbT = Math.sqrt(1 - alphaBar[t - 1]);
+    const xt = new Float32Array(NPIX);
+    for (let i = 0; i < NPIX; i++) {
+      xt[i] = sqrtAbT * x0[i] + sqrtOneMinAbT * epsilon[i];
+    }
+    xSeq[t] = xt;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//   REVERSE DIFFUSION  (precompute all T steps)
+// ═══════════════════════════════════════════════════════
+function epsTheta(xt, t) {
+  // ε̂_θ(x_t, t) — simulated noise predictor
+  const modelQuality = document.getElementById('param-model').value;
+  const trueEps = epsilon;
+  const estEps = new Float32Array(NPIX);
+
+  for (let i = 0; i < NPIX; i++) {
+    const perfect = trueEps[i];
+    if (modelQuality === 'perfect') {
+      estEps[i] = perfect;
+    } else if (modelQuality === 'imperfect') {
+      estEps[i] = perfect + randn() * 0.05;
+    } else {
+      estEps[i] = perfect + randn() * 0.30;
+    }
+  }
+  return estEps;
+}
+
+function precomputeReverse() {
+  xRevSeq = new Array(T + 1);
+  xRevSeq[T] = new Float32Array(xSeq[T]);  // start from fully noisy
+
+  for (let t = T; t >= 1; t--) {
+    const at = alphas[t - 1];
+    const abt = alphaBar[t - 1];
+    const abt_prev = t > 1 ? alphaBar[t - 2] : 1.0;
+    const bt = betas[t - 1];
+
+    // posterior variance: β̃_t
+    const betaTilde = bt * (1 - abt_prev) / (1 - abt);
+    const sigmaT = Math.sqrt(Math.max(0, betaTilde));
+
+    const xt = xRevSeq[t];
+    const eps_hat = epsTheta(xt, t);
+    const coeff = (1 - at) / Math.sqrt(1 - abt);
+    const invSqrtAt = 1 / Math.sqrt(at);
+
+    const z = randnArray(NPIX);
+    const xt_prev = new Float32Array(NPIX);
+
+    for (let i = 0; i < NPIX; i++) {
+      const mean = invSqrtAt * (xt[i] - coeff * eps_hat[i]);
+      xt_prev[i] = mean + (t > 1 ? sigmaT * z[i] : 0);
+    }
+    xRevSeq[t - 1] = xt_prev;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//   DRAWING
+// ═══════════════════════════════════════════════════════
+function toRGB(v) {
+  const c = Math.round(Math.max(0, Math.min(1, v)) * 255);
+  return c;
+}
+
+function drawPixels(canvas, data, noiseData, overlayNoise) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pw = W / N, ph = H / N;
+  ctx.clearRect(0, 0, W, H);
+
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const i = r * N + c;
+      let v = data[i];
+
+      if (overlayNoise && noiseData) {
+        // tint red based on noise magnitude
+        const nMag = Math.abs(noiseData[i]) / 3;  // normalize
+        const nv = Math.min(1, nMag);
+        const cv = toRGB(v);
+        ctx.fillStyle = `rgb(${Math.round(cv + nv * (255 - cv))},${Math.round(cv * (1 - nv * 0.7))},${Math.round(cv * (1 - nv * 0.9))})`;
+      } else {
+        const cv = toRGB(v);
+        ctx.fillStyle = `rgb(${cv},${cv},${cv})`;
+      }
+      ctx.fillRect(c * pw, r * ph, pw, ph);
+    }
+  }
+}
+
+function drawOriginal() {
+  drawPixels(document.getElementById('canvas-original'), x0, null, false);
+}
+
+function drawNoisy() {
+  const t = currentT;
+  if (!xSeq[t]) return;
+  const overlayNoise = document.getElementById('show-noise-map').checked;
+  drawPixels(document.getElementById('canvas-noisy'), xSeq[t], epsilon, overlayNoise);
+  updateSNR(t);
+}
+
+function drawRecon() {
+  if (!xRevSeq[currentT]) {
+    const ctx = document.getElementById('canvas-recon').getContext('2d');
+    ctx.fillStyle = '#e3dfd4';
+    ctx.fillRect(0, 0, 160, 160);
+    ctx.fillStyle = '#7a7470';
+    ctx.font = '11px IBM Plex Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('Run reverse to', 80, 70);
+    ctx.fillText('reconstruct', 80, 85);
+    return;
+  }
+  drawPixels(document.getElementById('canvas-recon'), xRevSeq[currentT], null, false);
+  computeMSE();
+}
+
+function updateSNR(t) {
+  if (t === 0) {
+    document.getElementById('snr-noisy').textContent = 'SNR: ∞';
+    document.getElementById('stat-snr').textContent = '∞';
+    document.getElementById('stat-alpha').textContent = '1.000';
+    return;
+  }
+  const ab = alphaBar[t - 1];
+  const snrLinear = ab / (1 - ab);
+  const snrDB = snrLinear > 0 ? (10 * Math.log10(snrLinear)).toFixed(1) : '-∞';
+  document.getElementById('snr-noisy').textContent = `SNR: ${snrDB} dB`;
+  document.getElementById('stat-snr').textContent = snrDB;
+  document.getElementById('stat-alpha').textContent = ab.toFixed(4);
+  // noise bar
+  document.getElementById('noise-bar').style.width = ((1 - ab) * 100).toFixed(1) + '%';
+}
+
+function computeMSE() {
+  if (!xRevSeq[currentT]) return;
+  const recon = xRevSeq[currentT];
+  let mse = 0;
+  for (let i = 0; i < NPIX; i++) {
+    const d = recon[i] - x0[i];
+    mse += d * d;
+  }
+  mse /= NPIX;
+  document.getElementById('stat-mse').textContent = mse.toFixed(4);
+  document.getElementById('snr-recon').textContent = `MSE: ${mse.toFixed(4)}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//   MATH PANEL UPDATE
+// ═══════════════════════════════════════════════════════
+function updateMathPanel(t) {
+  if (!mathModeOn) return;
+  document.getElementById('math-t-val').textContent = t;
+
+  if (t === 0) {
+    document.getElementById('math-forward-vals').textContent = 't=0: x_t = x_0 (no noise)';
+    document.getElementById('math-signal').innerHTML = '√ᾱ₀ · x₀  =  x₀  (√ᾱ₀ ≈ 1.000)';
+    document.getElementById('math-noise').innerHTML = '√(1−ᾱ₀) · ε  ≈  0';
+    document.getElementById('math-schedule-vals').innerHTML = `α₀≈1.000, β₀=${betas[0].toFixed(5)}, ᾱ₀=${alphaBar[0].toFixed(5)}`;
+    return;
+  }
+
+  const idx = Math.min(t - 1, T - 1);
+  const ab = alphaBar[idx];
+  const at = alphas[idx];
+  const bt = betas[idx];
+  const sqrtAb = Math.sqrt(ab).toFixed(4);
+  const sqrtOneMinAb = Math.sqrt(1 - ab).toFixed(4);
+
+  // sample pixel (center)
+  const ci = Math.floor(N / 2) * N + Math.floor(N / 2);
+  const x0v = x0[ci].toFixed(4);
+  const epsv = epsilon[ci] ? epsilon[ci].toFixed(4) : '0.0000';
+  const xtv = xSeq[t] ? xSeq[t][ci].toFixed(4) : '–';
+  const sig = (Math.sqrt(ab) * x0[ci]).toFixed(4);
+  const noi = (Math.sqrt(1 - ab) * (epsilon[ci] || 0)).toFixed(4);
+
+  document.getElementById('math-forward-vals').innerHTML =
+    `√ᾱ<sub>t</sub>=${sqrtAb}, √(1−ᾱ<sub>t</sub>)=${sqrtOneMinAb} | x₀[c]=${x0v}, ε[c]=${epsv} → x<sub>t</sub>[c]=${xtv}`;
+  document.getElementById('math-signal').innerHTML =
+    `<span class="sig">√ᾱ<sub>t</sub> · x₀[c]  =  ${sqrtAb} × ${x0v}  =  ${sig}</span>`;
+  document.getElementById('math-noise').innerHTML =
+    `<span class="noi">√(1−ᾱ<sub>t</sub>) · ε[c]  =  ${sqrtOneMinAb} × ${epsv}  =  ${noi}</span>`;
+  document.getElementById('math-schedule-vals').innerHTML =
+    `α<sub>t</sub>=${at.toFixed(5)}, β<sub>t</sub>=${bt.toFixed(5)}, ᾱ<sub>t</sub>=${ab.toFixed(5)}`;
+
+  // reverse
+  if (t > 0) {
+    const betaTilde = bt * (t > 1 ? (1 - alphaBar[idx - 1]) : 1) / (1 - ab);
+    document.getElementById('math-sigma').innerHTML =
+      `β̃<sub>t</sub> = (1−ᾱ<sub>t−1</sub>)/(1−ᾱ<sub>t</sub>) · β<sub>t</sub>  =  ${betaTilde.toFixed(6)}`;
+
+    if (xRevSeq[t]) {
+      const xtR = xRevSeq[t][ci].toFixed(4);
+      const model = document.getElementById('param-model').value;
+      document.getElementById('math-eps-pred').innerHTML =
+        `<span class="mix">ε̂<sub>θ</sub>[c] ≈ ${epsilon[ci] ? epsilon[ci].toFixed(4) : '–'} (mode: ${model})</span>`;
+      document.getElementById('math-reverse-vals').textContent =
+        `x<sub>t</sub>[c]=${xtR}  →  x<sub>t−1</sub>[c]=${xRevSeq[t > 0 ? t - 1 : 0] ? xRevSeq[t - 1][ci].toFixed(4) : '–'}`;
+    } else {
+      document.getElementById('math-eps-pred').textContent = '(run reverse diffusion first)';
+      document.getElementById('math-reverse-vals').textContent = 'not computed';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//   SCHEDULE CANVAS
+// ═══════════════════════════════════════════════════════
+function drawScheduleCanvas() {
+  const canvas = document.getElementById('scheduleCanvas');
+  const W = canvas.offsetWidth || 400;
+  canvas.width = W;
+  const H = 80;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  const steps = Math.min(T, 200);
+  const stride = Math.floor(T / steps);
+
+  // draw ᾱ (signal)
+  ctx.beginPath(); ctx.strokeStyle = '#2a7c4f'; ctx.lineWidth = 2;
+  for (let i = 0; i < steps; i++) {
+    const t = i * stride;
+    const x = (i / (steps - 1)) * W;
+    const y = H - alphaBar[Math.min(t, T - 1)] * (H - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // draw 1-ᾱ (noise)
+  ctx.beginPath(); ctx.strokeStyle = '#c4402a'; ctx.lineWidth = 2;
+  for (let i = 0; i < steps; i++) {
+    const t = i * stride;
+    const x = (i / (steps - 1)) * W;
+    const y = H - (1 - alphaBar[Math.min(t, T - 1)]) * (H - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // draw β
+  ctx.beginPath(); ctx.strokeStyle = '#6b4fc4'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+  for (let i = 0; i < steps; i++) {
+    const t = i * stride;
+    const x = (i / (steps - 1)) * W;
+    const y = H - (betas[Math.min(t, T - 1)] / 0.02) * (H - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // current t marker
+  if (currentT > 0) {
+    const mx = ((currentT / T)) * W;
+    ctx.beginPath();
+    ctx.strokeStyle = '#1a1714';
+    ctx.lineWidth = 1.5;
+    ctx.moveTo(mx, 0); ctx.lineTo(mx, H);
+    ctx.stroke();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//   ANIMATION
+// ═══════════════════════════════════════════════════════
+let lastFrameTime = 0;
+
+function animate(forward) {
+  const speed = parseInt(document.getElementById('param-speed').value);
+
+  const step = (timestamp) => {
+    if (timestamp - lastFrameTime < speed) {
+      animationId = requestAnimationFrame(step);
+      return;
+    }
+    lastFrameTime = timestamp;
+
+    if (forward) {
+      if (currentT >= T) { stopAnimation(); return; }
+      currentT++;
+    } else {
+      if (currentT <= 0) { stopAnimation(); return; }
+      currentT--;
+    }
+
+    updateUI();
+    animationId = requestAnimationFrame(step);
+  };
+
+  animationId = requestAnimationFrame(step);
+}
+
+function updateUI() {
+  document.getElementById('slider-t').value = currentT;
+  document.getElementById('t-display').textContent = currentT;
+  document.getElementById('stat-t').textContent = currentT;
+
+  drawNoisy();
+  drawRecon();
+  updateMathPanel(currentT);
+  drawScheduleCanvas();
+}
+
+function stopAnimation() {
+  if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+  isForwardRunning = false; isReverseRunning = false;
+  setStatus('idle', 'Paused at t = ' + currentT);
+  document.getElementById('status-dot').className = 'dot idle';
+  document.getElementById('btn-forward').textContent = '▶ Forward Diffusion';
+  document.getElementById('btn-reverse').textContent = '▶ Reverse Diffusion';
+}
+
+function setStatus(mode, msg) {
+  document.getElementById('status-text').textContent = msg;
+  document.getElementById('status-dot').className = 'dot' + (mode === 'idle' ? ' idle' : '');
+}
+
+// ═══════════════════════════════════════════════════════
+//   BUTTON HANDLERS
+// ═══════════════════════════════════════════════════════
+function startForward() {
+  if (isForwardRunning) { stopAnimation(); return; }
+  stopAnimation();
+  if (currentT >= T) { currentT = 0; updateUI(); }
+
+  precomputeForward();
+  isForwardRunning = true;
+  setStatus('run', 'Forward diffusion running…');
+  document.getElementById('status-dot').className = 'dot';
+  document.getElementById('btn-forward').textContent = '⏸ Pause';
+  animate(true);
+}
+
+function startReverse() {
+  if (isReverseRunning) { stopAnimation(); return; }
+  stopAnimation();
+
+  if (!xSeq[T]) { precomputeForward(); }
+  precomputeReverse();
+  currentT = T;
+  updateUI();
+
+  isReverseRunning = true;
+  setStatus('run', 'Reverse diffusion running…');
+  document.getElementById('status-dot').className = 'dot';
+  document.getElementById('btn-reverse').textContent = '⏸ Pause';
+  animate(false);
+}
+
+function stepForward() {
+  stopAnimation();
+  if (!xSeq[T]) precomputeForward();
+  if (currentT < T) { currentT++; updateUI(); }
+}
+
+function stepBack() {
+  stopAnimation();
+  if (currentT > 0) { currentT--; updateUI(); }
+}
+
+function resetAll() {
+  stopAnimation();
+  currentT = 0;
+  xRevSeq = [];
+  xSeq = [];
+  rebuildData();
+  drawOriginal();
+  updateUI();
+  document.getElementById('snr-recon').textContent = 'SNR: –';
+  document.getElementById('stat-mse').textContent = '0.000';
+  const ctx = document.getElementById('canvas-recon').getContext('2d');
+  ctx.fillStyle = '#e3dfd4'; ctx.fillRect(0, 0, 160, 160);
+  ctx.fillStyle = '#7a7470'; ctx.font = '11px IBM Plex Mono'; ctx.textAlign = 'center';
+  ctx.fillText('Run reverse to', 80, 70); ctx.fillText('reconstruct', 80, 85);
+}
+
+function toggleMath(on) {
+  mathModeOn = on;
+  document.getElementById('math-panel').classList.toggle('visible', on);
+  if (on) updateMathPanel(currentT);
+}
+
+// ═══════════════════════════════════════════════════════
+//   TIMELINE SLIDER INPUT
+// ═══════════════════════════════════════════════════════
+document.getElementById('slider-t').addEventListener('input', function () {
+  stopAnimation();
+  if (!xSeq[T]) precomputeForward();
+  currentT = parseInt(this.value);
+  document.getElementById('t-display').textContent = currentT;
+  document.getElementById('stat-t').textContent = currentT;
+  drawNoisy();
+  drawRecon();
+  updateMathPanel(currentT);
+  drawScheduleCanvas();
+  updateSNR(currentT);
+});
+
+// ═══════════════════════════════════════════════════════
+//   HOVER TOOLTIP
+// ═══════════════════════════════════════════════════════
+function setupHover(canvas, getDataFn, label) {
+  const tip = document.getElementById('tooltip');
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const pw = rect.width / N, ph = rect.height / N;
+    const c = Math.floor(mx / pw), r = Math.floor(my / ph);
+    if (c < 0 || c >= N || r < 0 || r >= N) { tip.style.display = 'none'; return; }
+    const i = r * N + c;
+    const data = getDataFn();
+    const val = data ? data[i] : undefined;
+    const noiseVal = epsilon[i] ? epsilon[i].toFixed(4) : '–';
+    const ab = currentT > 0 ? alphaBar[Math.min(currentT - 1, T - 1)] : 1;
+    const sigComp = (Math.sqrt(ab) * x0[i]).toFixed(4);
+    const noiComp = (Math.sqrt(1 - ab) * (epsilon[i] || 0)).toFixed(4);
+
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY - 10) + 'px';
+    tip.textContent =
+      `${label}  [${r},${c}]\n` +
+      `value:    ${val !== undefined ? val.toFixed(4) : '–'}\n` +
+      `ε noise:  ${noiseVal}\n` +
+      `signal:   ${sigComp}\n` +
+      `noise ▸:  ${noiComp}`;
+  });
+  canvas.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+}
+
+setupHover(document.getElementById('canvas-original'), () => x0, 'Original x₀');
+setupHover(document.getElementById('canvas-noisy'), () => xSeq[currentT] || x0, 'Noisy xₜ');
+setupHover(document.getElementById('canvas-recon'), () => xRevSeq[currentT], 'Reconstructed');
+
+// ═══════════════════════════════════════════════════════
+//   INIT
+// ═══════════════════════════════════════════════════════
+rebuildSchedule();
+rebuildData();
+drawOriginal();
+
+// draw empty recon canvas
+(function () {
+  const ctx = document.getElementById('canvas-recon').getContext('2d');
+  ctx.fillStyle = '#e3dfd4'; ctx.fillRect(0, 0, 160, 160);
+  ctx.fillStyle = '#7a7470'; ctx.font = '11px IBM Plex Mono'; ctx.textAlign = 'center';
+  ctx.fillText('Run reverse to', 80, 70); ctx.fillText('reconstruct', 80, 85);
+})();
+
+updateSNR(0);
+
+// Redraw schedule canvas on window resize
+window.addEventListener('resize', () => { drawScheduleCanvas(); });
+</script>
+</body>
+</html>
