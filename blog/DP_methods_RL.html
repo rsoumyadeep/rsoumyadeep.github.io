@@ -1,1 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dynamic Programming in Reinforcement Learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+window.MathJax = {
+  tex: { inlineMath:[['\\(','\\)'],['$','$']], displayMath:[['\\[','\\]'],['$$','$$']] },
+  options: { skipHtmlTags:['script','noscript','style','textarea','pre'] }
+};
+</script>
+<style>
+/* ── DESIGN SYSTEM ─────────────────────────────── */
+:root{
+  --bg:#fafaf8;
+  --surface:#ffffff;
+  --surface2:#f3f2ee;
+  --border:#e4e2db;
+  --text:#1c1b18;
+  --muted:#6b6860;
+  --light:#9e9c96;
+  --ink:#2d2c29;
 
+  --red:#b83232;
+  --red-light:#fdf0f0;
+  --blue:#1e4f8c;
+  --blue-light:#eff4fc;
+  --green:#1a6644;
+  --green-light:#edfaf3;
+  --amber:#8b5e00;
+  --amber-light:#fdf8ec;
+  --violet:#5a2d82;
+  --violet-light:#f5f0fb;
+
+  --sidebar:260px;
+  --content:760px;
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Source Serif 4',Georgia,serif;
+  --display:'Playfair Display',Georgia,serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--serif);line-height:1.8;font-size:1.0625rem}
+
+/* ── PROGRESS ──────────────────────────────────── */
+#prog{position:fixed;top:0;left:0;height:2px;background:var(--red);width:0;z-index:1001;transition:width .08s linear}
+
+/* ── NAV ───────────────────────────────────────── */
+nav{
+  position:fixed;top:2px;left:0;right:0;height:50px;
+  background:rgba(250,250,248,.97);
+  border-bottom:1px solid var(--border);
+  z-index:1000;backdrop-filter:blur(10px);
+  display:flex;align-items:center;padding:0 2rem;
+  gap:2rem;
+}
+.nav-title{font-family:var(--display);font-size:.95rem;color:var(--red);letter-spacing:.01em}
+.nav-links{display:flex;gap:1.4rem;list-style:none;margin-left:auto}
+.nav-links a{font-size:.78rem;color:var(--muted);text-decoration:none;font-family:var(--serif);letter-spacing:.02em;transition:color .2s}
+.nav-links a:hover{color:var(--red)}
+
+/* ── LAYOUT ────────────────────────────────────── */
+.outer{display:flex;max-width:1120px;margin:0 auto;padding-top:52px}
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  position:sticky;top:52px;height:calc(100vh - 52px);
+  overflow-y:auto;padding:2rem .5rem 2rem 1.5rem;
+  border-right:1px solid var(--border);
+}
+.sidebar h3{font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--light);margin-bottom:.9rem;font-family:var(--serif);font-weight:600}
+.toc-list{list-style:none}
+.toc-list li{margin-bottom:.05rem}
+.toc-list a{font-size:.77rem;color:var(--muted);text-decoration:none;display:block;padding:.22rem .6rem;border-radius:4px;line-height:1.4;font-family:var(--serif);transition:all .15s}
+.toc-list a:hover{color:var(--text);background:var(--surface2)}
+.toc-list a.active{color:var(--red);font-weight:600;background:var(--red-light)}
+.toc-sub{padding-left:.7rem}
+.toc-sub a{font-size:.72rem;color:var(--light)}
+
+article{
+  flex:1;max-width:var(--content);
+  margin:0 auto;padding:3.5rem 2.5rem 5rem;
+}
+
+/* ── HERO ──────────────────────────────────────── */
+.hero{padding:2rem 0 2.5rem;border-bottom:1px solid var(--border);margin-bottom:3.5rem}
+.hero-eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--red);font-weight:600;margin-bottom:.9rem;display:block}
+.hero h1{font-family:var(--display);font-size:2.8rem;line-height:1.2;color:var(--ink);margin-bottom:1.2rem;font-weight:700}
+.hero h1 em{font-style:italic;color:var(--red)}
+.hero-sub{font-size:1.05rem;color:var(--muted);line-height:1.75;max-width:640px}
+.hero-meta{margin-top:1.5rem;display:flex;gap:1.8rem;font-size:.78rem;color:var(--light);flex-wrap:wrap;font-family:var(--serif)}
+
+/* ── SECTIONS ──────────────────────────────────── */
+section{margin-bottom:4rem;scroll-margin-top:62px}
+h2{font-family:var(--display);font-size:1.85rem;color:var(--ink);margin-bottom:1.2rem;line-height:1.3;font-weight:700}
+h3{font-family:var(--serif);font-size:1.12rem;font-weight:600;color:var(--ink);margin:2rem 0 .7rem}
+h4{font-family:var(--serif);font-size:.97rem;font-weight:600;color:var(--muted);margin:1.4rem 0 .45rem}
+p{margin-bottom:1rem;color:var(--muted)}
+.sec-num{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--red);font-weight:600;display:block;margin-bottom:.35rem;font-family:var(--serif)}
+
+/* ── CALLOUTS ──────────────────────────────────── */
+.callout{border-left:3px solid var(--red);background:var(--red-light);padding:1rem 1.3rem;margin:1.5rem 0;border-radius:0 6px 6px 0}
+.callout.blue{border-color:var(--blue);background:var(--blue-light)}
+.callout.green{border-color:var(--green);background:var(--green-light)}
+.callout.amber{border-color:var(--amber);background:var(--amber-light)}
+.callout.violet{border-color:var(--violet);background:var(--violet-light)}
+.callout-lbl{font-size:.69rem;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--red);margin-bottom:.35rem}
+.callout.blue .callout-lbl{color:var(--blue)}
+.callout.green .callout-lbl{color:var(--green)}
+.callout.amber .callout-lbl{color:var(--amber)}
+.callout.violet .callout-lbl{color:var(--violet)}
+.callout p{margin:0;font-size:.92rem}
+
+/* ── MATH ──────────────────────────────────────── */
+.mbox{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:1.2rem 1.5rem;margin:1.5rem 0;
+  overflow-x:auto;font-size:1.02rem;
+}
+.mbox .mlbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--light);margin-bottom:.55rem;font-weight:600}
+
+/* ── TOGGLE ────────────────────────────────────── */
+.tgrp{display:flex;gap:.45rem;margin:.9rem 0;flex-wrap:wrap}
+.tbtn{
+  padding:.35rem .95rem;border-radius:20px;font-size:.8rem;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--border);background:var(--surface);
+  color:var(--muted);font-family:var(--serif);transition:all .2s;letter-spacing:.01em
+}
+.tbtn:hover{border-color:var(--red);color:var(--red)}
+.tbtn.on{background:var(--red);border-color:var(--red);color:#fff}
+.tbtn.on.blue{background:var(--blue);border-color:var(--blue)}
+.tbtn.on.green{background:var(--green);border-color:var(--green)}
+.tc{display:none}.tc.show{display:block}
+
+/* ── COLLAPSIBLE ───────────────────────────────── */
+.coll{border:1px solid var(--border);border-radius:8px;margin:1.5rem 0;overflow:hidden}
+.coll-hd{
+  padding:.8rem 1.2rem;cursor:pointer;display:flex;justify-content:space-between;
+  align-items:center;background:var(--surface2);user-select:none;
+  font-size:.88rem;font-weight:600;color:var(--ink);transition:background .2s;
+  font-family:var(--serif)
+}
+.coll-hd:hover{background:var(--border)}
+.coll-arrow{font-size:.68rem;color:var(--light);transition:transform .25s}
+.coll-hd.open .coll-arrow{transform:rotate(180deg)}
+.coll-bd{display:none;padding:1.2rem;border-top:1px solid var(--border);background:var(--surface)}
+.coll-bd.open{display:block}
+
+/* ── TABLES ────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;margin:1.5rem 0;font-size:.88rem}
+thead th{background:var(--surface2);padding:.7rem 1rem;text-align:left;font-weight:600;font-size:.77rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);border-bottom:2px solid var(--border)}
+td{padding:.65rem 1rem;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even) td{background:var(--surface)}
+
+/* ── ALGO BOX ──────────────────────────────────── */
+.algo{border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin:1.5rem 0}
+.algo-hd{background:var(--ink);color:#fff;padding:.65rem 1.2rem;font-size:.83rem;font-weight:600;letter-spacing:.04em}
+.algo-bd{padding:1rem 1.2rem;font-family:var(--mono);font-size:.82rem;line-height:2.1;background:var(--surface)}
+.ak{color:var(--red);font-weight:600}
+.ac{color:var(--light);font-style:italic}
+.an{color:var(--blue)}
+
+/* ── GRID CARDS ────────────────────────────────── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin:1.3rem 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.1rem}
+.card h4{margin-top:0;font-size:.9rem}
+.card p{font-size:.85rem}
+
+/* ── TOOLTIP ───────────────────────────────────── */
+.tip{position:relative;display:inline;border-bottom:1.5px dashed var(--blue);color:var(--blue);cursor:help}
+.tip-box{
+  display:none;position:absolute;bottom:130%;left:50%;transform:translateX(-50%);
+  background:#18181b;color:#fff;padding:.6rem .9rem;border-radius:6px;
+  font-size:.79rem;width:230px;line-height:1.55;z-index:300;pointer-events:none;
+  box-shadow:0 4px 20px rgba(0,0,0,.25);font-family:var(--serif)
+}
+.tip:hover .tip-box{display:block}
+
+/* ── CODE ──────────────────────────────────────── */
+code{font-family:var(--mono);font-size:.84em;background:var(--surface2);padding:.12em .32em;border-radius:3px;color:var(--red)}
+pre{background:#1a1a1f;color:#d0d0d0;padding:1.2rem;border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:.83rem;margin:1.5rem 0;line-height:1.7}
+
+/* ── DIVIDER ───────────────────────────────────── */
+hr.div{border:none;border-top:1px solid var(--border);margin:3.5rem 0}
+
+/* ── BADGE ─────────────────────────────────────── */
+.badge{display:inline-block;font-size:.67rem;padding:.18em .55em;border-radius:3px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-left:.35rem;vertical-align:middle}
+.br{background:#fef2f2;color:var(--red)}
+.bb{background:#eff4fc;color:var(--blue)}
+.bg{background:#edfaf3;color:var(--green)}
+
+/* ── VIZ CONTAINERS ────────────────────────────── */
+.viz{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.4rem;margin:2rem 0}
+.viz-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink);margin-bottom:.9rem}
+.vctrls{display:flex;gap:.65rem;margin-top:1rem;flex-wrap:wrap;align-items:center}
+.vbtn{
+  padding:.33rem .85rem;border-radius:6px;font-size:.8rem;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--border);background:var(--surface);
+  color:var(--text);font-family:var(--serif);transition:all .15s;letter-spacing:.01em
+}
+.vbtn:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+.vbtn.prim{background:var(--red);border-color:var(--red);color:#fff}
+.vbtn.prim:hover{opacity:.85}
+.vbtn.sec{background:var(--blue);border-color:var(--blue);color:#fff}
+.vbtn.sec:hover{opacity:.85}
+canvas{display:block;max-width:100%}
+.vlbl{font-size:.77rem;color:var(--light);font-family:var(--serif)}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none;margin:.4rem 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;background:var(--red);border-radius:50%;cursor:pointer}
+
+/* ── TIMELINE ──────────────────────────────────── */
+.timeline-wrap{position:relative;margin:2rem 0}
+.tl-item{
+  display:flex;gap:1.5rem;margin-bottom:2rem;cursor:pointer;
+  opacity:.7;transition:opacity .3s;
+}
+.tl-item:hover,.tl-item.active{opacity:1}
+.tl-dot-col{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0}
+.tl-dot{width:14px;height:14px;border-radius:50%;background:var(--border);border:2px solid var(--border);flex-shrink:0;transition:all .3s}
+.tl-item.active .tl-dot{background:var(--red);border-color:var(--red);box-shadow:0 0 0 4px var(--red-light)}
+.tl-line{width:2px;flex:1;background:var(--border);margin-top:4px}
+.tl-year{font-family:var(--mono);font-size:.78rem;font-weight:500;color:var(--light);margin-top:-.1rem;white-space:nowrap}
+.tl-content{flex:1;padding-bottom:.5rem}
+.tl-title{font-family:var(--display);font-size:1.05rem;font-weight:700;color:var(--ink);margin-bottom:.3rem}
+.tl-desc{font-size:.88rem;color:var(--muted);line-height:1.65}
+.tl-tag{display:inline-block;margin-top:.4rem;font-size:.69rem;padding:.15em .55em;border-radius:3px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+
+/* ── GPI DIAGRAM ───────────────────────────────── */
+.gpi-wrap{display:flex;justify-content:center;margin:2rem 0}
+
+/* ── SCROLLBAR ─────────────────────────────────── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── ANIMATIONS ────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.fu{animation:fadeUp .4s ease}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── RESPONSIVE ────────────────────────────────── */
+@media(max-width:900px){.sidebar{display:none}.g2{grid-template-columns:1fr}article{padding:2rem 1.2rem}}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<nav>
+  <span class="nav-title">Dynamic Programming in RL</span>
+  <ul class="nav-links">
+    <li><a href="#motivation">Motivation</a></li>
+    <li><a href="#bellman">Bellman</a></li>
+    <li><a href="#vi">Value Iter.</a></li>
+    <li><a href="#pi">Policy Iter.</a></li>
+    <li><a href="#sim">Simulation</a></li>
+    <li><a href="#theory">Theory</a></li>
+  </ul>
+</nav>
+
+<div class="outer">
+<!-- SIDEBAR TOC -->
+<aside class="sidebar">
+  <h3>Contents</h3>
+  <ul class="toc-list" id="toc">
+    <li><a href="#motivation">1. Motivation</a></li>
+    <li><a href="#history">2. History</a></li>
+    <li><a href="#bellman">3. Bellman Equations</a>
+      <ul class="toc-sub toc-list">
+        <li><a href="#be-intuition">Intuition</a></li>
+        <li><a href="#be-formal">Formal Equations</a></li>
+        <li><a href="#be-fixedpoint">Fixed-Point View</a></li>
+      </ul>
+    </li>
+    <li><a href="#contraction">4. Contraction Mapping</a></li>
+    <li><a href="#vi">5. Value Iteration</a></li>
+    <li><a href="#pi">6. Policy Iteration</a></li>
+    <li><a href="#comparison">7. VI vs PI</a></li>
+    <li><a href="#gpi">8. Generalized PI</a></li>
+    <li><a href="#horizon">9. Finite vs Infinite</a></li>
+    <li><a href="#sim">10. Interactive Sim</a></li>
+    <li><a href="#theory">11. Theory</a></li>
+    <li><a href="#limits">12. Limitations</a></li>
+    <li><a href="#bridge">13. Bridge to Model-Free</a></li>
+    <li><a href="#summary">14. Summary</a></li>
+  </ul>
+</aside>
+
+<article>
+
+<!-- HERO -->
+<div class="hero" id="top">
+  <span class="hero-eyebrow">Research-Grade Guide · Dynamic Programming</span>
+  <h1>Dynamic Programming<br/><em>in Reinforcement Learning</em></h1>
+  <p class="hero-sub">A complete treatment of Value Iteration, Policy Iteration, and Bellman equations — built from first principles with interactive simulations.</p>
+  <div class="hero-meta">
+    <span>📖 ~75 min read</span>
+    <span>🔢 MathJax equations</span>
+    <span>🎛️ Interactive gridworld</span>
+    <span>🎓 PhD-level depth</span>
+  </div>
+</div>
+
+<!-- §1 MOTIVATION -->
+<section id="motivation">
+  <span class="sec-num">§ 1</span>
+  <h2>Motivation & Intuition</h2>
+  <p>Imagine a chess player planning moves, a robot navigating a warehouse, or an algorithm managing a financial portfolio. In each case, an agent must make a <em>sequence of decisions</em> where each choice affects future options and rewards. This is the problem of <strong>sequential decision making under uncertainty</strong>.</p>
+
+  <div class="tgrp">
+    <button class="tbtn on" onclick="tog('mot','intuition',this)">Intuition</button>
+    <button class="tbtn" onclick="tog('mot','formal',this)">Formal View</button>
+  </div>
+
+  <div id="mot-intuition" class="tc show fu">
+    <div class="callout green">
+      <div class="callout-lbl">Core Metaphor</div>
+      <p>Think of an agent in a maze. At each junction, it must choose a direction. The "value" of being at a junction is not just whether there's treasure right there — it's also about whether good paths lie ahead. <strong>Dynamic Programming</strong> is the systematic framework for computing these values backwards from the goal.</p>
+    </div>
+
+    <h3>Planning vs. Learning</h3>
+    <p>There are two broad paradigms in RL:</p>
+    <div class="g2">
+      <div class="card">
+        <h4>🗺️ Planning (Model-Based)</h4>
+        <p>You have a complete map of the environment — transition probabilities and rewards. You can compute optimal behavior purely by thinking, without interacting. <strong>Dynamic Programming</strong> is the canonical planning approach.</p>
+      </div>
+      <div class="card">
+        <h4>🎲 Learning (Model-Free)</h4>
+        <p>You don't know the map. You learn by trial and error — interacting with the environment and updating estimates. TD learning, Q-learning, and Monte Carlo are learning methods. They are <em>inspired by</em> DP but work without a model.</p>
+      </div>
+    </div>
+    <p>Dynamic Programming is foundational: even if we ultimately use model-free methods, understanding DP deeply clarifies <em>what those methods are approximating</em>.</p>
+  </div>
+
+  <div id="mot-formal" class="tc fu">
+    <p>Formally, we operate in a <span class="tip">Markov Decision Process<span class="tip-box">An MDP is a tuple (S,A,P,R,γ) where S=states, A=actions, P=transitions, R=rewards, γ=discount. The Markov property means the future depends only on the current state, not history.</span></span> (MDP). Dynamic Programming solves two fundamental problems:</p>
+    <div class="mbox">
+      <div class="mlbl">Two Core Problems of DP</div>
+      \[
+      \textbf{Prediction: } \text{Given policy } \pi, \text{ compute } V^\pi(s) \text{ for all } s \in \mathcal{S}
+      \]
+      \[
+      \textbf{Control: } \text{Find the optimal policy } \pi^* = \arg\max_\pi V^\pi(s) \text{ for all } s
+      \]
+    </div>
+    <p>DP exploits the <strong>principle of optimality</strong>: an optimal policy has the property that, whatever the initial state and action, the remaining decisions must constitute an optimal policy from the resulting state.</p>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §2 HISTORY TIMELINE -->
+<section id="history">
+  <span class="sec-num">§ 2</span>
+  <h2>Historical Timeline</h2>
+  <p>The development of Dynamic Programming spans seven decades, weaving together control theory, operations research, and artificial intelligence.</p>
+
+  <div class="viz" style="padding:1.5rem 1.5rem 1rem">
+    <div class="viz-title">📜 Interactive History of Dynamic Programming & RL</div>
+    <div class="timeline-wrap" id="timeline">
+      <!-- items injected by JS -->
+    </div>
+    <p style="font-size:.77rem;color:var(--light);margin:0">Click any event to expand details.</p>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §3 BELLMAN EQUATIONS -->
+<section id="bellman">
+  <span class="sec-num">§ 3</span>
+  <h2>Bellman Equations <span class="badge br">Foundation</span></h2>
+
+  <section id="be-intuition">
+    <h3>Intuition: The Recursive Decomposition</h3>
+    <p>The key insight of Bellman is deceptively simple: <strong>the value of a state can be decomposed into the immediate reward and the discounted value of the next state</strong>. This recursive structure is the engine of all DP algorithms.</p>
+
+    <div class="callout amber">
+      <div class="callout-lbl">Bellman's Principle of Optimality</div>
+      <p><em>"An optimal policy has the property that whatever the initial state and initial decision are, the remaining decisions must constitute an optimal policy with regard to the state resulting from the first decision."</em> — Richard Bellman, 1957</p>
+    </div>
+
+    <p>Imagine you are at state \(s\). You take action \(a\), receive reward \(r\), and land in state \(s'\). The total future reward starting from \(s\) is:</p>
+
+    <div class="mbox">
+      \[ \underbrace{V(s)}_{\text{value of } s} = \underbrace{r}_{\text{immediate}} + \underbrace{\gamma \cdot V(s')}_{\text{discounted future}} \]
+    </div>
+
+    <p>Of course, \(s'\) and \(r\) are random. Taking expectations over the randomness of transitions and the stochasticity of the policy gives us the Bellman equations.</p>
+  </section>
+
+  <section id="be-formal">
+    <h3>Formal Equations</h3>
+
+    <div class="tgrp">
+      <button class="tbtn on" onclick="tog('bell','exp',this)">Expectation Equation</button>
+      <button class="tbtn" onclick="tog('bell','opt',this)">Optimality Equation</button>
+      <button class="tbtn" onclick="tog('bell','q',this)">Q-Function Form</button>
+    </div>
+
+    <div id="bell-exp" class="tc show fu">
+      <div class="mbox" style="border-color:var(--blue)">
+        <div class="mlbl">Bellman Expectation Equation for \(V^\pi\)</div>
+        \[
+        V^\pi(s) = \sum_{a} \pi(a|s) \sum_{s',r} p(s',r|s,a)\Big[r + \gamma V^\pi(s')\Big]
+        \]
+      </div>
+      <p>This holds for all \(s \in \mathcal{S}\) simultaneously — it's a system of \(|\mathcal{S}|\) linear equations in \(|\mathcal{S}|\) unknowns. For a fixed policy \(\pi\), this system has a unique solution \(V^\pi\).</p>
+      <div class="callout blue">
+        <div class="callout-lbl">Operator Form</div>
+        <p>Define the <span class="tip">Bellman operator<span class="tip-box">The Bellman operator T^π maps value functions to value functions: (T^π V)(s) = Σ_a π(a|s) Σ_{s',r} p(s',r|s,a)[r + γV(s')]. It is a contraction under the sup-norm with factor γ.</span></span> \(\mathcal{T}^\pi\): \(\quad (\mathcal{T}^\pi V)(s) = \sum_a \pi(a|s)\sum_{s',r} p(s',r|s,a)[r+\gamma V(s')]\). Then the Bellman equation is simply: \(V^\pi = \mathcal{T}^\pi V^\pi\).</p>
+      </div>
+    </div>
+
+    <div id="bell-opt" class="tc fu">
+      <div class="mbox" style="border-color:var(--red)">
+        <div class="mlbl">Bellman Optimality Equation for \(V^*\)</div>
+        \[
+        V^*(s) = \max_{a \in \mathcal{A}} \sum_{s',r} p(s',r|s,a)\Big[r + \gamma V^*(s')\Big]
+        \]
+      </div>
+      <p>This is now a <em>nonlinear</em> system — the \(\max\) makes it so. Unlike the expectation equation, this cannot be solved by simple linear algebra. Iterative methods (Value Iteration) are needed.</p>
+      <div class="callout">
+        <div class="callout-lbl">Key Difference</div>
+        <p>The expectation equation is <strong>linear</strong> in \(V\) (for fixed \(\pi\)). The optimality equation is <strong>nonlinear</strong> due to the \(\max\). This is why policy evaluation is easier than finding the optimal policy.</p>
+      </div>
+    </div>
+
+    <div id="bell-q" class="tc fu">
+      <div class="mbox" style="border-color:var(--green)">
+        <div class="mlbl">Bellman Optimality for \(Q^*\)</div>
+        \[
+        Q^*(s,a) = \sum_{s',r} p(s',r|s,a)\Big[r + \gamma \max_{a'} Q^*(s',a')\Big]
+        \]
+      </div>
+      <p>The Q-function (action-value function) is preferred in model-free RL because the greedy policy is \(\pi^*(s) = \arg\max_a Q^*(s,a)\) — no model needed to act. This is the bridge from DP to Q-learning.</p>
+    </div>
+  </section>
+
+  <section id="be-fixedpoint">
+    <h3>The Fixed-Point View</h3>
+    <p>The Bellman equations are <strong>fixed-point equations</strong>. A fixed point of an operator \(T\) is a point \(V^*\) such that \(TV^* = V^*\). This seemingly circular definition is useful because:</p>
+    <ol style="padding-left:1.4rem;color:var(--muted);line-height:2.2;font-size:.95rem">
+      <li>The Bellman operator is a <strong>contraction</strong> (under the sup-norm with factor \(\gamma\))</li>
+      <li>By the Banach fixed-point theorem, contractions on complete metric spaces have a <strong>unique</strong> fixed point</li>
+      <li>Repeated application of the contraction converges to this unique fixed point</li>
+    </ol>
+    <p>This is exactly what Value Iteration does.</p>
+  </section>
+</section>
+
+<hr class="div"/>
+
+<!-- §4 CONTRACTION -->
+<section id="contraction">
+  <span class="sec-num">§ 4</span>
+  <h2>Contraction Mappings</h2>
+
+  <p>The theoretical reason DP algorithms converge is that the Bellman operators are contractions.</p>
+
+  <div class="callout violet">
+    <div class="callout-lbl">Definition: Contraction Mapping</div>
+    <p>An operator \(T: X \to X\) on a metric space \((X, d)\) is a <em>contraction</em> with factor \(\gamma \in [0,1)\) if: \(\quad d(Tx, Ty) \leq \gamma \cdot d(x, y) \quad \forall x,y \in X\)</p>
+  </div>
+
+  <div class="mbox">
+    <div class="mlbl">Bellman Optimality Operator is a Contraction</div>
+    \[
+    \|\mathcal{T}^* V - \mathcal{T}^* U\|_\infty \leq \gamma \|V - U\|_\infty \quad \forall V, U
+    \]
+  </div>
+
+  <div class="coll">
+    <div class="coll-hd" onclick="coll(this)">📐 Proof that Bellman Operator is a Contraction <span class="coll-arrow">▼</span></div>
+    <div class="coll-bd">
+      <p>For any two value functions \(V, U\):</p>
+      <div class="mbox">
+        \[\begin{aligned}
+        (\mathcal{T}^* V)(s) - (\mathcal{T}^* U)(s) &= \max_a \mathbb{E}[r + \gamma V(s')] - \max_a \mathbb{E}[r + \gamma U(s')] \\
+        &\leq \max_a \mathbb{E}[r + \gamma V(s') - r - \gamma U(s')] \\
+        &= \gamma \max_a \mathbb{E}[V(s') - U(s')] \\
+        &\leq \gamma \|V - U\|_\infty
+        \end{aligned}\]
+      </div>
+      <p>By symmetry, \((\mathcal{T}^* U)(s) - (\mathcal{T}^* V)(s) \leq \gamma \|V-U\|_\infty\), so \(|(\mathcal{T}^*V)(s) - (\mathcal{T}^*U)(s)| \leq \gamma\|V-U\|_\infty\). Taking sup over \(s\) gives the result. □</p>
+    </div>
+  </div>
+
+  <p>By the <strong>Banach Fixed-Point Theorem</strong>: any contraction on a complete metric space has a unique fixed point, and iteration from <em>any</em> starting point converges to it at a geometric rate \(\gamma^k\).</p>
+
+  <!-- CONTRACTION VIZ -->
+  <div class="viz">
+    <div class="viz-title">🔄 Contraction Mapping Convergence</div>
+    <p style="font-size:.83rem;color:var(--muted);margin-bottom:.75rem">Watch repeated Bellman updates shrink the error by factor γ each iteration.</p>
+    <canvas id="contract-canvas" width="680" height="200"></canvas>
+    <div class="vctrls">
+      <button class="vbtn prim" onclick="runContract()">▶ Run</button>
+      <button class="vbtn" onclick="resetContract()">↺ Reset</button>
+      <div style="flex:1 1 200px">
+        <label style="font-size:.78rem;color:var(--muted)">γ = <span id="gamma-val">0.90</span></label>
+        <input type="range" min="50" max="99" value="90" id="gamma-sl" oninput="setGamma(this.value)"/>
+      </div>
+      <span class="vlbl" id="contract-info">Iteration: 0</span>
+    </div>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §5 VALUE ITERATION -->
+<section id="vi">
+  <span class="sec-num">§ 5</span>
+  <h2>Value Iteration <span class="badge br">Algorithm 1</span></h2>
+
+  <div class="tgrp">
+    <button class="tbtn on" onclick="tog('vi','int',this)">Intuition</button>
+    <button class="tbtn" onclick="tog('vi','math',this)">Mathematics</button>
+  </div>
+
+  <div id="vi-int" class="tc show fu">
+    <p>Value Iteration (VI) starts from any initial guess \(V_0\) and repeatedly applies the Bellman optimality operator:</p>
+    <div class="mbox" style="border-color:var(--red)">
+      <div class="mlbl">Value Iteration Update</div>
+      \[ V_{k+1}(s) = \max_{a \in \mathcal{A}} \sum_{s',r} p(s',r|s,a)\left[r + \gamma V_k(s')\right] \quad \forall s \in \mathcal{S} \]
+    </div>
+    <p>Because the Bellman optimality operator is a contraction with factor \(\gamma\), we have \(\|V_k - V^*\|_\infty \leq \gamma^k \|V_0 - V^*\|_\infty\), so the error shrinks geometrically.</p>
+  </div>
+
+  <div id="vi-math" class="tc fu">
+    <h4>Convergence Theorem</h4>
+    <div class="callout green">
+      <div class="callout-lbl">Theorem</div>
+      <p>For any \(V_0 \in \mathbb{R}^{|\mathcal{S}|}\), the Value Iteration sequence \(\{V_k\}\) satisfies: \(\|V_k - V^*\|_\infty \leq \frac{\gamma^k}{1-\gamma}\|V_1 - V_0\|_\infty\).</p>
+    </div>
+    <div class="coll">
+      <div class="coll-hd" onclick="coll(this)">📐 Stopping Criterion Derivation <span class="coll-arrow">▼</span></div>
+      <div class="coll-bd">
+        <p>We want \(\|V_k - V^*\|_\infty \leq \epsilon\). Using the contraction:</p>
+        <div class="mbox">\[\|V_{k+1} - V_k\|_\infty < \delta \implies \|V_k - V^*\|_\infty \leq \frac{\gamma}{1-\gamma}\delta\]</div>
+        <p>So stopping when \(\|V_{k+1}-V_k\|_\infty < \epsilon(1-\gamma)/\gamma\) guarantees error at most \(\epsilon\).</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>The Algorithm</h3>
+  <div class="algo">
+    <div class="algo-hd">Algorithm: Value Iteration</div>
+    <div class="algo-bd">
+      <span class="ac">// Initialize arbitrarily</span><br/>
+      Initialize \(V(s) = 0\) for all \(s \in \mathcal{S}\), \(V(\text{terminal}) = 0\)<br/><br/>
+      <span class="ak">repeat</span>:<br/>
+      &nbsp;&nbsp;\(\Delta \leftarrow 0\)<br/>
+      &nbsp;&nbsp;<span class="ak">for each</span> \(s \in \mathcal{S}\):<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;\(v \leftarrow V(s)\)<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;\(V(s) \leftarrow \max_a \sum_{s',r} p(s',r|s,a)\left[r + \gamma V(s')\right]\) &nbsp;<span class="ac">// Bellman update</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;\(\Delta \leftarrow \max(\Delta, |v - V(s)|)\)<br/>
+      <span class="ak">until</span> \(\Delta < \theta\) &nbsp;<span class="ac">// θ is small positive threshold</span><br/><br/>
+      Output policy: \(\pi^*(s) = \arg\max_a \sum_{s',r} p(s',r|s,a)\left[r + \gamma V(s')\right]\)
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h4>✅ Advantages</h4>
+      <p>• Guaranteed convergence<br/>• Simple to implement<br/>• Online: extract policy at any point<br/>• No explicit policy representation needed</p>
+    </div>
+    <div class="card">
+      <h4>⚠️ Disadvantages</h4>
+      <p>• Slow convergence (many iterations)<br/>• Each sweep visits all states<br/>• No intermediate policies extracted<br/>• Requires full model knowledge</p>
+    </div>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §6 POLICY ITERATION -->
+<section id="pi">
+  <span class="sec-num">§ 6</span>
+  <h2>Policy Iteration <span class="badge bb">Algorithm 2</span></h2>
+
+  <p>Policy Iteration alternates between two phases: <strong>policy evaluation</strong> (computing \(V^\pi\) for the current policy) and <strong>policy improvement</strong> (updating the policy greedily).</p>
+
+  <h3>Phase 1: Policy Evaluation</h3>
+  <div class="mbox" style="border-color:var(--blue)">
+    <div class="mlbl">Iterative Policy Evaluation</div>
+    \[ V_{k+1}(s) \leftarrow \sum_a \pi(a|s) \sum_{s',r} p(s',r|s,a)\left[r + \gamma V_k(s')\right] \quad \forall s \]
+  </div>
+  <p>Repeat until convergence to obtain \(V^\pi\). This is applying the Bellman <em>expectation</em> operator repeatedly — also a contraction, so it converges.</p>
+
+  <h3>Phase 2: Policy Improvement</h3>
+  <div class="mbox" style="border-color:var(--green)">
+    <div class="mlbl">Greedy Policy Improvement</div>
+    \[ \pi'(s) = \arg\max_a \sum_{s',r} p(s',r|s,a)\left[r + \gamma V^\pi(s')\right] \]
+  </div>
+
+  <div class="callout green">
+    <div class="callout-lbl">Policy Improvement Theorem</div>
+    <p>If \(\pi'\) is obtained by greedy improvement over \(V^\pi\), then \(V^{\pi'}(s) \geq V^\pi(s)\) for all \(s\). If no improvement is possible, the policy is already optimal: \(\pi = \pi^*\).</p>
+  </div>
+
+  <div class="coll">
+    <div class="coll-hd" onclick="coll(this)">📐 Proof of Policy Improvement Theorem <span class="coll-arrow">▼</span></div>
+    <div class="coll-bd">
+      <div class="mbox">
+        \[\begin{aligned}
+        V^\pi(s) &\leq Q^\pi(s, \pi'(s)) = \mathbb{E}[R_{t+1} + \gamma V^\pi(S_{t+1}) | S_t=s, A_t=\pi'(s)]\\
+        &\leq \mathbb{E}[R_{t+1} + \gamma Q^\pi(S_{t+1}, \pi'(S_{t+1})) | \ldots]\\
+        &\leq \mathbb{E}\left[\sum_{k=0}^\infty \gamma^k R_{t+k+1} | S_t=s, \pi'\right] = V^{\pi'}(s)
+        \end{aligned}\]
+      </div>
+      <p>The key step: \(V^\pi(s) \leq Q^\pi(s,\pi'(s))\) follows because \(\pi'\) is greedy over \(Q^\pi\), so \(Q^\pi(s,\pi'(s)) = \max_a Q^\pi(s,a) \geq \sum_a \pi(a|s) Q^\pi(s,a) = V^\pi(s)\).</p>
+    </div>
+  </div>
+
+  <h3>Full Algorithm</h3>
+  <div class="algo">
+    <div class="algo-hd">Algorithm: Policy Iteration</div>
+    <div class="algo-bd">
+      Initialize \(\pi\) arbitrarily, \(V(s) = 0\) for all \(s\)<br/><br/>
+      <span class="ak">repeat</span>:<br/>
+      &nbsp;&nbsp;<span class="ac">// Policy Evaluation</span><br/>
+      &nbsp;&nbsp;<span class="ak">repeat</span>:<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ak">for each</span> \(s \in \mathcal{S}\):<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\(V(s) \leftarrow \sum_a \pi(a|s)\sum_{s',r}p(s',r|s,a)[r+\gamma V(s')]\)<br/>
+      &nbsp;&nbsp;<span class="ak">until</span> convergence<br/><br/>
+      &nbsp;&nbsp;<span class="ac">// Policy Improvement</span><br/>
+      &nbsp;&nbsp;policy-stable \(\leftarrow\) true<br/>
+      &nbsp;&nbsp;<span class="ak">for each</span> \(s \in \mathcal{S}\):<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;old \(\leftarrow \pi(s)\)<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;\(\pi(s) \leftarrow \arg\max_a \sum_{s',r}p(s',r|s,a)[r+\gamma V(s')]\)<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ak">if</span> old \(\neq \pi(s)\): policy-stable \(\leftarrow\) false<br/>
+      <span class="ak">until</span> policy-stable<br/>
+      Return \(\pi, V\)
+    </div>
+  </div>
+
+  <div class="callout blue">
+    <div class="callout-lbl">Finite Convergence</div>
+    <p>Policy Iteration converges in a <em>finite</em> number of iterations: since there are finitely many deterministic policies (\(|\mathcal{A}|^{|\mathcal{S}|}\)) and the policy strictly improves at each step (until optimal), it must terminate.</p>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §7 COMPARISON -->
+<section id="comparison">
+  <span class="sec-num">§ 7</span>
+  <h2>Value Iteration vs. Policy Iteration</h2>
+  <table>
+    <thead><tr><th>Aspect</th><th>Value Iteration</th><th>Policy Iteration</th></tr></thead>
+    <tbody>
+      <tr><td>Core operation</td><td>Apply Bellman optimality op.</td><td>Evaluate then improve policy</td></tr>
+      <tr><td>Policy evaluation</td><td>One Bellman sweep per iteration</td><td>Run to full convergence</td></tr>
+      <tr><td>Iterations to convergence</td><td>More (geometric rate)</td><td>Fewer (finite, often fast)</td></tr>
+      <tr><td>Cost per iteration</td><td>Low (\(O(|\mathcal{S}||\mathcal{A}|)\))</td><td>High (eval. cost + improve)</td></tr>
+      <tr><td>Memory</td><td>Store \(V\) only</td><td>Store \(V\) and \(\pi\)</td></tr>
+      <tr><td>Intermediate policy?</td><td>Only at end</td><td>Yes, at each iteration</td></tr>
+      <tr><td>Better for</td><td>Large state spaces</td><td>When eval. is cheap</td></tr>
+    </tbody>
+  </table>
+  <div class="callout amber">
+    <div class="callout-lbl">Practical Insight</div>
+    <p>In practice, <strong>truncated Policy Iteration</strong> (running evaluation for a fixed number of steps, not to full convergence) often works better than either extreme. When truncation = 1 sweep, it is exactly Value Iteration.</p>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §8 GPI -->
+<section id="gpi">
+  <span class="sec-num">§ 8</span>
+  <h2>Generalized Policy Iteration</h2>
+  <p>GPI is the overarching framework encompassing all DP (and most RL) algorithms. The key observation: <strong>both evaluation and improvement can be applied partially</strong> — the essential property is that they interact in a way that drives the pair \((V, \pi)\) toward \((V^*, \pi^*)\).</p>
+
+  <!-- GPI Diagram -->
+  <div class="viz">
+    <div class="viz-title">♾️ GPI: The Unifying Framework</div>
+    <canvas id="gpi-canvas" width="680" height="220"></canvas>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">The two processes — evaluation and improvement — compete and cooperate, converging to the optimal pair.</p>
+  </div>
+
+  <p>In GPI, we never need to run either process to full completion. Even Monte Carlo methods with partial returns, and TD learning with one-step bootstrapping, are instances of GPI. This is the bridge from DP to model-free RL.</p>
+</section>
+
+<hr class="div"/>
+
+<!-- §9 HORIZON -->
+<section id="horizon">
+  <span class="sec-num">§ 9</span>
+  <h2>Finite vs. Infinite Horizon</h2>
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h4>Finite Horizon</h4>
+      <p>Episodes terminate at time \(T\). Value depends on time remaining. Solved by <strong>backward induction</strong>: start at \(V_T = 0\) and work backwards.</p>
+      <div class="mbox" style="margin:.7rem 0;padding:.9rem 1.1rem">
+        \(V_t(s) = \max_a \mathbb{E}[R_{t+1} + V_{t+1}(S_{t+1})]\)
+      </div>
+      <p style="font-size:.83rem">Exact solution, but policy is time-dependent.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h4>Infinite Horizon (Discounted)</h4>
+      <p>No terminal state. Discount \(\gamma < 1\) ensures finite total reward. Value is stationary (no time index).</p>
+      <div class="mbox" style="margin:.7rem 0;padding:.9rem 1.1rem">
+        \(V^*(s) = \max_a \mathbb{E}[R + \gamma V^*(S')]\)
+      </div>
+      <p style="font-size:.83rem">Solved by VI or PI. Policy is stationary.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="div"/>
+<!-- §10 INTERACTIVE SIMULATION -->
+<section id="sim">
+  <span class="sec-num">§ 10</span>
+  <h2>Interactive Gridworld Simulation <span class="badge br">Hands-On</span></h2>
+
+  <p>Experiment with Value Iteration and Policy Iteration on a 5×5 gridworld. The agent (🤖) starts anywhere and must reach the goal (⭐). Walls block movement; pits give negative reward.</p>
+
+  <div class="viz" style="padding:1.5rem">
+    <div class="viz-title">🗺️ Gridworld — Value & Policy Visualization</div>
+
+    <!-- Algorithm selector -->
+    <div class="tgrp" style="margin-bottom:1rem">
+      <button class="tbtn on" id="alg-vi" onclick="selectAlg('vi',this)">Value Iteration</button>
+      <button class="tbtn" id="alg-pi" onclick="selectAlg('pi',this)">Policy Iteration</button>
+    </div>
+
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start">
+      <!-- Grid canvas -->
+      <div style="flex:0 0 auto">
+        <canvas id="grid-canvas" width="340" height="340" style="border:1px solid var(--border);border-radius:8px;cursor:pointer"></canvas>
+        <div style="font-size:.75rem;color:var(--light);margin-top:.4rem;text-align:center">Click cell to toggle wall · Shift+click = pit</div>
+      </div>
+
+      <!-- Value canvas -->
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.6rem">Value Function V(s)</div>
+        <canvas id="val-canvas" width="300" height="300" style="border:1px solid var(--border);border-radius:8px"></canvas>
+        <div style="font-size:.75rem;color:var(--light);margin-top:.4rem">Heat map: darker red = higher value</div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:1.5rem;margin-top:1rem;flex-wrap:wrap;align-items:center">
+      <div style="font-family:var(--mono);font-size:.82rem;color:var(--muted)">
+        Iteration: <strong id="iter-count">0</strong> &nbsp;|&nbsp;
+        Max ΔV: <strong id="delta-val">—</strong> &nbsp;|&nbsp;
+        Phase: <strong id="phase-lbl">—</strong>
+      </div>
+    </div>
+
+    <div class="vctrls">
+      <button class="vbtn prim" onclick="simStep()">▶ Next Step</button>
+      <button class="vbtn sec" onclick="simAuto()">⏩ Auto Run</button>
+      <button class="vbtn" onclick="simReset()">↺ Reset</button>
+      <button class="vbtn" onclick="simNewGrid()">🔀 New Grid</button>
+      <div style="flex:1 1 180px">
+        <label style="font-size:.77rem;color:var(--muted)">γ = <span id="sim-gamma">0.90</span></label>
+        <input type="range" min="50" max="99" value="90" id="sim-gamma-sl" oninput="setSimGamma(this.value)"/>
+      </div>
+      <span class="vlbl" id="sim-status">Press Step or Auto Run</span>
+    </div>
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1.2rem;margin-top:.8rem;flex-wrap:wrap">
+      <span style="font-size:.77rem;color:var(--muted)">🤖 Agent start &nbsp; ⭐ Goal (+10) &nbsp; 🧱 Wall &nbsp; ☠️ Pit (−5) &nbsp; Arrows = greedy policy</span>
+    </div>
+
+    <!-- Bellman highlight panel -->
+    <div id="bellman-panel" style="display:none;margin-top:1rem;background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:1rem">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--amber);margin-bottom:.4rem">🔍 Bellman Update (last cell)</div>
+      <div id="bellman-detail" style="font-family:var(--mono);font-size:.82rem;color:var(--muted);line-height:1.9"></div>
+    </div>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §11 THEORY -->
+<section id="theory">
+  <span class="sec-num">§ 11</span>
+  <h2>Theoretical Insights</h2>
+
+  <h3>Convergence Rates</h3>
+  <p>Both VI and PI converge, but at different rates:</p>
+  <table>
+    <thead><tr><th>Algorithm</th><th>Convergence Type</th><th>Rate</th></tr></thead>
+    <tbody>
+      <tr><td>Value Iteration</td><td>Geometric (linear)</td><td>\(\|V_k - V^*\|_\infty \leq \gamma^k \|V_0 - V^*\|_\infty\)</td></tr>
+      <tr><td>Policy Iteration</td><td>Finite steps</td><td>At most \(|\mathcal{A}|^{|\mathcal{S}|}\) iterations (often much fewer)</td></tr>
+      <tr><td>Linear PI</td><td>Superlinear</td><td>Newton's method analogy for Bellman operator</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Uniqueness of Fixed Point</h3>
+  <div class="callout violet">
+    <div class="callout-lbl">Theorem: Unique Optimal Value Function</div>
+    <p>The Bellman optimality equation \(V = \mathcal{T}^* V\) has a unique solution \(V^*\), and \(V^*(s) = \max_\pi V^\pi(s)\) for all \(s\). There always exists a deterministic stationary optimal policy \(\pi^*\).</p>
+  </div>
+
+  <div class="coll">
+    <div class="coll-hd" onclick="coll(this)">📐 Why Deterministic Policies Suffice <span class="coll-arrow">▼</span></div>
+    <div class="coll-bd">
+      <p>For any stochastic policy \(\pi\) and any state \(s\):</p>
+      <div class="mbox">
+        \[V^\pi(s) = \sum_a \pi(a|s) Q^\pi(s,a) \leq \max_a Q^\pi(s,a) = Q^{\pi^*_{\text{det}}}(s, \pi^*_{\text{det}}(s))\]
+      </div>
+      <p>The maximum over deterministic actions is at least as large as any convex combination. So the deterministic greedy policy is always at least as good as any stochastic policy.</p>
+    </div>
+  </div>
+
+  <h3>Policy Iteration and Newton's Method</h3>
+  <p>There is a deep analogy: Policy Iteration is Newton's method applied to the Bellman optimality equation. This explains its superlinear convergence — once near the optimum, it converges very quickly. Value Iteration, by contrast, is gradient descent, converging geometrically at rate \(\gamma\) per step.</p>
+</section>
+
+<hr class="div"/>
+
+<!-- §12 LIMITATIONS -->
+<section id="limits">
+  <span class="sec-num">§ 12</span>
+  <h2>Limitations of Dynamic Programming</h2>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h4>🌊 Curse of Dimensionality</h4>
+      <p>The state space \(\mathcal{S}\) grows exponentially with the number of state variables. A robot with 10 joints, each with 100 positions, has \(100^{10} = 10^{20}\) states. Storing and updating \(V\) for all states is computationally infeasible.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h4>🗺️ Requires Full Model</h4>
+      <p>DP needs the transition kernel \(p(s',r|s,a)\) exactly. In most real applications (games, robotics, finance), this is unknown. We can only observe samples from the environment.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--amber)">
+      <h4>⏱️ Synchronous Updates</h4>
+      <p>Standard DP updates all states in each sweep. For large state spaces, this is expensive. Asynchronous DP (updating states in arbitrary order) can help but requires care.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h4>🧠 No Generalization</h4>
+      <p>Tabular DP stores one value per state. It cannot generalize across similar states. Function approximation (neural networks) is needed for large/continuous spaces — but this sacrifices convergence guarantees.</p>
+    </div>
+  </div>
+
+  <!-- Curse of dimensionality viz -->
+  <div class="viz">
+    <div class="viz-title">📈 Curse of Dimensionality</div>
+    <canvas id="dim-canvas" width="680" height="180"></canvas>
+    <p style="font-size:.79rem;color:var(--muted);margin-top:.5rem">State space size grows exponentially with number of state dimensions (assuming 10 values per dim).</p>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §13 BRIDGE -->
+<section id="bridge">
+  <span class="sec-num">§ 13</span>
+  <h2>Bridge to Model-Free RL</h2>
+
+  <p>The limitations of DP are precisely the motivations for model-free methods. Here is how DP ideas translate:</p>
+
+  <div class="viz">
+    <div class="viz-title">🌉 From DP to Model-Free RL</div>
+    <canvas id="bridge-canvas" width="680" height="200"></canvas>
+  </div>
+
+  <table>
+    <thead><tr><th>DP Concept</th><th>Model-Free Analog</th><th>Key Difference</th></tr></thead>
+    <tbody>
+      <tr><td>Policy Evaluation (exact)</td><td>MC / TD Prediction</td><td>Use samples instead of model</td></tr>
+      <tr><td>Value Iteration</td><td>Q-Learning</td><td>Sample Bellman updates, no model</td></tr>
+      <tr><td>Policy Iteration</td><td>Actor-Critic</td><td>Stochastic approx. for both phases</td></tr>
+      <tr><td>Bellman operator \(\mathcal{T}^*\)</td><td>Sample backup in TD</td><td>Single sample \((s,a,r,s')\) used</td></tr>
+      <tr><td>Synchronous DP sweeps</td><td>Experience replay in DQN</td><td>Replay buffer ≈ sweeping with samples</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout blue">
+    <div class="callout-lbl">The Fundamental Insight</div>
+    <p>Model-free RL replaces the <em>expectation</em> in the Bellman update with a <em>sample</em>. Instead of \(\sum_{s',r} p(s',r|s,a)[\ldots]\), we use a single observed \((r, s')\). By stochastic approximation theory, the iterates still converge — but now without any model knowledge.</p>
+  </div>
+
+  <h3>Q-Learning as Sampled Value Iteration</h3>
+  <div class="mbox">
+    <div class="mlbl">Value Iteration → Q-Learning</div>
+    \[
+    \underbrace{V_{k+1}(s) = \max_a \sum_{s',r} p(s',r|s,a)[r+\gamma V_k(s')]}_{\text{DP: full expectation}} \;\longrightarrow\; \underbrace{Q(s,a) \mathrel{+}= \alpha\left[r + \gamma\max_{a'}Q(s',a') - Q(s,a)\right]}_{\text{Q-learning: single sample}}
+    \]
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- §14 SUMMARY -->
+<section id="summary">
+  <span class="sec-num">§ 14</span>
+  <h2>Summary</h2>
+
+  <div class="callout violet">
+    <div class="callout-lbl">The Big Picture</div>
+    <p>Dynamic Programming solves MDPs by exploiting the recursive structure of the Bellman equations. The Bellman operator is a contraction, guaranteeing convergence. Value Iteration applies this operator to find \(V^*\); Policy Iteration alternates evaluation and improvement to converge in finite steps. Both are forms of Generalized Policy Iteration — the unifying framework for all of RL.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Concept</th><th>One-line summary</th></tr></thead>
+    <tbody>
+      <tr><td>Bellman Expectation</td><td>\(V^\pi = \mathcal{T}^\pi V^\pi\): fixed-point equation for policy \(\pi\)</td></tr>
+      <tr><td>Bellman Optimality</td><td>\(V^* = \mathcal{T}^* V^*\): nonlinear fixed-point for optimal value</td></tr>
+      <tr><td>Contraction property</td><td>Bellman ops shrink distances by \(\gamma\): ensures unique fixed point</td></tr>
+      <tr><td>Value Iteration</td><td>Repeatedly apply \(\mathcal{T}^*\); converges geometrically</td></tr>
+      <tr><td>Policy Iteration</td><td>Evaluate then improve; converges in finite steps</td></tr>
+      <tr><td>GPI</td><td>Any interleaving of evaluation + improvement converges</td></tr>
+      <tr><td>Curse of dimensionality</td><td>DP is exact but exponential in state space size</td></tr>
+      <tr><td>Bridge to model-free</td><td>Replace expectations with samples → TD, Q-learning, Actor-Critic</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout blue">
+    <div class="callout-lbl">Essential Reading</div>
+    <p>
+      • Sutton & Barto (2018). <em>Reinforcement Learning: An Introduction</em>. Ch. 4.<br/>
+      • Bertsekas (2012). <em>Dynamic Programming and Optimal Control</em>. Vol. 1 & 2.<br/>
+      • Puterman (1994). <em>Markov Decision Processes</em>.<br/>
+      • Bellman, R. (1957). <em>Dynamic Programming</em>. Princeton University Press.
+    </p>
+  </div>
+</section>
+
+<!-- Footer -->
+<div style="padding:2rem 0;border-top:1px solid var(--border);margin-top:2rem;text-align:center;color:var(--light);font-size:.78rem;font-family:var(--serif)">
+  Dynamic Programming in Reinforcement Learning — Research Guide
+</div>
+</article>
+</div>
+<script>
+// ═══════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════
+function tog(prefix, key, btn) {
+  const grp = btn.closest('.tgrp');
+  grp.querySelectorAll('.tbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  const sec = btn.closest('section') || document.body;
+  sec.querySelectorAll('.tc').forEach(el => el.classList.remove('show'));
+  const t = document.getElementById(prefix + '-' + key);
+  if (t) { t.classList.add('show'); }
+}
+
+function coll(hd) {
+  hd.classList.toggle('open');
+  hd.nextElementSibling.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════
+// PROGRESS + TOC
+// ═══════════════════════════════════════════════
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  document.getElementById('prog').style.width = (window.scrollY / total * 100) + '%';
+  const secs = document.querySelectorAll('section[id]');
+  let cur = '';
+  secs.forEach(s => { if (window.scrollY >= s.offsetTop - 90) cur = s.id; });
+  document.querySelectorAll('.toc-list a').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + cur);
+  });
+});
+
+// ═══════════════════════════════════════════════
+// HISTORY TIMELINE
+// ═══════════════════════════════════════════════
+const TL_DATA = [
+  { year: '1944', title: 'Bellman Joins RAND', desc: 'Richard Bellman begins work at RAND Corporation, setting the stage for dynamic programming.', tag: 'Origins', tagColor: '#27ae60' },
+  { year: '1953', title: 'Dynamic Programming Born', desc: 'Bellman coins the term "dynamic programming" and develops the principle of optimality. The Bellman equations emerge as the foundation of optimal sequential decision making.', tag: 'Foundational', tagColor: '#c0392b' },
+  { year: '1957', title: '"Dynamic Programming" Published', desc: 'Bellman\'s landmark book is published by Princeton University Press. The Bellman equation for discounted infinite-horizon MDPs is formalized.', tag: 'Theory', tagColor: '#1e4f8c' },
+  { year: '1960s', title: 'Control Theory Developments', desc: 'DP spreads to control engineering. The Hamilton-Jacobi-Bellman (HJB) equation extends DP to continuous-time optimal control, used in aerospace and robotics.', tag: 'Control', tagColor: '#8b5e00' },
+  { year: '1978', title: 'Q-Learning Precursors', desc: 'Werbos introduces backpropagation through time and heuristic dynamic programming — early ideas connecting neural networks and DP.', tag: 'ML Bridge', tagColor: '#5a2d82' },
+  { year: '1988', title: "Sutton's TD Learning", desc: 'Richard Sutton formalizes Temporal Difference learning, bridging Monte Carlo methods and DP without a model. Shows how DP ideas can be used sample-by-sample.', tag: 'RL Breakthrough', tagColor: '#c0392b' },
+  { year: '1989', title: "Q-Learning (Watkins)", desc: 'Chris Watkins introduces Q-learning: a provably convergent, model-free algorithm that is essentially sampled Value Iteration. The bridge from DP to modern RL is complete.', tag: 'Model-Free RL', tagColor: '#1e4f8c' },
+  { year: '1998', title: "Sutton & Barto Textbook", desc: 'The first edition of "Reinforcement Learning: An Introduction" is published, synthesizing DP, Monte Carlo, and TD methods into a unified framework (GPI).', tag: 'Synthesis', tagColor: '#27ae60' },
+  { year: '2013+', title: 'Deep RL Revolution', desc: 'DQN (Mnih et al.) combines Q-learning (≈ sampled VI) with deep neural networks. AlphaGo, AlphaZero, and GPT-scale RL follow. All are descendants of Bellman\'s 1957 equations.', tag: 'Deep RL', tagColor: '#5a2d82' },
+];
+
+function buildTimeline() {
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  TL_DATA.forEach((ev, i) => {
+    const item = document.createElement('div');
+    item.className = 'tl-item' + (i === 3 ? ' active' : '');
+    item.innerHTML = `
+      <div class="tl-dot-col">
+        <div class="tl-dot"></div>
+        ${i < TL_DATA.length - 1 ? '<div class="tl-line"></div>' : ''}
+      </div>
+      <div style="padding-top:0">
+        <div class="tl-year">${ev.year}</div>
+        <div class="tl-content">
+          <div class="tl-title">${ev.title}</div>
+          <div class="tl-desc" style="display:${i===3?'block':'none'}">${ev.desc}</div>
+          <span class="tl-tag" style="background:${ev.tagColor}22;color:${ev.tagColor}">${ev.tag}</span>
+        </div>
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.tl-item').forEach(x => {
+        x.classList.remove('active');
+        x.querySelector('.tl-desc').style.display = 'none';
+      });
+      item.classList.add('active');
+      item.querySelector('.tl-desc').style.display = 'block';
+    });
+    tl.appendChild(item);
+  });
+}
+buildTimeline();
+
+// ═══════════════════════════════════════════════
+// CONTRACTION VIZ
+// ═══════════════════════════════════════════════
+let gamma_c = 0.9, contract_t = [], contract_v = [], contract_running = false;
+
+function setGamma(v) {
+  gamma_c = v / 100;
+  document.getElementById('gamma-val').textContent = gamma_c.toFixed(2);
+}
+
+function resetContract() {
+  contract_t = []; contract_v = []; contract_running = false;
+  drawContract();
+  document.getElementById('contract-info').textContent = 'Iteration: 0';
+}
+
+async function runContract() {
+  if (contract_running) return;
+  resetContract();
+  contract_running = true;
+  let err = 8.0;
+  for (let k = 0; k <= 30 && contract_running; k++) {
+    contract_t.push(k);
+    contract_v.push(err);
+    err *= gamma_c;
+    drawContract();
+    document.getElementById('contract-info').textContent = `Iteration: ${k} | Error: ${contract_v[k].toFixed(4)}`;
+    await sleep(80);
+  }
+  contract_running = false;
+}
+
+function drawContract() {
+  const c = document.getElementById('contract-canvas');
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+  const pad = {l:55,r:20,t:20,b:35};
+  const iW = W-pad.l-pad.r, iH = H-pad.t-pad.b;
+
+  ctx.strokeStyle='#eee';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(i/4)*iH;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+iW,y);ctx.stroke();
+    const v=8*(1-i/4);
+    ctx.font='10px JetBrains Mono';ctx.fillStyle='#bbb';ctx.textAlign='right';
+    ctx.fillText(v.toFixed(1),pad.l-6,y+4);
+  }
+
+  if(contract_v.length>1){
+    const maxT=30;
+    const toX=t=>pad.l+(t/maxT)*iW;
+    const toY=v=>pad.t+iH-(v/8)*iH;
+
+    // Theoretical curve
+    ctx.strokeStyle='#ddd';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    for(let k=0;k<=30;k++){
+      const x=toX(k),y=toY(8*Math.pow(gamma_c,k));
+      k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();ctx.setLineDash([]);
+
+    ctx.strokeStyle='#c0392b';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    contract_v.forEach((v,i)=>{
+      const x=toX(contract_t[i]),y=toY(v);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // dots
+    contract_v.forEach((v,i)=>{
+      ctx.fillStyle='#c0392b';
+      ctx.beginPath();ctx.arc(toX(contract_t[i]),toY(v),3,0,Math.PI*2);ctx.fill();
+    });
+  }
+
+  ctx.font='10px Source Serif 4,serif';ctx.fillStyle='#aaa';ctx.textAlign='center';
+  ctx.fillText('Iteration k',pad.l+iW/2,H-5);
+  ctx.save();ctx.translate(14,pad.t+iH/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('||V_k − V*||∞',0,0);ctx.restore();
+}
+drawContract();
+
+// ═══════════════════════════════════════════════
+// GPI CANVAS
+// ═══════════════════════════════════════════════
+function drawGPI() {
+  const c = document.getElementById('gpi-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Two circles: Evaluation and Improvement
+  const cx1 = W*0.3, cy = H/2, r = 75;
+  const cx2 = W*0.7;
+
+  // Eval circle
+  ctx.fillStyle='#eff4fc';ctx.strokeStyle='#1e4f8c';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(cx1,cy,r,50,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.font='bold 13px Playfair Display,serif';ctx.fillStyle='#1e4f8c';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('Policy',cx1,cy-10);ctx.fillText('Evaluation',cx1,cy+10);
+
+  // Improve circle
+  ctx.fillStyle='#fdf0f0';ctx.strokeStyle='#b83232';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(cx2,cy,r,50,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.font='bold 13px Playfair Display,serif';ctx.fillStyle='#b83232';ctx.textAlign='center';
+  ctx.fillText('Policy',cx2,cy-10);ctx.fillText('Improvement',cx2,cy+10);
+
+  // Arrows between
+  const drawArrow = (x1,y1,x2,y2,color,label,above)=>{
+    ctx.strokeStyle=color;ctx.lineWidth=2;ctx.fillStyle=color;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    // arrowhead
+    const angle=Math.atan2(y2-y1,x2-x1);
+    ctx.save();ctx.translate(x2,y2);ctx.rotate(angle);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-10,-5);ctx.lineTo(-10,5);ctx.closePath();ctx.fill();
+    ctx.restore();
+    ctx.font='12px Source Serif 4,serif';ctx.fillStyle='#555';ctx.textAlign='center';
+    ctx.fillText(label,(x1+x2)/2,above?(y1+y2)/2-12:(y1+y2)/2+16);
+  };
+
+  drawArrow(cx1+r*0.85,cy-28,cx2-r*0.85,cy-28,'#1e4f8c','V^π → greedy π',true);
+  drawArrow(cx2-r*0.85,cy+28,cx1+r*0.85,cy+28,'#b83232','π → evaluate V^π',false);
+
+  // Optimal star
+  ctx.fillStyle='#1a6644';ctx.font='bold 13px Playfair Display,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('→ (V*, π*)',W/2,H-22);
+
+  ctx.font='11px Source Serif 4,serif';ctx.fillStyle='#aaa';
+  ctx.fillText('Converges to optimum',W/2,H-8);
+
+  ctx.textBaseline='alphabetic';
+}
+drawGPI();
+
+// ═══════════════════════════════════════════════
+// CURSE OF DIMENSIONALITY VIZ
+// ═══════════════════════════════════════════════
+function drawDim() {
+  const c = document.getElementById('dim-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+  const pad={l:70,r:20,t:20,b:35};
+  const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b;
+  const dims=[1,2,3,4,5,6,7,8];
+  const vals=dims.map(d=>Math.pow(10,d));
+  const maxLog=8;
+
+  ctx.strokeStyle='#eee';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(i/4)*iH;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+iW,y);ctx.stroke();
+    const v=maxLog*(1-i/4);
+    ctx.font='10px JetBrains Mono';ctx.fillStyle='#bbb';ctx.textAlign='right';
+    ctx.fillText('10^'+v.toFixed(0),pad.l-6,y+4);
+  }
+
+  const toX=d=>pad.l+(d-1)/(dims.length-1)*iW;
+  const toY=v=>pad.t+iH-(Math.log10(v)/maxLog)*iH;
+
+  ctx.strokeStyle='#c0392b';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  dims.forEach((d,i)=>{
+    const x=toX(d),y=toY(vals[i]);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  dims.forEach((d,i)=>{
+    const x=toX(d),y=toY(vals[i]);
+    ctx.fillStyle='#c0392b';
+    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();
+    ctx.font='9px JetBrains Mono';ctx.fillStyle='#888';ctx.textAlign='center';
+    ctx.fillText('10^'+d,x,pad.t+iH+14);
+  });
+
+  ctx.font='10px Source Serif 4,serif';ctx.fillStyle='#aaa';ctx.textAlign='center';
+  ctx.fillText('Number of state dimensions',pad.l+iW/2,H-2);
+  ctx.save();ctx.translate(14,pad.t+iH/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('State space size',0,0);ctx.restore();
+}
+drawDim();
+
+// ═══════════════════════════════════════════════
+// BRIDGE CANVAS
+// ═══════════════════════════════════════════════
+function drawBridge() {
+  const c = document.getElementById('bridge-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+
+  const items=[
+    {x:.12,label:'Value\nIteration',color:'#c0392b',sub:'(Full Bellman)'},
+    {x:.35,label:'DP with\nSampling',color:'#8b5e00',sub:'(Approx. DP)'},
+    {x:.58,label:'Q-Learning',color:'#1e4f8c',sub:'(Sample VI)'},
+    {x:.80,label:'Deep RL\n(DQN)',color:'#5a2d82',sub:'(Neural + Sample)'},
+  ];
+
+  // Arrow line
+  ctx.strokeStyle='#ddd';ctx.lineWidth=2;
+  const y=H/2;
+  ctx.beginPath();ctx.moveTo(40,y);ctx.lineTo(W-40,y);ctx.stroke();
+  ctx.fillStyle='#ddd';
+  ctx.beginPath();ctx.moveTo(W-30,y);ctx.lineTo(W-44,y-6);ctx.lineTo(W-44,y+6);ctx.closePath();ctx.fill();
+
+  items.forEach(it=>{
+    const x=it.x*W;
+    ctx.fillStyle=it.color;
+    ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill();
+    ctx.font='bold 10px Playfair Display,serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+    const lines=it.label.split('\n');
+    lines.forEach((l,i)=>ctx.fillText(l,x,y+(i-(.5*(lines.length-1)))*12));
+    ctx.font='10px Source Serif 4,serif';ctx.fillStyle=it.color;ctx.textBaseline='alphabetic';
+    ctx.fillText(it.sub,x,y+32);
+  });
+
+  ctx.font='11px Source Serif 4,serif';ctx.fillStyle='#aaa';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('Model required →',200,H-8);
+  ctx.fillText('← Model-free',500,H-8);
+}
+drawBridge();
+
+// ═══════════════════════════════════════════════
+// GRIDWORLD SIMULATION
+// ═══════════════════════════════════════════════
+const ROWS=5,COLS=5,CELL=68;
+let GW = {
+  rows:ROWS, cols:COLS,
+  grid: null, // 0=empty,1=wall,2=pit,3=goal,4=start
+  V: null, PI: null,
+  gamma:0.9, iter:0, phase:'vi', alg:'vi',
+  piPhase:'eval', piEvalIter:0,
+  autoTimer:null, running:false
+};
+
+function initGrid() {
+  GW.grid = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  GW.V = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  GW.PI = Array.from({length:ROWS},()=>Array(COLS).fill(0)); // 0=R,1=D,2=L,3=U
+  // Setup: goal at (0,4), pit at (2,2), wall at (1,3)
+  GW.grid[0][4]=3; // goal
+  GW.grid[4][0]=4; // start
+  GW.grid[2][2]=2; // pit
+  GW.grid[1][3]=1; // wall
+  GW.iter=0; GW.piPhase='eval'; GW.piEvalIter=0;
+  randomizePolicy();
+}
+
+function randomizePolicy() {
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) GW.PI[r][c]=Math.floor(Math.random()*4);
+}
+
+function setSimGamma(v) {
+  GW.gamma = v/100;
+  document.getElementById('sim-gamma').textContent = GW.gamma.toFixed(2);
+}
+
+function selectAlg(alg, btn) {
+  GW.alg = alg;
+  document.querySelectorAll('#alg-vi,#alg-pi').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  simReset();
+}
+
+function simReset() {
+  if(GW.autoTimer){clearInterval(GW.autoTimer);GW.autoTimer=null;}
+  GW.running=false;
+  initGrid();
+  document.getElementById('iter-count').textContent='0';
+  document.getElementById('delta-val').textContent='—';
+  document.getElementById('phase-lbl').textContent='—';
+  document.getElementById('sim-status').textContent='Press Step or Auto Run';
+  document.getElementById('bellman-panel').style.display='none';
+  renderGrid();renderVal();
+}
+
+function simNewGrid() {
+  simReset();
+  // Random walls and pits
+  GW.grid = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  GW.grid[0][4]=3;GW.grid[4][0]=4;
+  for(let i=0;i<4;i++){
+    const r=Math.floor(Math.random()*ROWS),c=Math.floor(Math.random()*COLS);
+    if(GW.grid[r][c]===0) GW.grid[r][c]=1;
+  }
+  for(let i=0;i<2;i++){
+    const r=Math.floor(Math.random()*ROWS),c=Math.floor(Math.random()*COLS);
+    if(GW.grid[r][c]===0) GW.grid[r][c]=2;
+  }
+  GW.V=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  randomizePolicy();
+  renderGrid();renderVal();
+}
+
+function simStep() {
+  if(GW.alg==='vi') viStep();
+  else piStep();
+}
+
+function viStep() {
+  let delta=0;
+  const DIRS=[[0,1],[1,0],[0,-1],[-1,0]];
+  let lastR=-1,lastC=-1,lastDetail='';
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+    if(GW.grid[r][c]===1) continue;
+    if(GW.grid[r][c]===3){GW.V[r][c]=10;continue;}
+    if(GW.grid[r][c]===2){GW.V[r][c]=-5;continue;}
+    const old=GW.V[r][c];
+    let best=-Infinity, bestDir=0;
+    DIRS.forEach(([dr,dc],di)=>{
+      let nr=r+dr,nc=c+dc;
+      if(nr<0||nr>=ROWS||nc<0||nc>=COLS||GW.grid[nr][nc]===1){nr=r;nc=c;}
+      const reward=(GW.grid[nr][nc]===3?10:GW.grid[nr][nc]===2?-5:-0.1);
+      const q=reward+GW.gamma*GW.V[nr][nc];
+      if(q>best){best=q;bestDir=di;}
+    });
+    GW.V[r][c]=best;
+    GW.PI[r][c]=bestDir;
+    delta=Math.max(delta,Math.abs(old-best));
+    lastR=r;lastC=c;
+    lastDetail=buildBellmanDetail(r,c,DIRS,best);
+  }
+  GW.iter++;
+  document.getElementById('iter-count').textContent=GW.iter;
+  document.getElementById('delta-val').textContent=delta.toFixed(5);
+  document.getElementById('phase-lbl').textContent='VI Sweep';
+  showBellmanPanel(lastR,lastC,lastDetail);
+  renderGrid();renderVal();
+  document.getElementById('sim-status').textContent=delta<0.001?'✅ Converged!':'Running...';
+  if(delta<0.001&&GW.autoTimer){clearInterval(GW.autoTimer);GW.autoTimer=null;GW.running=false;}
+}
+
+function buildBellmanDetail(r,c,DIRS,best) {
+  const names=['→','↓','←','↑'];
+  let s=`State (${r},${c}): V = max_a [r + γ·V(s')]<br/>`;
+  DIRS.forEach(([dr,dc],di)=>{
+    let nr=r+dr,nc=c+dc;
+    if(nr<0||nr>=ROWS||nc<0||nc>=COLS||GW.grid[nr][nc]===1){nr=r;nc=c;}
+    const rew=(GW.grid[nr][nc]===3?10:GW.grid[nr][nc]===2?-5:-0.1);
+    const q=rew+GW.gamma*GW.V[nr][nc];
+    s+=`  ${names[di]}: ${rew.toFixed(1)} + ${GW.gamma}×${GW.V[nr][nc].toFixed(2)} = ${q.toFixed(3)}<br/>`;
+  });
+  s+=`<strong>→ V(s) = ${best.toFixed(3)}</strong>`;
+  return s;
+}
+
+function showBellmanPanel(r,c,detail) {
+  if(r<0) return;
+  const p=document.getElementById('bellman-panel');
+  p.style.display='block';
+  document.getElementById('bellman-detail').innerHTML=detail;
+}
+
+function piStep() {
+  const DIRS=[[0,1],[1,0],[0,-1],[-1,0]];
+  if(GW.piPhase==='eval'){
+    let delta=0;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      if(GW.grid[r][c]===1) continue;
+      if(GW.grid[r][c]===3){GW.V[r][c]=10;continue;}
+      if(GW.grid[r][c]===2){GW.V[r][c]=-5;continue;}
+      const old=GW.V[r][c];
+      const di=GW.PI[r][c];
+      const [dr,dc]=DIRS[di];
+      let nr=r+dr,nc=c+dc;
+      if(nr<0||nr>=ROWS||nc<0||nc>=COLS||GW.grid[nr][nc]===1){nr=r;nc=c;}
+      const rew=(GW.grid[nr][nc]===3?10:GW.grid[nr][nc]===2?-5:-0.1);
+      GW.V[r][c]=rew+GW.gamma*GW.V[nr][nc];
+      delta=Math.max(delta,Math.abs(old-GW.V[r][c]));
+    }
+    GW.piEvalIter++;
+    document.getElementById('phase-lbl').textContent=`Eval sweep ${GW.piEvalIter}`;
+    document.getElementById('delta-val').textContent=delta.toFixed(5);
+    if(delta<0.01){GW.piPhase='improve';GW.piEvalIter=0;}
+  } else {
+    let stable=true;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      if(GW.grid[r][c]===1||GW.grid[r][c]===3||GW.grid[r][c]===2) continue;
+      let best=-Infinity,bestDir=0;
+      DIRS.forEach(([dr,dc],di)=>{
+        let nr=r+dr,nc=c+dc;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS||GW.grid[nr][nc]===1){nr=r;nc=c;}
+        const rew=(GW.grid[nr][nc]===3?10:GW.grid[nr][nc]===2?-5:-0.1);
+        const q=rew+GW.gamma*GW.V[nr][nc];
+        if(q>best){best=q;bestDir=di;}
+      });
+      if(GW.PI[r][c]!==bestDir){stable=false;GW.PI[r][c]=bestDir;}
+    }
+    document.getElementById('phase-lbl').textContent='Improve';
+    GW.iter++;
+    GW.piPhase='eval';
+    document.getElementById('sim-status').textContent=stable?'✅ Policy Stable (Optimal)!':'Policy updated...';
+    if(stable&&GW.autoTimer){clearInterval(GW.autoTimer);GW.autoTimer=null;GW.running=false;}
+  }
+  document.getElementById('iter-count').textContent=GW.iter;
+  renderGrid();renderVal();
+}
+
+let autoDelay=200;
+function simAuto() {
+  if(GW.running){clearInterval(GW.autoTimer);GW.autoTimer=null;GW.running=false;document.getElementById('sim-status').textContent='Paused';return;}
+  GW.running=true;
+  GW.autoTimer=setInterval(simStep,autoDelay);
+  document.getElementById('sim-status').textContent='Running...';
+}
+
+// Grid canvas interaction
+function setupGridClick() {
+  const canvas=document.getElementById('grid-canvas');
+  canvas.addEventListener('click',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
+    const x=(e.clientX-rect.left)*scaleX, y=(e.clientY-rect.top)*scaleY;
+    const c=Math.floor(x/CELL), r=Math.floor(y/CELL);
+    if(r<0||r>=ROWS||c<0||c>=COLS) return;
+    if(GW.grid[r][c]===3||GW.grid[r][c]===4) return;
+    if(e.shiftKey){
+      GW.grid[r][c]=GW.grid[r][c]===2?0:2;
+    } else {
+      GW.grid[r][c]=GW.grid[r][c]===1?0:1;
+    }
+    renderGrid();renderVal();
+  });
+}
+setupGridClick();
+
+const CELL_COLORS={0:'#fff',1:'#333',2:'#7f1d1d',3:'#1a6644',4:'#1e3a5f'};
+const CELL_EMOJIS={1:'🧱',2:'☠️',3:'⭐',4:'🤖'};
+const DIR_ARROWS=['>','v','<','^'];
+
+function renderGrid() {
+  const canvas=document.getElementById('grid-canvas');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const x=c*CELL,y=r*CELL,t=GW.grid[r][c];
+    ctx.fillStyle=t===1?'#2d2d2d':t===2?'#450a0a':t===3?'#052e16':t===4?'#0c1b33':'#fff';
+    ctx.fillRect(x,y,CELL,CELL);
+    ctx.strokeStyle='#e4e2db';ctx.lineWidth=1;ctx.strokeRect(x,y,CELL,CELL);
+
+    if(t>0){
+      ctx.font='24px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(CELL_EMOJIS[t]||'',x+CELL/2,y+CELL/2);
+    } else {
+      // draw arrow
+      const di=GW.PI[r][c];
+      const arrs=['→','↓','←','↑'];
+      ctx.font='22px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(0,0,0,0.25)';
+      ctx.fillText(arrs[di],x+CELL/2,y+CELL/2);
+    }
+  }
+}
+
+function renderVal() {
+  const canvas=document.getElementById('val-canvas');
+  const ctx=canvas.getContext('2d');
+  const VCELL=canvas.width/COLS;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  let minV=Infinity,maxV=-Infinity;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(GW.grid[r][c]!==1){minV=Math.min(minV,GW.V[r][c]);maxV=Math.max(maxV,GW.V[r][c]);}
+  }
+  if(minV===maxV) maxV=minV+1;
+
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const x=c*VCELL,y=r*VCELL,t=GW.grid[r][c];
+    let fill;
+    if(t===1) fill='#333';
+    else {
+      const norm=(GW.V[r][c]-minV)/(maxV-minV);
+      const intensity=Math.round(norm*200);
+      fill=`rgb(${220-intensity},${Math.round(40+norm*50)},${Math.round(40+norm*50)})`;
+    }
+    ctx.fillStyle=fill;ctx.fillRect(x,y,VCELL,VCELL);
+    ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;ctx.strokeRect(x,y,VCELL,VCELL);
+
+    if(t!==1){
+      ctx.font='bold 11px JetBrains Mono';ctx.fillStyle=GW.V[r][c]>2?'#fff':'#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(GW.V[r][c].toFixed(1),x+VCELL/2,y+VCELL/2);
+    }
+  }
+}
+
+initGrid();
+renderGrid();
+renderVal();
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+window.addEventListener('load',()=>{
+  drawGPI();drawBridge();drawDim();drawContract();
+  if(window.MathJax) MathJax.typeset();
+});
+</script>
+</body>
+</html>
