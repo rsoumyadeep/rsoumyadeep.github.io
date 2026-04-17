@@ -3,914 +3,1924 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Function Approximation in RL</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>Function Approximation in Reinforcement Learning</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #050810;
-    --panel: #0b1020;
-    --panel2: #101828;
-    --border: #1e2d4a;
-    --accent1: #00d4ff;
-    --accent2: #7c3aed;
-    --accent3: #f59e0b;
-    --accent4: #10b981;
-    --text: #e2e8f0;
-    --muted: #64748b;
+    --white: #ffffff;
+    --ink: #1a1a2e;
+    --ink-light: #3d3d5c;
+    --ink-muted: #6b6b8a;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --accent-mid: #bfdbfe;
+    --amber: #d97706;
+    --amber-soft: #fffbeb;
+    --emerald: #059669;
+    --emerald-soft: #ecfdf5;
+    --rose: #e11d48;
+    --rose-soft: #fff1f2;
+    --violet: #7c3aed;
+    --violet-soft: #f5f3ff;
+    --border: #e5e7eb;
+    --border-light: #f3f4f6;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.05);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font-body: 'Lora', Georgia, serif;
+    --font-ui: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
   }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
-  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; overflow-x:hidden; cursor:none; }
-  #cursor { width:12px; height:12px; background:var(--accent1); border-radius:50%; position:fixed; pointer-events:none; z-index:9999; transition:transform 0.1s,background 0.2s; box-shadow:0 0 20px var(--accent1); }
-  #cursor-ring { width:36px; height:36px; border:1px solid rgba(0,212,255,0.4); border-radius:50%; position:fixed; pointer-events:none; z-index:9998; transition:all 0.15s ease; }
-  #particle-canvas { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:0.4; }
-  .container { max-width:1200px; margin:0 auto; padding:0 32px; position:relative; z-index:1; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--white);
+    color: var(--ink-light);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
 
-  /* Hero */
-  #hero { min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; position:relative; overflow:hidden; }
-  .hero-grid { position:absolute; inset:0; background-image:linear-gradient(rgba(0,212,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.04) 1px,transparent 1px); background-size:60px 60px; animation:grid-pan 20s linear infinite; }
-  @keyframes grid-pan { from{transform:translateY(0)} to{transform:translateY(60px)} }
-  .hero-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2); border-radius:100px; padding:6px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent1); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:32px; animation:fade-up 0.6s ease both; }
-  .badge-dot { width:6px; height:6px; background:var(--accent1); border-radius:50%; animation:pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
-  .hero-title { font-family:'Playfair Display',serif; font-size:clamp(40px,7vw,90px); font-weight:700; line-height:1.05; margin-bottom:12px; animation:fade-up 0.6s 0.1s ease both; }
-  .hero-title .line2 { font-style:italic; background:linear-gradient(135deg,var(--accent1),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .hero-sub { font-size:17px; color:var(--muted); max-width:600px; line-height:1.7; margin-bottom:48px; animation:fade-up 0.6s 0.2s ease both; }
-  .hero-nav { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; animation:fade-up 0.6s 0.3s ease both; }
-  .nav-pill { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 20px; font-size:13px; color:var(--muted); cursor:pointer; transition:all 0.2s; text-decoration:none; font-family:'JetBrains Mono',monospace; }
-  .nav-pill:hover { border-color:var(--accent1); color:var(--accent1); background:rgba(0,212,255,0.06); transform:translateY(-2px); }
-  @keyframes fade-up { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-  .scroll-hint { position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--muted); font-size:11px; font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; animation:fade-up 1s 0.6s ease both; }
-  .scroll-line { width:1px; height:40px; background:linear-gradient(var(--accent1),transparent); animation:scroll-grow 1.5s ease infinite; }
-  @keyframes scroll-grow { 0%{transform:scaleY(0);transform-origin:top} 50%{transform:scaleY(1);transform-origin:top} 51%{transform:scaleY(1);transform-origin:bottom} 100%{transform:scaleY(0);transform-origin:bottom} }
+  /* Progress bar */
+  #progress-bar {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--violet));
+    z-index: 1000; width: 0%; transition: width 0.1s linear;
+    border-radius: 0 2px 2px 0;
+  }
 
-  /* Sections */
-  section { padding:80px 0; }
-  .section-tag { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent1); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
-  .section-tag::after { content:''; flex:1; height:1px; background:var(--border); max-width:80px; }
-  .section-title { font-family:'Playfair Display',serif; font-size:clamp(28px,4vw,48px); font-weight:700; margin-bottom:16px; line-height:1.15; }
-  .section-lead { color:var(--muted); font-size:16px; line-height:1.8; max-width:700px; margin-bottom:48px; }
-
-  /* Cards */
-  .cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px; }
-  .card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:28px; transition:all 0.3s; position:relative; overflow:hidden; opacity:0; transform:translateY(30px); }
-  .card.visible { animation:card-in 0.5s ease forwards; }
-  @keyframes card-in { to{opacity:1;transform:translateY(0)} }
-  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--card-accent,var(--accent1)),transparent); opacity:0; transition:opacity 0.3s; }
-  .card:hover { border-color:var(--card-accent,var(--accent1)); box-shadow:0 0 40px rgba(0,0,0,0.5); transform:translateY(-4px); }
-  .card:hover::before { opacity:1; }
-  .card-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:16px; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.15); }
-  .card h3 { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; margin-bottom:10px; }
-  .card p { font-size:14px; color:var(--muted); line-height:1.75; }
-
-  /* Math blocks */
-  .math-block { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:24px 28px; margin:20px 0; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:2; position:relative; overflow:hidden; }
-  .math-block::before { content:attr(data-label); position:absolute; top:12px; right:16px; font-size:10px; color:var(--accent1); letter-spacing:0.1em; text-transform:uppercase; opacity:0.7; }
-  .math-block .eq { color:var(--accent1); }
-  .math-block .var { color:var(--accent3); }
-  .math-block .comment { color:var(--muted); font-style:italic; }
-  .math-block .theta { color:var(--accent2); }
-  .math-block .fn { color:var(--accent4); }
-
-  /* Demo wrapper */
-  .demo-wrapper { background:var(--panel); border:1px solid var(--border); border-radius:20px; padding:32px; margin:32px 0; }
-  .demo-title { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--accent1); margin-bottom:24px; display:flex; align-items:center; gap:10px; }
-  .demo-title::before { content:'▶'; font-size:10px; }
-  canvas { border-radius:8px; display:block; }
-
-  /* Controls */
-  .controls { display:flex; flex-wrap:wrap; gap:16px; margin-top:20px; align-items:center; }
-  .ctrl-group { display:flex; flex-direction:column; gap:6px; }
-  .ctrl-label { font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:0.08em; }
-  input[type=range] { -webkit-appearance:none; height:3px; background:var(--border); border-radius:2px; outline:none; width:160px; }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent1); cursor:pointer; box-shadow:0 0 10px var(--accent1); }
-  .btn { background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.3); border-radius:8px; padding:8px 20px; color:var(--accent1); font-family:'JetBrains Mono',monospace; font-size:12px; cursor:pointer; transition:all 0.2s; }
-  .btn:hover { background:rgba(0,212,255,0.2); transform:translateY(-1px); }
-  .btn.active { background:var(--accent1); color:var(--bg); }
-
-  /* Tabs */
-  .tab-bar { display:flex; gap:4px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:6px; margin-bottom:20px; flex-wrap:wrap; }
-  .tab-btn { padding:8px 18px; border-radius:8px; border:none; background:transparent; color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px; cursor:pointer; transition:all 0.2s; }
-  .tab-btn.active { background:var(--accent2); color:white; }
-  .tab-btn:hover:not(.active) { color:var(--text); background:var(--panel2); }
-  .tab-content { display:none; }
-  .tab-content.active { display:block; animation:fade-in 0.3s ease; }
-  @keyframes fade-in { from{opacity:0} to{opacity:1} }
-
-  /* Table */
-  .comp-table { width:100%; border-collapse:collapse; font-size:14px; margin:24px 0; }
-  .comp-table th { background:var(--panel2); color:var(--accent1); font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.1em; padding:14px 16px; text-align:left; border-bottom:1px solid var(--border); }
-  .comp-table td { padding:13px 16px; border-bottom:1px solid rgba(30,45,74,0.5); color:var(--muted); vertical-align:top; }
-  .comp-table tr:hover td { background:rgba(0,212,255,0.02); color:var(--text); }
-  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-family:'JetBrains Mono',monospace; }
-  .badge-green { background:rgba(16,185,129,0.12); color:var(--accent4); border:1px solid rgba(16,185,129,0.2); }
-  .badge-yellow { background:rgba(245,158,11,0.12); color:var(--accent3); border:1px solid rgba(245,158,11,0.2); }
-  .badge-red { background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.2); }
-  .badge-blue { background:rgba(0,212,255,0.1); color:var(--accent1); border:1px solid rgba(0,212,255,0.2); }
-
-  /* Timeline */
-  .timeline { position:relative; padding-left:32px; }
-  .timeline::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:1px; background:linear-gradient(var(--accent2),var(--border)); }
-  .tl-item { position:relative; margin-bottom:36px; opacity:0; transform:translateX(-20px); transition:all 0.5s; }
-  .tl-item.visible { opacity:1; transform:translateX(0); }
-  .tl-dot { position:absolute; left:-28px; top:4px; width:14px; height:14px; border-radius:50%; background:var(--accent2); border:2px solid var(--bg); box-shadow:0 0 12px var(--accent2); }
-  .tl-year { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); margin-bottom:6px; }
-  .tl-title { font-size:16px; font-weight:500; margin-bottom:6px; }
-  .tl-text { font-size:14px; color:var(--muted); line-height:1.7; }
-
-  /* Alert */
-  .alert { border-radius:10px; padding:16px 20px; font-size:14px; line-height:1.7; margin:16px 0; border-left:3px solid; }
-  .alert-info { background:rgba(0,212,255,0.06); border-color:var(--accent1); }
-  .alert-warn { background:rgba(245,158,11,0.06); border-color:var(--accent3); }
+  /* Navigation */
+  nav {
+    position: fixed; top: 3px; left: 0; right: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    z-index: 999; padding: 0 32px;
+    display: flex; align-items: center; gap: 0;
+    height: 56px;
+  }
+  .nav-brand {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    margin-right: 32px;
+    flex-shrink: 0;
+  }
+  .nav-brand span { color: var(--accent); }
+  .nav-links {
+    display: flex; gap: 2px; overflow-x: auto;
+    scrollbar-width: none; flex: 1;
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-link {
+    font-family: var(--font-ui);
+    font-size: 12px; font-weight: 500;
+    color: var(--ink-muted);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .nav-link:hover { background: var(--border-light); color: var(--ink); }
+  .nav-link.active { background: var(--accent-soft); color: var(--accent); }
 
   /* Layout */
-  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
-  .conv-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-  @media(max-width:700px) { .two-col,.conv-grid{grid-template-columns:1fr} .nav-links{display:none} }
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+  
+  /* TOC Sidebar */
+  .toc {
+    width: 220px; flex-shrink: 0;
+    position: sticky; top: 72px;
+    height: calc(100vh - 72px);
+    overflow-y: auto; padding: 32px 0 32px 0;
+    scrollbar-width: thin;
+    display: none;
+  }
+  @media(min-width: 1100px) { .toc { display: block; } }
+  .toc-title {
+    font-family: var(--font-ui);
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-muted); margin-bottom: 12px; padding-left: 12px;
+  }
+  .toc-item {
+    display: block; font-family: var(--font-ui);
+    font-size: 12px; color: var(--ink-muted);
+    text-decoration: none; padding: 4px 12px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s; line-height: 1.4;
+  }
+  .toc-item:hover { color: var(--ink); border-left-color: var(--border); }
+  .toc-item.active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  .toc-sub { padding-left: 22px; font-size: 11px; }
 
-  /* Colors */
-  .hl-cyan { color:var(--accent1); }
-  .hl-purple { color:var(--accent2); }
-  .hl-amber { color:var(--accent3); }
-  .hl-green { color:var(--accent4); }
+  /* Main content */
+  main { flex: 1; min-width: 0; padding: 80px 0 80px 48px; max-width: 800px; }
+  @media(max-width: 1100px) { main { padding-left: 0; max-width: 100%; } }
 
-  /* Separator */
-  .sep { height:1px; background:linear-gradient(90deg,transparent,var(--accent2),var(--accent1),transparent); margin:60px 0; opacity:0.3; }
+  /* Hero */
+  .hero { margin-bottom: 80px; }
+  .hero-label {
+    font-family: var(--font-ui);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero-label::before {
+    content: ''; width: 24px; height: 2px; background: var(--accent);
+  }
+  h1 {
+    font-family: var(--font-ui);
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 700; line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    margin-bottom: 20px;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .hero-meta {
+    font-family: var(--font-ui);
+    font-size: 13px; color: var(--ink-muted);
+    display: flex; gap: 20px; flex-wrap: wrap;
+    align-items: center; margin-bottom: 28px;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 99px;
+    font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .tag-blue { background: var(--accent-soft); color: var(--accent); }
+  .tag-amber { background: var(--amber-soft); color: var(--amber); }
+  .tag-violet { background: var(--violet-soft); color: var(--violet); }
+  .hero-abstract {
+    font-size: 17px; line-height: 1.8;
+    color: var(--ink-light);
+    border-left: 3px solid var(--accent);
+    padding-left: 20px;
+    background: var(--accent-soft);
+    padding: 20px 24px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    border-left: 3px solid var(--accent);
+  }
 
-  /* Scroll anim */
-  .anim-item { opacity:0; transform:translateY(20px); transition:opacity 0.5s,transform 0.5s; }
-  .anim-item.visible { opacity:1; transform:translateY(0); }
+  /* Sections */
+  section { margin-bottom: 72px; scroll-margin-top: 72px; }
+  h2 {
+    font-family: var(--font-ui);
+    font-size: 26px; font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink); margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-num {
+    font-size: 13px; font-weight: 600;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    background: var(--accent-soft);
+    padding: 2px 8px; border-radius: 4px;
+  }
+  h3 {
+    font-family: var(--font-ui);
+    font-size: 18px; font-weight: 600;
+    color: var(--ink); margin: 32px 0 12px;
+    letter-spacing: -0.01em;
+  }
+  h4 {
+    font-family: var(--font-ui);
+    font-size: 14px; font-weight: 700;
+    color: var(--ink-muted); margin: 20px 0 8px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  p { margin-bottom: 16px; }
 
-  /* Nav */
-  #topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; justify-content:space-between; padding:14px 32px; background:rgba(5,8,16,0.85); backdrop-filter:blur(20px); border-bottom:1px solid rgba(30,45,74,0); transition:border-color 0.3s; }
-  #topnav.scrolled { border-bottom-color:var(--border); }
-  .nav-logo { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--accent1); letter-spacing:0.05em; }
-  .nav-links { display:flex; gap:28px; list-style:none; }
-  .nav-links a { font-size:12px; color:var(--muted); text-decoration:none; font-family:'JetBrains Mono',monospace; transition:color 0.2s; }
-  .nav-links a:hover { color:var(--accent1); }
+  /* Math */
+  .math-block {
+    background: var(--border-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px 24px; margin: 24px 0;
+    overflow-x: auto; text-align: center;
+  }
+  .math-label {
+    font-family: var(--font-ui); font-size: 11px;
+    font-weight: 600; color: var(--ink-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
 
-  /* Progress */
-  #progress { position:fixed; top:0; left:0; height:2px; background:linear-gradient(90deg,var(--accent2),var(--accent1)); z-index:9000; transition:width 0.1s; box-shadow:0 0 8px var(--accent1); }
+  /* Intuition/Math toggle */
+  .toggle-panel { margin: 24px 0; }
+  .toggle-tabs {
+    display: flex; gap: 4px; margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-tab {
+    font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+    padding: 8px 16px; border: none; background: none;
+    cursor: pointer; color: var(--ink-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all 0.15s;
+  }
+  .toggle-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .toggle-content { padding: 20px 0; }
+  .intuition-pane, .math-pane { display: none; }
+  .intuition-pane.active, .math-pane.active { display: block; }
 
-  footer { border-top:1px solid var(--border); padding:40px 0; text-align:center; color:var(--muted); font-size:13px; font-family:'JetBrains Mono',monospace; }
-  footer span { color:var(--accent1); }
+  /* Callout boxes */
+  .callout {
+    border-radius: var(--radius);
+    padding: 18px 22px; margin: 24px 0;
+    border-left: 4px solid;
+  }
+  .callout-title {
+    font-family: var(--font-ui); font-size: 13px;
+    font-weight: 700; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .callout-note { background: var(--accent-soft); border-color: var(--accent); }
+  .callout-note .callout-title { color: var(--accent); }
+  .callout-warning { background: var(--amber-soft); border-color: var(--amber); }
+  .callout-warning .callout-title { color: var(--amber); }
+  .callout-danger { background: var(--rose-soft); border-color: var(--rose); }
+  .callout-danger .callout-title { color: var(--rose); }
+  .callout-success { background: var(--emerald-soft); border-color: var(--emerald); }
+  .callout-success .callout-title { color: var(--emerald); }
+  .callout-theorem { background: var(--violet-soft); border-color: var(--violet); }
+  .callout-theorem .callout-title { color: var(--violet); }
+
+  /* Collapsible proofs */
+  .collapsible { margin: 20px 0; }
+  .collapsible-trigger {
+    width: 100%; text-align: left;
+    background: var(--border-light); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    cursor: pointer; font-family: var(--font-ui);
+    font-size: 13px; font-weight: 600; color: var(--ink-light);
+    display: flex; align-items: center; justify-content: space-between;
+    transition: all 0.15s;
+  }
+  .collapsible-trigger:hover { background: var(--border); }
+  .collapsible-trigger::after { content: '▶'; font-size: 10px; transition: transform 0.2s; }
+  .collapsible-trigger.open::after { transform: rotate(90deg); }
+  .collapsible-body {
+    display: none; padding: 20px;
+    border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    font-size: 15px; line-height: 1.7;
+  }
+  .collapsible-body.open { display: block; }
+
+  /* Tooltip */
+  .tooltip-wrap { position: relative; display: inline; }
+  .tooltip-trigger {
+    border-bottom: 1.5px dashed var(--accent);
+    cursor: help; color: inherit;
+  }
+  .tooltip-box {
+    display: none; position: absolute; bottom: calc(100% + 8px);
+    left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: white;
+    font-family: var(--font-ui); font-size: 12px; line-height: 1.5;
+    padding: 10px 14px; border-radius: 8px;
+    width: 260px; z-index: 100;
+    box-shadow: var(--shadow-lg);
+  }
+  .tooltip-box::after {
+    content: ''; position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: var(--ink);
+  }
+  .tooltip-wrap:hover .tooltip-box { display: block; }
+
+  /* Algorithm boxes */
+  .algorithm-box {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 24px 0; overflow: hidden;
+  }
+  .algorithm-header {
+    background: var(--ink); color: white;
+    padding: 12px 20px;
+    font-family: var(--font-ui); font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .algorithm-body {
+    padding: 20px; font-family: var(--font-mono);
+    font-size: 13px; line-height: 1.9;
+    background: #fafafa;
+  }
+  .algo-line { padding: 1px 0; }
+  .algo-comment { color: var(--ink-muted); font-style: italic; }
+  .algo-keyword { color: var(--accent); font-weight: 500; }
+  .algo-update { color: var(--emerald); }
+  .algo-indent-1 { padding-left: 20px; }
+  .algo-indent-2 { padding-left: 40px; }
+
+  /* Visualization containers */
+  .viz-container {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden; margin: 28px 0;
+    box-shadow: var(--shadow-sm);
+  }
+  .viz-header {
+    padding: 12px 20px;
+    background: var(--border-light);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .viz-title {
+    font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+    color: var(--ink);
+  }
+  .viz-subtitle { font-family: var(--font-ui); font-size: 11px; color: var(--ink-muted); }
+  .viz-body { padding: 20px; background: white; }
+  .viz-controls {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    align-items: center; margin-top: 16px;
+  }
+  .ctrl-label {
+    font-family: var(--font-ui); font-size: 12px;
+    font-weight: 600; color: var(--ink-muted);
+  }
+  input[type=range] {
+    -webkit-appearance: none; height: 4px;
+    border-radius: 2px; background: var(--border);
+    outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+  .btn {
+    font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+    padding: 6px 14px; border-radius: 6px;
+    border: 1px solid var(--border); cursor: pointer;
+    transition: all 0.15s; background: white; color: var(--ink-light);
+  }
+  .btn:hover { background: var(--border-light); }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: #1d4ed8; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 40px; margin: 24px 0; }
+  .timeline::before {
+    content: ''; position: absolute; left: 14px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .timeline-item { position: relative; margin-bottom: 28px; }
+  .timeline-dot {
+    position: absolute; left: -33px; top: 4px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: 2px solid white;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .timeline-year {
+    font-family: var(--font-mono); font-size: 12px;
+    font-weight: 600; color: var(--accent); margin-bottom: 2px;
+  }
+  .timeline-title {
+    font-family: var(--font-ui); font-size: 14px; font-weight: 700;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  .timeline-desc { font-size: 14px; color: var(--ink-muted); line-height: 1.6; }
+
+  /* Definition grid */
+  .def-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+  .def-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+    transition: box-shadow 0.15s;
+  }
+  .def-card:hover { box-shadow: var(--shadow-md); }
+  .def-symbol {
+    font-family: var(--font-mono); font-size: 18px;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  .def-name {
+    font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  .def-desc { font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
+
+  /* Table */
+  table {
+    width: 100%; border-collapse: collapse; margin: 24px 0;
+    font-size: 14px; font-family: var(--font-ui);
+  }
+  th {
+    text-align: left; padding: 10px 14px;
+    background: var(--border-light);
+    font-weight: 700; color: var(--ink);
+    border-bottom: 2px solid var(--border);
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border-light); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--border-light); }
+
+  /* References */
+  .ref-list { list-style: none; }
+  .ref-item {
+    padding: 14px 0; border-bottom: 1px solid var(--border-light);
+    font-size: 14px; line-height: 1.6;
+    display: flex; gap: 12px;
+  }
+  .ref-num {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--accent); min-width: 28px; padding-top: 2px;
+  }
+  .ref-title { font-weight: 700; color: var(--ink); font-family: var(--font-ui); }
+  .ref-authors { color: var(--ink-muted); }
+
+  /* SVG charts */
+  svg text { font-family: var(--font-ui); }
+
+  /* Key insight highlight */
+  .key-insight {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border: 1px solid #bae6fd;
+    border-radius: var(--radius);
+    padding: 20px 24px; margin: 24px 0;
+  }
+  .key-insight-label {
+    font-family: var(--font-ui); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: #0284c7; margin-bottom: 8px;
+  }
+
+  /* Equation labels */
+  .eq-label {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-muted); float: right;
+  }
+
+  code {
+    font-family: var(--font-mono); font-size: 13px;
+    background: var(--border-light); padding: 1px 6px;
+    border-radius: 4px; color: var(--ink);
+  }
+
+  strong { color: var(--ink); }
+
+  /* Deadly triad visual */
+  .triad-container { display: flex; justify-content: center; margin: 24px 0; }
+
+  /* Footer */
+  footer {
+    text-align: center; padding: 40px 24px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-ui); font-size: 13px;
+    color: var(--ink-muted); margin-top: 40px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media(max-width: 768px) {
+    nav { padding: 0 16px; }
+    .nav-links { display: none; }
+    main { padding: 64px 16px 64px; }
+    h1 { font-size: 28px; }
+  }
+
+  /* Animated entrance */
+  .fade-in { animation: fadeIn 0.5s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
-<div id="cursor"></div>
-<div id="cursor-ring"></div>
-<div id="progress"></div>
-<canvas id="particle-canvas"></canvas>
 
-<nav id="topnav">
-  <div class="nav-logo">RL::FuncApprox</div>
-  <ul class="nav-links">
-    <li><a href="#motivation">Motivation</a></li>
-    <li><a href="#linear">Linear</a></li>
-    <li><a href="#neural">Neural</a></li>
-    <li><a href="#algorithms">Algorithms</a></li>
-    <li><a href="#convergence">Convergence</a></li>
-    <li><a href="#modern">Modern</a></li>
-  </ul>
+<div id="progress-bar"></div>
+
+<nav>
+  <div class="nav-brand"><span>FA</span> in RL</div>
+  <div class="nav-links">
+    <a href="#motivation" class="nav-link">Motivation</a>
+    <a href="#formal-setup" class="nav-link">Formal Setup</a>
+    <a href="#function-classes" class="nav-link">Function Classes</a>
+    <a href="#vfa" class="nav-link">Value FA</a>
+    <a href="#algorithms" class="nav-link">Algorithms</a>
+    <a href="#qlearn" class="nav-link">Q-Learning</a>
+    <a href="#policy-gradient" class="nav-link">Policy Gradient</a>
+    <a href="#adp" class="nav-link">ADP</a>
+    <a href="#offline-rl" class="nav-link">Offline RL</a>
+    <a href="#theory" class="nav-link">Theory</a>
+    <a href="#modern" class="nav-link">Modern</a>
+    <a href="#timeline" class="nav-link">Timeline</a>
+    <a href="#references" class="nav-link">References</a>
+  </div>
 </nav>
 
-<!-- HERO -->
-<section id="hero">
-  <div class="hero-grid"></div>
-  <div class="container">
-     <h1 class="hero-title">Function Approximation<br><span class="line2">in Reinforcement Learning</span></h1>
-    <p class="hero-sub">From tabular methods to deep neural networks — a rigorous, interactive exploration of value function approximation, policy approximation, and the theory behind them.</p>
-    <div class="hero-nav">
-      <a class="nav-pill" href="#motivation">Why Approximate?</a>
-      <a class="nav-pill" href="#linear">Linear Methods</a>
-      <a class="nav-pill" href="#neural">Neural Networks</a>
-      <a class="nav-pill" href="#algorithms">Algorithms</a>
-      <a class="nav-pill" href="#convergence">Convergence</a>
-      <a class="nav-pill" href="#modern">Modern Deep RL</a>
-    </div>
-  </div>
-  <div class="scroll-hint"><div class="scroll-line"></div>SCROLL</div>
-</section>
+<div class="layout">
+  <!-- TOC -->
+  <aside class="toc">
+    <div class="toc-title">Contents</div>
+    <a href="#motivation" class="toc-item">1. Motivation</a>
+    <a href="#formal-setup" class="toc-item">2. Formal Setup</a>
+    <a href="#function-classes" class="toc-item">3. Function Classes</a>
+    <a href="#vfa" class="toc-item">4. Value Function Approx.</a>
+    <a href="#algorithms" class="toc-item">5. Core Algorithms</a>
+    <a href="#td0" class="toc-item toc-sub">TD(0)</a>
+    <a href="#semigrad" class="toc-item toc-sub">Semi-gradient TD</a>
+    <a href="#gtd" class="toc-item toc-sub">Gradient TD</a>
+    <a href="#fvi" class="toc-item toc-sub">Fitted Value Iteration</a>
+    <a href="#qlearn" class="toc-item">6. Q-Learning + FA</a>
+    <a href="#policy-gradient" class="toc-item">7. Policy Gradient</a>
+    <a href="#adp" class="toc-item">8. Approx. Dynamic Prog.</a>
+    <a href="#offline-rl" class="toc-item">9. Offline RL</a>
+    <a href="#theory" class="toc-item">10. Theory</a>
+    <a href="#modern" class="toc-item">11. Modern Advances</a>
+    <a href="#timeline" class="toc-item">12. Timeline</a>
+    <a href="#references" class="toc-item">References</a>
+  </aside>
 
-<!-- SECTION 1: MOTIVATION -->
-<section id="motivation">
-  <div class="container">
-    <div class="section-tag">01 — Foundation</div>
-    <h2 class="section-title">Why Function Approximation?</h2>
-    <p class="section-lead">Tabular RL requires storing one value per state (or state-action pair). For real-world problems — continuous spaces, pixel inputs, robotic states — this is completely intractable. Function approximation replaces the lookup table with a parameterized function.</p>
-    <div class="cards-grid">
-      <div class="card" style="--card-accent:var(--accent1)"><div class="card-icon">∞</div><h3>Curse of Dimensionality</h3><p>A robot arm with 7 joints has exponential state space. A 64×64 Atari frame has ~10<sup>9864</sup> states — physically impossible to enumerate or store.</p></div>
-      <div class="card" style="--card-accent:var(--accent2)"><div class="card-icon">⊕</div><h3>Generalization</h3><p>Similar states should have similar values. A parameterized function maps nearby inputs to nearby outputs, enabling generalization — learning from one state improves estimates of similar states.</p></div>
-      <div class="card" style="--card-accent:var(--accent3)"><div class="card-icon">⟨⟩</div><h3>Compact Representation</h3><p>Instead of |S| parameters, approximate with d ≪ |S| parameters θ ∈ ℝ<sup>d</sup>. The inductive bias of the function class encodes regularity assumptions about the value landscape.</p></div>
-      <div class="card" style="--card-accent:var(--accent4)"><div class="card-icon">∇</div><h3>Differentiable Optimization</h3><p>With differentiable approximators (linear, neural), gradient-based optimization applies directly. This connects RL to the rich toolkit of deep learning and convex optimization.</p></div>
-    </div>
-    <div class="sep"></div>
-    <div class="section-tag">The Core Idea</div>
-    <h3 class="section-title" style="font-size:28px">Parameterized Value Functions</h3>
-    <div class="two-col">
-      <div>
-        <p style="color:var(--muted);line-height:1.8;font-size:15px;margin-bottom:20px">Replace the tabular state-value function <span class="hl-cyan">V: S → ℝ</span> with a parameterized approximation <span class="hl-amber">V̂(s; θ)</span> where <span class="hl-purple">θ ∈ ℝ<sup>d</sup></span> is a weight vector with d ≪ |S|.</p>
-        <div class="math-block" data-label="Definition">
-          <span class="comment">// State-value approximation</span><br>
-          <span class="var">V̂</span>(s; <span class="theta">θ</span>) ≈ <span class="var">V</span><sup>π</sup>(s)<br><br>
-          <span class="comment">// Action-value approximation</span><br>
-          <span class="var">Q̂</span>(s, a; <span class="theta">θ</span>) ≈ <span class="var">Q</span><sup>π</sup>(s, a)<br><br>
-          <span class="comment">// Policy parameterization</span><br>
-          <span class="var">π</span>(a|s; <span class="theta">θ</span>) — stochastic policy
-        </div>
-        <div class="alert alert-info"><strong>Key insight:</strong> Updating θ changes V̂ at ALL states simultaneously — unlike tabular methods. This is both the power (generalization) and the danger (instability) of function approximation.</div>
+  <!-- Main Content -->
+  <main>
+    <!-- Hero -->
+    <div class="hero fade-in">
+      <div class="hero-label">Reinforcement Learning — Deep Dive</div>
+      <h1>Function Approximation<br>in <em>Reinforcement Learning</em></h1>
+      <div class="hero-meta">
+        <span class="tag tag-blue">Research-level</span>
+        <span class="tag tag-amber">Interactive</span>
+        <span class="tag tag-violet">PhD / MTech</span>
+        <span>~45 min read</span>
       </div>
-      <div>
-        <div class="demo-wrapper" style="padding:24px">
-          <div class="demo-title">Polynomial Approximation Demo</div>
-          <canvas id="approx-canvas" width="340" height="220"></canvas>
-          <div class="controls">
-            <div class="ctrl-group"><span class="ctrl-label">Polynomial Degree</span><input type="range" id="poly-deg" min="1" max="10" value="3"></div>
-            <div class="ctrl-group"><span class="ctrl-label">Noise Level</span><input type="range" id="noise-lvl" min="0" max="50" value="15"></div>
-            <button class="btn" id="resample-btn">Resample</button>
-          </div>
-          <div id="poly-info" style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)"></div>
-        </div>
+      <div class="hero-abstract">
+        A rigorous, interactive treatment of function approximation in RL — from the curse of dimensionality through deep RL and offline learning. Every concept is developed from intuition to formal mathematics, with interactive visualizations throughout.
       </div>
     </div>
-  </div>
-</section>
 
-<!-- SECTION 2: LINEAR -->
-<section id="linear">
-  <div class="container">
-    <div class="section-tag">02 — Linear Methods</div>
-    <h2 class="section-title">Linear Function Approximation</h2>
-    <p class="section-lead">The simplest and theoretically most tractable class of approximators. Despite being linear in parameters, the choice of feature map φ(s) determines expressive power.</p>
-    <div class="math-block" data-label="Linear Value Function">
-      <span class="comment">// Linear in parameters, nonlinear in state via features</span><br>
-      <span class="var">V̂</span>(s; <span class="theta">θ</span>) = <span class="theta">θ</span><sup>⊤</sup><span class="fn">φ</span>(s) = Σ<sub>i=1..d</sub> <span class="theta">θ</span><sub>i</sub> · <span class="fn">φ</span><sub>i</sub>(s)<br><br>
-      <span class="comment">// Gradient is simply the feature vector</span><br>
-      ∇<sub><span class="theta">θ</span></sub> <span class="var">V̂</span>(s; <span class="theta">θ</span>) = <span class="fn">φ</span>(s)<br><br>
-      <span class="comment">// Semi-gradient TD(0) update</span><br>
-      <span class="theta">θ</span> ← <span class="theta">θ</span> + <span class="var">α</span> · [R + <span class="var">γ</span><span class="var">V̂</span>(S'; <span class="theta">θ</span>) − <span class="var">V̂</span>(S; <span class="theta">θ</span>)] · <span class="fn">φ</span>(S)
-    </div>
-    <div class="section-tag" style="margin-top:40px">Feature Representations</div>
-    <div class="tab-bar" id="linear-tabs">
-      <button class="tab-btn active" data-tab="lin-polynomial">Polynomial</button>
-      <button class="tab-btn" data-tab="lin-fourier">Fourier</button>
-      <button class="tab-btn" data-tab="lin-tile">Tile Coding</button>
-      <button class="tab-btn" data-tab="lin-rbf">RBF</button>
-    </div>
-    <div id="tab-lin-polynomial" class="tab-content active">
-      <div class="two-col">
-        <div>
-          <h4 style="margin-bottom:12px;font-size:16px">Polynomial Features</h4>
-          <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">For state s, polynomial features of order k include all monomials s₁<sup>c₁</sup>...sₙ<sup>cₙ</sup> where Σcᵢ ≤ k.</p>
-          <div class="math-block" data-label="Polynomial">
-            <span class="fn">φ</span>(s) = [1, s, s², ..., s<sup>n</sup>]<sup>⊤</sup><br><br>
-            <span class="fn">φ</span>(s₁,s₂) = [1, s₁, s₂, s₁s₂, s₁², s₂², ...]<sup>⊤</sup>
-          </div>
-          <div class="alert alert-warn">⚠️ Polynomial features suffer from numerical instability at high degrees. Use orthogonal polynomials (Legendre, Chebyshev) for better conditioning.</div>
-        </div>
-        <div>
-          <div class="demo-wrapper" style="padding:20px">
-            <div class="demo-title">Polynomial Basis Functions φᵢ(s) = sⁱ</div>
-            <canvas id="poly-basis-canvas" width="320" height="200"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div id="tab-lin-fourier" class="tab-content">
-      <div class="two-col">
-        <div>
-          <h4 style="margin-bottom:12px;font-size:16px">Fourier Cosine Basis</h4>
-          <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Cosine features of increasing frequency. Particularly effective for periodic value functions. Different features benefit from different learning rates.</p>
-          <div class="math-block" data-label="Fourier Cosine">
-            <span class="fn">φ</span><sub>i</sub>(s) = cos(πc<sub>i</sub><sup>⊤</sup>s)<br><br>
-            c<sub>i</sub> ∈ {0,1,...,n}<sup>k</sup> — integer vector<br><br>
-            <span class="comment">// Recommended: per-feature α<sub>i</sub> = α/‖c<sub>i</sub>‖</span>
-          </div>
-        </div>
-        <div>
-          <div class="demo-wrapper" style="padding:20px">
-            <div class="demo-title">Fourier Basis Functions</div>
-            <canvas id="fourier-canvas" width="320" height="200"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div id="tab-lin-tile" class="tab-content">
-      <div class="two-col">
-        <div>
-          <h4 style="margin-bottom:12px;font-size:16px">Tile Coding</h4>
-          <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Multiple offset tilings of the state space. State s activates exactly one tile per tiling. Binary sparse features — computationally very efficient.</p>
-          <div class="math-block" data-label="Tile Coding">
-            <span class="fn">φ</span>(s) ∈ {0,1}<sup>n·|tiles|</sup> — sparse binary<br><br>
-            <span class="var">V̂</span>(s;<span class="theta">θ</span>) = Σ<sub>j: φ<sub>j</sub>(s)=1</sub> <span class="theta">θ</span><sub>j</sub><br><br>
-            <span class="comment">// Only n features active → O(n) update cost</span>
-          </div>
-          <div class="alert alert-info">✓ Tile coding is memory-efficient and fast. Classic RL benchmarks (Mountain Car, Acrobot) use it extensively.</div>
-        </div>
-        <div>
-          <div class="demo-wrapper" style="padding:20px">
-            <div class="demo-title">Tile Coding 2D Visualization</div>
-            <canvas id="tile-canvas" width="320" height="240"></canvas>
-            <div class="controls"><div class="ctrl-group"><span class="ctrl-label">Num Tilings</span><input type="range" id="tiling-count" min="1" max="8" value="4"><span id="tiling-val" style="font-size:11px;color:var(--accent1);font-family:'JetBrains Mono',monospace">4</span></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div id="tab-lin-rbf" class="tab-content">
-      <div class="two-col">
-        <div>
-          <h4 style="margin-bottom:12px;font-size:16px">Radial Basis Functions</h4>
-          <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Gaussian bumps centered at prototype states. Smooth generalization. Connects to kernel regression and RKHS theory.</p>
-          <div class="math-block" data-label="Gaussian RBF">
-            <span class="fn">φ</span><sub>i</sub>(s) = exp(−‖s − c<sub>i</sub>‖² / 2σ<sub>i</sub>²)<br><br>
-            <span class="var">V̂</span>(s;<span class="theta">θ</span>) = Σ<sub>i</sub> <span class="theta">θ</span><sub>i</sub> · exp(−‖s − c<sub>i</sub>‖² / 2σ²)<br><br>
-            <span class="comment">// Kernel perspective: RKHS, Gaussian process</span>
-          </div>
-        </div>
-        <div>
-          <div class="demo-wrapper" style="padding:20px">
-            <div class="demo-title">RBF Centers & Activation</div>
-            <canvas id="rbf-canvas" width="320" height="200"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="sep"></div>
-    <div class="section-tag">SGD in RL</div>
-    <h3 class="section-title" style="font-size:28px">Semi-Gradient Methods</h3>
-    <div class="alert alert-warn"><strong>Important:</strong> RL uses <em>semi-gradient</em> (not full gradient) updates because the TD target itself depends on θ. The gradient through the target is ignored, making the update a biased estimator. This is a crucial distinction from supervised learning.</div>
-    <div class="math-block" data-label="MSVE Objective">
-      <span class="comment">// Mean Squared Value Error (objective)</span><br>
-      <span class="var">J</span>(<span class="theta">θ</span>) = Σ<sub>s∈S</sub> μ(s) [v<sup>π</sup>(s) − <span class="var">V̂</span>(s;<span class="theta">θ</span>)]²<br><br>
-      <span class="comment">// μ(s) = on-policy stationary distribution of π</span><br><br>
-      <span class="comment">// MC update: unbiased, high variance</span><br>
-      <span class="theta">θ</span> ← <span class="theta">θ</span> + α [G<sub>t</sub> − <span class="var">V̂</span>(S<sub>t</sub>;<span class="theta">θ</span>)] ∇<span class="var">V̂</span>(S<sub>t</sub>;<span class="theta">θ</span>)<br><br>
-      <span class="comment">// TD(0) semi-gradient: biased, low variance</span><br>
-      <span class="theta">θ</span> ← <span class="theta">θ</span> + α [R<sub>t+1</sub> + γ<span class="var">V̂</span>(S<sub>t+1</sub>;<span class="theta">θ</span>) − <span class="var">V̂</span>(S<sub>t</sub>;<span class="theta">θ</span>)] ∇<span class="var">V̂</span>(S<sub>t</sub>;<span class="theta">θ</span>)
-    </div>
-  </div>
-</section>
+    <!-- Section 1: Motivation -->
+    <section id="motivation">
+      <h2><span class="section-num">§1</span> Motivation & Intuition</h2>
 
-<!-- SECTION 3: NEURAL NETWORKS -->
-<section id="neural">
-  <div class="container">
-    <div class="section-tag">03 — Neural Network Approximators</div>
-    <h2 class="section-title">Deep Function Approximation</h2>
-    <p class="section-lead">Neural networks as universal function approximators — learning both the feature representation and value/policy mapping end-to-end from raw observations.</p>
-    <div class="demo-wrapper">
-      <div class="demo-title">Interactive Neural Network Architecture</div>
-      <canvas id="nn-canvas" width="720" height="280"></canvas>
-      <div class="controls" style="margin-top:16px">
-        <div class="ctrl-group"><span class="ctrl-label">Hidden Layers</span><input type="range" id="nn-layers" min="1" max="5" value="3"><span id="nn-layers-val" style="font-size:11px;color:var(--accent1);font-family:'JetBrains Mono',monospace">3</span></div>
-        <div class="ctrl-group"><span class="ctrl-label">Width</span><input type="range" id="nn-width" min="2" max="8" value="4"><span id="nn-width-val" style="font-size:11px;color:var(--accent1);font-family:'JetBrains Mono',monospace">4</span></div>
-        <div class="ctrl-group"><span class="ctrl-label">Output</span>
-          <div style="display:flex;gap:8px;margin-top:4px">
-            <button class="btn active" id="btn-v" onclick="setOutput('V')">V(s)</button>
-            <button class="btn" id="btn-q" onclick="setOutput('Q')">Q(s,a)</button>
-            <button class="btn" id="btn-pi" onclick="setOutput('pi')">π(a|s)</button>
-          </div>
-        </div>
-        <button class="btn" id="animate-nn-btn">Animate Forward Pass ▶</button>
-      </div>
-    </div>
-    <div class="cards-grid" style="margin-top:32px">
-      <div class="card" style="--card-accent:var(--accent1)"><div class="card-icon">σ</div><h3>Activation Functions</h3><p><span style="color:var(--accent1)">ReLU</span>: Most common, avoids vanishing gradients.<br><span style="color:var(--accent3)">Tanh</span>: Saturating, smooth, bounded.<br><span style="color:var(--accent4)">ELU/SELU</span>: Self-normalizing, better gradients.<br><span style="color:var(--accent2)">GELU</span>: Smooth ReLU, used in transformers.</p></div>
-      <div class="card" style="--card-accent:var(--accent2)"><div class="card-icon">⟂</div><h3>Universal Approximation</h3><p>A single hidden layer with enough neurons approximates any continuous function on a compact set (Cybenko 1989). Deeper networks are exponentially more efficient for certain function classes.</p></div>
-      <div class="card" style="--card-accent:var(--accent3)"><div class="card-icon">∂</div><h3>Backpropagation & Semi-Grad</h3><p>Autodiff computes ∇<sub>θ</sub>V̂(s;θ) efficiently via chain rule. In RL, gradient flows through network but NOT through the bootstrap target — the semi-gradient distinction.</p></div>
-      <div class="card" style="--card-accent:var(--accent4)"><div class="card-icon">⊗</div><h3>Dueling Architecture</h3><p>Q(s,a;θ) = V(s;θ) + A(s,a;θ) − mean_a A(s,a;θ). Separates state value from advantage. Faster learning when actions don't matter much.</p></div>
-    </div>
-    <div class="math-block" data-label="Neural Q-Network" style="margin-top:24px">
-      <span class="comment">// Q-network: maps state → Q-values for all actions</span><br>
-      <span class="var">h</span><sub>0</sub> = <span class="fn">φ</span>(s) <span class="comment"> — input (pixels, features)</span><br>
-      <span class="var">h</span><sub>l</sub> = <span class="fn">σ</span>(<span class="theta">W</span><sub>l</sub><span class="var">h</span><sub>l-1</sub> + <span class="theta">b</span><sub>l</sub>) <span class="comment"> — hidden layers l=1..L-1</span><br>
-      <span class="var">Q̂</span>(s,·;<span class="theta">θ</span>) = <span class="theta">W</span><sub>L</sub><span class="var">h</span><sub>L-1</sub> + <span class="theta">b</span><sub>L</sub> <span class="comment"> — one value per action</span><br><br>
-      <span class="theta">θ</span> = {<span class="theta">W</span><sub>1</sub>, <span class="theta">b</span><sub>1</sub>, ..., <span class="theta">W</span><sub>L</sub>, <span class="theta">b</span><sub>L</sub>} <span class="comment"> — all parameters</span>
-    </div>
-  </div>
-</section>
+      <h3>The Curse of Dimensionality</h3>
+      <p>Classical tabular RL — Q-tables, V-tables — represents the value function as a lookup table with one entry per state (or state-action pair). This is elegant and convergence-guaranteed, but collapses catastrophically as state spaces grow.</p>
 
-<!-- SECTION 4: ALGORITHMS -->
-<section id="algorithms">
-  <div class="container">
-    <div class="section-tag">04 — Algorithms</div>
-    <h2 class="section-title">Key Algorithms</h2>
-    <div class="tab-bar" id="algo-tabs">
-      <button class="tab-btn active" data-tab="algo-td">TD(λ)</button>
-      <button class="tab-btn" data-tab="algo-dqn">DQN</button>
-      <button class="tab-btn" data-tab="algo-pg">Policy Gradient</button>
-      <button class="tab-btn" data-tab="algo-ac">Actor-Critic</button>
-      <button class="tab-btn" data-tab="algo-lstd">LSTD</button>
-    </div>
-    <div id="tab-algo-td" class="tab-content active">
-      <h4 style="margin-bottom:16px;font-size:18px">TD(λ) with Function Approximation</h4>
-      <div class="two-col">
-        <div>
-          <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">TD(λ) bridges Monte Carlo (λ=1) and TD(0) (λ=0) via eligibility traces. The trace vector z accumulates gradients, efficiently propagating credit backwards through time.</p>
-          <div class="math-block" data-label="TD(λ)">
-            <span class="comment">// TD error</span><br>
-            <span class="var">δ</span><sub>t</sub> = R<sub>t+1</sub> + γ<span class="var">V̂</span>(S<sub>t+1</sub>;<span class="theta">θ</span>) − <span class="var">V̂</span>(S<sub>t</sub>;<span class="theta">θ</span>)<br><br>
-            <span class="comment">// Accumulating eligibility trace</span><br>
-            <span class="var">z</span><sub>t</sub> = γλ<span class="var">z</span><sub>t-1</sub> + ∇<span class="var">V̂</span>(S<sub>t</sub>;<span class="theta">θ</span>)<br><br>
-            <span class="comment">// Dutch traces (preferred, linear FA)</span><br>
-            <span class="var">z</span><sub>t</sub> = γλ<span class="var">z</span><sub>t-1</sub> + (1−αγλ<span class="var">z</span><sub>t-1</sub><sup>⊤</sup>φ<sub>t</sub>)φ<sub>t</sub><br><br>
-            <span class="theta">θ</span><sub>t+1</sub> = <span class="theta">θ</span><sub>t</sub> + α<span class="var">δ</span><sub>t</sub><span class="var">z</span><sub>t</sub>
-          </div>
-          <div class="alert alert-info">λ interpolates bias-variance: TD(0) has low variance but bootstrap bias; MC is unbiased but high variance. Optimal λ is problem-dependent.</div>
+      <div class="toggle-panel">
+        <div class="toggle-tabs">
+          <button class="toggle-tab active" onclick="switchTab(this, 'intuition-cod')">Show Intuition</button>
+          <button class="toggle-tab" onclick="switchTab(this, 'math-cod')">Show Math</button>
         </div>
-        <div>
-          <div class="demo-wrapper" style="padding:20px">
-            <div class="demo-title">λ Effect: Weight on n-Step Returns</div>
-            <canvas id="lambda-canvas" width="320" height="200"></canvas>
-            <div class="controls"><div class="ctrl-group"><span class="ctrl-label">Lambda λ</span><input type="range" id="lambda-val" min="0" max="100" value="50"><span id="lambda-display" style="font-size:11px;color:var(--accent1);font-family:'JetBrains Mono',monospace">0.50</span></div></div>
+        <div class="toggle-content">
+          <div class="intuition-pane active" id="intuition-cod">
+            <p>Imagine a robot navigating a room. If you discretize position into a 100×100 grid, that's 10,000 states — manageable. Add orientation (360 degrees), joint angles for each of 7 DOF, and object states, and you quickly reach states numbering in the <strong>trillions</strong>. You could never visit them all, let alone store a Q-value for each.</p>
+            <p>The curse of dimensionality says that the volume of space grows <em>exponentially</em> with dimension. If each feature has \(k\) values, then \(d\) features require \(k^d\) table entries. For \(k=10, d=20\), that's \(10^{20}\) — more than the number of atoms in your body.</p>
+          </div>
+          <div class="math-pane" id="math-cod">
+            <p>Suppose the state space is a grid over \(d\) continuous variables, each discretized into \(k\) bins. The table size is:</p>
+            <div class="math-block">$$|\mathcal{S}| = k^d \quad \Rightarrow \quad \text{memory} = \mathcal{O}(k^d)$$</div>
+            <p>For \(k=100, d=10\): \(10^{20}\) entries. Even at 1 byte per entry, storage exceeds \(10^8\) terabytes. Moreover, sample complexity scales proportionally — we need \(\Omega(|\mathcal{S}|)\) samples simply to visit every state.</p>
           </div>
         </div>
       </div>
-    </div>
-    <div id="tab-algo-dqn" class="tab-content">
-      <h4 style="margin-bottom:16px;font-size:18px">Deep Q-Network (DQN)</h4>
-      <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Mnih et al. (2015). Key innovations: <strong>experience replay</strong> and <strong>target network</strong>. First deep RL system to master diverse Atari games from raw pixels.</p>
-      <div class="math-block" data-label="DQN Loss">
-        <span class="comment">// Two networks: online θ and target θ⁻</span><br>
-        <span class="var">y</span><sub>j</sub> = r<sub>j</sub> + γ · max<sub>a'</sub> <span class="var">Q̂</span>(s<sub>j</sub>', a'; <span class="theta">θ⁻</span>) <span class="comment"> — TD target</span><br><br>
-        <span class="var">L</span>(<span class="theta">θ</span>) = 𝔼<sub>(s,a,r,s')~D</sub>[(y − <span class="var">Q̂</span>(s,a;<span class="theta">θ</span>))²]<br><br>
-        <span class="theta">θ</span> ← <span class="theta">θ</span> − α∇<sub><span class="theta">θ</span></sub><span class="var">L</span>(<span class="theta">θ</span>) <span class="comment"> — Adam/RMSprop</span><br><br>
-        <span class="theta">θ⁻</span> ← <span class="theta">θ</span> <span class="comment"> — periodic copy every C steps</span>
-      </div>
-      <div class="cards-grid" style="margin-top:20px">
-        <div class="card anim-item" style="--card-accent:var(--accent1)"><h3>Experience Replay</h3><p>Store (s,a,r,s') in buffer D. Sample random minibatches. Breaks temporal correlations, enables data reuse, improves sample efficiency.</p></div>
-        <div class="card anim-item" style="--card-accent:var(--accent2)"><h3>Target Network</h3><p>Separate θ⁻ for computing targets. Updated every C steps. Keeps TD target stationary during gradient updates, stabilizing training.</p></div>
-        <div class="card anim-item" style="--card-accent:var(--accent3)"><h3>ε-Greedy Exploration</h3><p>With prob ε select random action, else argmax Q. Anneal ε from 1.0 → 0.1. Balances exploration and exploitation.</p></div>
-      </div>
-    </div>
-    <div id="tab-algo-pg" class="tab-content">
-      <h4 style="margin-bottom:16px;font-size:18px">Policy Gradient Methods</h4>
-      <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Directly parameterize and optimize the policy π(a|s;θ). The Policy Gradient Theorem gives the exact gradient without needing to differentiate the state distribution.</p>
-      <div class="math-block" data-label="Policy Gradient Theorem">
-        <span class="comment">// Policy Gradient Theorem (Sutton et al. 1999)</span><br>
-        ∇<sub><span class="theta">θ</span></sub> J(<span class="theta">θ</span>) ∝ Σ<sub>s</sub> μ<sup>π</sup>(s) Σ<sub>a</sub> Q<sup>π</sup>(s,a) ∇<sub><span class="theta">θ</span></sub> π(a|s;<span class="theta">θ</span>)<br><br>
-        <span class="comment">// Log-derivative trick (REINFORCE)</span><br>
-        = 𝔼<sub>π</sub>[Q<sup>π</sup>(S<sub>t</sub>,A<sub>t</sub>) ∇<sub><span class="theta">θ</span></sub> log π(A<sub>t</sub>|S<sub>t</sub>;<span class="theta">θ</span>)]<br><br>
-        <span class="comment">// REINFORCE with baseline (variance reduction)</span><br>
-        <span class="theta">θ</span> ← <span class="theta">θ</span> + α (G<sub>t</sub> − b(S<sub>t</sub>)) ∇<sub><span class="theta">θ</span></sub> log π(A<sub>t</sub>|S<sub>t</sub>;<span class="theta">θ</span>)
-      </div>
-      <div class="alert alert-info">The baseline b(s) can be any function of state — it doesn't bias the gradient in expectation. Using V̂(s) gives the advantage A<sup>π</sup>(s,a) = Q<sup>π</sup>(s,a) − V<sup>π</sup>(s).</div>
-    </div>
-    <div id="tab-algo-ac" class="tab-content">
-      <h4 style="margin-bottom:16px;font-size:18px">Actor-Critic Methods</h4>
-      <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Two function approximators: actor π(a|s;θ) and critic V̂(s;w). The critic estimates the baseline/advantage, reducing variance while maintaining low bias.</p>
-      <div class="two-col">
-        <div class="math-block" data-label="Actor Update">
-          <span class="comment">// Actor: policy parameters θ</span><br>
-          <span class="theta">θ</span> ← <span class="theta">θ</span> + α<sub>θ</sub> <span class="var">δ</span><sub>t</sub> ∇<sub><span class="theta">θ</span></sub> log π(A<sub>t</sub>|S<sub>t</sub>;<span class="theta">θ</span>)<br><br>
-          <span class="var">δ</span><sub>t</sub> = R<sub>t+1</sub> + γ<span class="var">V̂</span>(S<sub>t+1</sub>;w) − <span class="var">V̂</span>(S<sub>t</sub>;w)
-        </div>
-        <div class="math-block" data-label="Critic Update">
-          <span class="comment">// Critic: value parameters w</span><br>
-          <span class="var">w</span> ← <span class="var">w</span> + α<sub>w</sub> <span class="var">δ</span><sub>t</sub> ∇<sub><span class="var">w</span></sub> <span class="var">V̂</span>(S<sub>t</sub>;<span class="var">w</span>)<br><br>
-          <span class="comment">// A3C: async parallel actors</span><br>
-          <span class="comment">// PPO: clipped surrogate objective</span><br>
-          <span class="comment">// SAC: maximum entropy critic</span>
-        </div>
-      </div>
-      <div class="cards-grid" style="margin-top:20px">
-        <div class="card anim-item" style="--card-accent:var(--accent1)"><h3>A2C / A3C</h3><p>Advantage Actor-Critic. A3C uses asynchronous parallel actors to decorrelate experience without replay. On-policy, recurrent-policy-friendly.</p></div>
-        <div class="card anim-item" style="--card-accent:var(--accent2)"><h3>PPO (Schulman 2017)</h3><p>Clipped surrogate: L<sup>CLIP</sup> = 𝔼[min(r̂<sub>t</sub>Â, clip(r̂<sub>t</sub>,1±ε)Â)]. Simple, robust. Dominates RLHF and robotics.</p></div>
-        <div class="card anim-item" style="--card-accent:var(--accent3)"><h3>SAC (Haarnoja 2018)</h3><p>Maximum entropy: J(π) = 𝔼[Σ r<sub>t</sub> + αH(π(·|s<sub>t</sub>))]. Off-policy, excellent sample efficiency, robust hyperparameters.</p></div>
-      </div>
-    </div>
-    <div id="tab-algo-lstd" class="tab-content">
-      <h4 style="margin-bottom:16px;font-size:18px">Least-Squares TD (LSTD)</h4>
-      <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Finds the TD fixed point in closed form via a linear system solve. More data-efficient than incremental TD but O(d²) memory and O(d³) computation per update.</p>
-      <div class="math-block" data-label="LSTD Fixed Point">
-        <span class="comment">// Fixed point: θ = A⁻¹b</span><br>
-        <span class="var">A</span> = Σ<sub>t</sub> <span class="fn">φ</span>(S<sub>t</sub>)[<span class="fn">φ</span>(S<sub>t</sub>) − γ<span class="fn">φ</span>(S<sub>t+1</sub>)]<sup>⊤</sup><br>
-        <span class="var">b</span> = Σ<sub>t</sub> R<sub>t+1</sub> <span class="fn">φ</span>(S<sub>t</sub>)<br><br>
-        <span class="comment">// LSTD(λ): extend with eligibility traces</span><br>
-        <span class="comment">// LSPI: LSTD policy eval + greedy improvement</span>
-      </div>
-      <div class="alert alert-info">LSPI (Lagoudakis & Parr, 2003) alternates LSTD policy evaluation with greedy policy improvement. Provably convergent for linear FA, far more sample-efficient than incremental TD.</div>
-    </div>
-  </div>
-</section>
 
-<!-- SECTION 5: CONVERGENCE -->
-<section id="convergence">
-  <div class="container">
-    <div class="section-tag">05 — Theory</div>
-    <h2 class="section-title">Convergence & The Deadly Triad</h2>
-    <p class="section-lead">Not all combinations of function approximation, bootstrapping, and off-policy learning converge. The <em>deadly triad</em> is the central challenge of deep RL theory.</p>
-    <div class="demo-wrapper">
-      <div class="demo-title">Algorithm Stability Matrix</div>
-      <div style="overflow-x:auto">
-        <table class="comp-table">
-          <thead><tr><th>Algorithm</th><th>FA</th><th>Bootstrap</th><th>Off-Policy</th><th>Convergence</th><th>Notes</th></tr></thead>
-          <tbody>
-            <tr><td>Monte Carlo</td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-red">✗</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">Guaranteed</span></td><td>Unbiased, high variance</td></tr>
-            <tr><td>On-policy TD(0)</td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-red">✗</span></td><td><span class="badge badge-blue">On-policy</span></td><td>TD fixed point, 1/(1-γ) bound</td></tr>
-            <tr><td>GTD2 / TDC</td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">Guaranteed</span></td><td>True gradient, 2× parameters</td></tr>
-            <tr><td>DQN</td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-yellow">Empirical</span></td><td>Replay+target help, no proof</td></tr>
-            <tr><td>Q-learning + FA</td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-red">Can Diverge</span></td><td>Baird's counterexample</td></tr>
-            <tr><td>LSTD (linear)</td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-green">✓</span></td><td><span class="badge badge-blue">Linear only</span></td><td>Exact TD fixed point</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="two-col" style="margin-top:32px">
-      <div>
-        <h4 style="margin-bottom:16px;font-size:18px">The Deadly Triad (Sutton & Barto 2018)</h4>
-        <p style="color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:16px">Instability arises when all three combine:</p>
-        <div class="card anim-item" style="--card-accent:var(--accent1);margin-bottom:12px"><h3>1. Function Approximation</h3><p>Any parameterized approximator. Tabular methods are the only fully convergent setting — they are exact representations.</p></div>
-        <div class="card anim-item" style="--card-accent:var(--accent3);margin-bottom:12px"><h3>2. Bootstrapping</h3><p>Using estimated values as targets (TD, DP). MC avoids this by using full returns. Bootstrap bias compounds with approximation error.</p></div>
-        <div class="card anim-item" style="--card-accent:var(--accent2)"><h3>3. Off-Policy Training</h3><p>Distribution mismatch between behavior policy μ and target policy π. The update distribution ≠ stationary distribution used in MSVE.</p></div>
-      </div>
-      <div>
-        <h4 style="margin-bottom:16px;font-size:18px">Key Theoretical Results</h4>
-        <div class="math-block" data-label="TD Bound">
-          <span class="comment">// On-policy linear TD convergence bound</span><br>
-          <span class="eq">MSVE(θ<sub>TD</sub>) ≤ 1/(1−γ) · min<sub>θ</sub> MSVE(θ)</span><br><br>
-          <span class="comment">// At most 1/(1-γ) worse than best linear approx</span><br>
-          <span class="comment">// θ<sub>TD</sub> = (Φ⊤DΦ)⁻¹Φ⊤D(R + γPΦθ)</span>
-        </div>
-        <div class="math-block" data-label="GTD2 / TDC">
-          <span class="comment">// Two-timescale stochastic approx</span><br>
-          <span class="var">w</span> ← <span class="var">w</span> + β[δφ − γφ'(φ<sup>⊤</sup><span class="var">w</span>)]<br>
-          <span class="theta">θ</span> ← <span class="theta">θ</span> + α[δφ − γφ'(φ<sup>⊤</sup><span class="var">w</span>)]<br><br>
-          <span class="comment">// β ≫ α (fast/slow timescale)</span><br>
-          <span class="comment">// Minimizes projected Bellman error</span>
-        </div>
-        <div class="math-block" data-label="Baird's Counterexample">
-          <span class="comment">// 7-state MRP with linear FA + off-policy</span><br>
-          <span class="comment">// Q-learning diverges: ‖θ‖ → ∞</span><br>
-          <span class="comment">// Demonstrates deadly triad instability</span>
-        </div>
-      </div>
-    </div>
-    <div class="demo-wrapper" style="margin-top:32px">
-      <div class="demo-title">Bias-Variance Tradeoff in Function Approximation</div>
-      <div class="conv-grid">
-        <canvas id="bv-canvas" width="340" height="250"></canvas>
-        <div style="display:flex;flex-direction:column;justify-content:center;gap:16px">
-          <div class="ctrl-group"><span class="ctrl-label">Model Complexity</span><input type="range" id="complexity" min="1" max="12" value="4" style="width:220px"><span id="complexity-val" style="font-size:11px;color:var(--accent1);font-family:'JetBrains Mono',monospace"></span></div>
+      <!-- Interactive viz: curse of dimensionality -->
+      <div class="viz-container">
+        <div class="viz-header">
           <div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:24px;height:3px;background:var(--accent1)"></div><span style="font-size:13px;color:var(--muted)">Bias²</span></div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:24px;height:3px;background:var(--accent3)"></div><span style="font-size:13px;color:var(--muted)">Variance</span></div>
-            <div style="display:flex;align-items:center;gap:10px"><div style="width:24px;height:3px;background:var(--accent4)"></div><span style="font-size:13px;color:var(--muted)">Total Error</span></div>
+            <div class="viz-title">Curse of Dimensionality</div>
+            <div class="viz-subtitle">Table entries grow exponentially with state dimension</div>
           </div>
-          <div id="bv-info" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;color:var(--muted)"></div>
+        </div>
+        <div class="viz-body">
+          <canvas id="cod-chart" width="700" height="220" style="width:100%;height:220px;"></canvas>
+          <div class="viz-controls">
+            <span class="ctrl-label">Bins per dimension (k):</span>
+            <input type="range" id="cod-k" min="2" max="20" value="5" style="width:120px">
+            <span id="cod-k-val" style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">k=5</span>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
 
-<!-- SECTION 6: MODERN -->
-<section id="modern">
-  <div class="container">
-    <div class="section-tag">06 — Modern Deep RL</div>
-    <h2 class="section-title">State-of-the-Art Methods</h2>
-    <div class="timeline">
-      <div class="tl-item"><div class="tl-dot"></div><div class="tl-year">Mnih et al., 2015</div><div class="tl-title">DQN — Human-Level Atari</div><div class="tl-text">Deep Q-Network with experience replay and target network. First demonstration of deep RL mastering diverse domains from raw pixels. Nature paper.</div></div>
-      <div class="tl-item"><div class="tl-dot"></div><div class="tl-year">Van Hasselt et al., 2016</div><div class="tl-title">Double DQN — Overestimation Fix</div><div class="tl-text">Decouple action selection (online net θ) from action evaluation (target net θ⁻): y = r + γQ(s', argmax_a Q(s',a;θ); θ⁻). Reduces systematic overestimation.</div></div>
-      <div class="tl-item"><div class="tl-dot"></div><div class="tl-year">Schaul et al., 2016</div><div class="tl-title">Prioritized Experience Replay</div><div class="tl-text">Sample transitions proportional to |δ_t|^α. IS weights ∝ (1/N·1/p_i)^β correct for sampling bias. More efficient use of experience.</div></div>
-      <div class="tl-item"><div class="tl-dot"></div><div class="tl-year">Schulman et al., 2017</div><div class="tl-title">PPO — Proximal Policy Optimization</div><div class="tl-text">L<sup>CLIP</sup>(θ) = 𝔼[min(r_t(θ)Â_t, clip(r_t(θ),1±ε)Â_t)]. Simple clipped objective prevents destructive updates. Dominates RLHF and robotics.</div></div>
-      <div class="tl-item"><div class="tl-dot"></div><div class="tl-year">Haarnoja et al., 2018</div><div class="tl-title">SAC — Soft Actor-Critic</div><div class="tl-text">Maximum entropy RL: J(π) = Σ𝔼[r_t + αH(π(·|s_t))]. Off-policy, sample efficient, robust to hyperparameters. State-of-the-art continuous control.</div></div>
-      <div class="tl-item"><div class="tl-dot"></div><div class="tl-year">Hessel et al., 2018</div><div class="tl-title">Rainbow — Combining DQN Improvements</div><div class="tl-text">Integrates: Double Q, Prioritized ER, Dueling, Multi-step returns, Distributional RL, NoisyNets. Synergistic combination massively outperforms individual components.</div></div>
-      <div class="tl-item"><div class="tl-dot"></div><div class="tl-year">2022–Present</div><div class="tl-title">Transformers, World Models, Foundation RL</div><div class="tl-text">Decision Transformer, Gato, DreamerV3 (world models). Large-scale pretraining for RL. The frontier: offline RL, multi-task, hierarchical, and language-conditioned policies.</div></div>
-    </div>
-    <div class="sep"></div>
-    <div class="section-tag">Advanced Topics</div>
-    <h3 class="section-title" style="font-size:28px">Research Frontiers</h3>
-    <div class="cards-grid">
-      <div class="card anim-item" style="--card-accent:var(--accent1)"><div class="card-icon">𝒟</div><h3>Distributional RL</h3><p>Model full return distribution Z(s,a) instead of just 𝔼[Z]. C51, QR-DQN, IQN. Better risk-sensitive behavior, improved empirical performance, richer learning signal.</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent2)"><div class="card-icon">ψ</div><h3>Successor Representations</h3><p>M(s,s') = 𝔼[Σ γ<sup>t</sup>𝟙(S_t=s')|S_0=s]. Factorizes into SR (dynamics) × reward weights. Fast adaptation when reward changes; connects to neuroscience (hippocampal place cells).</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent3)"><div class="card-icon">⟨z⟩</div><h3>Representation Learning</h3><p>Learning φ(s) end-to-end: auxiliary tasks (SR, reward prediction), contrastive learning (CURL, SPR), bisimulation metrics. Critical for pixel-based RL and transfer.</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent4)"><div class="card-icon">κ</div><h3>Neural Tangent Kernel</h3><p>Infinite-width NNs ≡ kernel methods with NTK. Training in lazy regime resembles linear FA. Explains generalization and informs network architecture choices.</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent1)"><div class="card-icon">ω</div><h3>Natural Policy Gradient</h3><p>Precondition gradient with Fisher information F(θ): θ ← θ + αF⁻¹(θ)∇J(θ). Parameterization-invariant. TRPO uses constrained NPG; K-FAC approximates F efficiently.</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent2)"><div class="card-icon">∮</div><h3>Offline RL</h3><p>Learning from fixed datasets without environment interaction. Challenges: distribution shift, overestimation of OOD actions. CQL, IQL, TD3+BC address this with pessimistic value estimates.</p></div>
-    </div>
-    <div class="sep"></div>
-    <div class="section-tag">07 — Reference</div>
-    <h2 class="section-title">Method Comparison</h2>
-    <div style="overflow-x:auto">
-      <table class="comp-table">
-        <thead><tr><th>Method</th><th>Sample Eff.</th><th>Scalability</th><th>Continuous Actions</th><th>Off-Policy</th><th>Theory</th><th>Best For</th></tr></thead>
-        <tbody>
-          <tr><td style="color:var(--text)">Linear TD</td><td><span class="badge badge-green">High</span></td><td><span class="badge badge-red">Low</span></td><td><span class="badge badge-yellow">Via features</span></td><td><span class="badge badge-yellow">GTD only</span></td><td><span class="badge badge-green">Strong</span></td><td>Classic control, provable guarantees</td></tr>
-          <tr><td style="color:var(--text)">DQN</td><td><span class="badge badge-yellow">Medium</span></td><td><span class="badge badge-green">High</span></td><td><span class="badge badge-red">No</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-red">Weak</span></td><td>Discrete action, game domains</td></tr>
-          <tr><td style="color:var(--text)">REINFORCE</td><td><span class="badge badge-red">Low</span></td><td><span class="badge badge-yellow">Medium</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-red">No</span></td><td><span class="badge badge-blue">Moderate</span></td><td>Stochastic/continuous policies</td></tr>
-          <tr><td style="color:var(--text)">PPO</td><td><span class="badge badge-yellow">Medium</span></td><td><span class="badge badge-green">High</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-red">No</span></td><td><span class="badge badge-blue">Moderate</span></td><td>General, RLHF, sim-to-real</td></tr>
-          <tr><td style="color:var(--text)">SAC</td><td><span class="badge badge-green">High</span></td><td><span class="badge badge-green">High</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-blue">Moderate</span></td><td>Continuous control, robotics</td></tr>
-          <tr><td style="color:var(--text)">LSTD/LSPI</td><td><span class="badge badge-green">High</span></td><td><span class="badge badge-red">O(d³)</span></td><td><span class="badge badge-yellow">Via features</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-green">Strong</span></td><td>Linear FA, small d, data-efficient</td></tr>
-        </tbody>
+      <h3>Why Tabular RL Fails</h3>
+      <p>Three fundamental failures of tabular RL in real-world problems:</p>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-symbol">💾</div>
+          <div class="def-name">Storage</div>
+          <div class="def-desc">Storing a Q-table for continuous state-action spaces is computationally infeasible.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">📊</div>
+          <div class="def-name">Sample Efficiency</div>
+          <div class="def-desc">Each state must be visited many times to estimate its value accurately. Most states are never visited.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">🔁</div>
+          <div class="def-name">Generalization</div>
+          <div class="def-desc">Tabular methods cannot generalize across similar states. Knowing V(s₁) tells you nothing about V(s₂), even if s₁ ≈ s₂.</div>
+        </div>
+      </div>
+
+      <h3>The Need for Generalization</h3>
+      <p>The key insight is that <strong>nearby states should have similar values</strong>. A robot 1mm to the left vs 1mm to the right of a door threshold has nearly the same long-term reward potential. Function approximation <em>exploits this smoothness</em> by representing \(V\) or \(Q\) as a parametric function — learning generalizes across the entire state space from a subset of samples.</p>
+
+      <div class="callout callout-note">
+        <div class="callout-title">🎯 Core Idea</div>
+        Instead of storing \(V(s)\) for every \(s\), represent it as \(V(s;\theta)\) for a compact parameter vector \(\theta \in \mathbb{R}^d\) with \(d \ll |\mathcal{S}|\). Updating \(\theta\) on one state <em>automatically updates predictions for all similar states</em>.
+      </div>
+    </section>
+
+    <!-- Section 2: Formal Setup -->
+    <section id="formal-setup">
+      <h2><span class="section-num">§2</span> Formal Setup</h2>
+
+      <h3>The MDP Framework</h3>
+      <p>We work within a Markov Decision Process \(\mathcal{M} = (\mathcal{S}, \mathcal{A}, P, R, \gamma)\).</p>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-symbol">\(\mathcal{S}\)</div>
+          <div class="def-name">State Space</div>
+          <div class="def-desc">Can be discrete, continuous, or mixed. Often \(\mathcal{S} \subseteq \mathbb{R}^n\).</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">\(\mathcal{A}\)</div>
+          <div class="def-name">Action Space</div>
+          <div class="def-desc">Discrete or continuous. Continuous actions require special treatment.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">\(P(s'|s,a)\)</div>
+          <div class="def-name">Transition Dynamics</div>
+          <div class="def-desc">Probability distribution over next states. Often unknown; must be learned or bypassed.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">\(R(s,a)\)</div>
+          <div class="def-name">Reward Function</div>
+          <div class="def-desc">Expected immediate reward. May also be stochastic: \(R(s,a,s')\).</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">\(\gamma\)</div>
+          <div class="def-name">Discount Factor</div>
+          <div class="def-desc">\(\gamma \in [0,1)\). Makes future rewards geometrically less important. Ensures convergence of value sums.</div>
+        </div>
+      </div>
+
+      <h3>The Objects We Approximate</h3>
+      <p>Function approximation can target three fundamental objects:</p>
+
+      <div class="toggle-panel">
+        <div class="toggle-tabs">
+          <button class="toggle-tab active" onclick="switchTab(this, 'intuition-obj')">Show Intuition</button>
+          <button class="toggle-tab" onclick="switchTab(this, 'math-obj')">Show Math</button>
+        </div>
+        <div class="toggle-content">
+          <div class="intuition-pane active" id="intuition-obj">
+            <p><strong>State Value Function V(s; θ):</strong> How good is it to be in state \(s\)? This estimates the expected total discounted reward from state \(s\) under a given policy. Useful for policy evaluation and improvement.</p>
+            <p><strong>Action-Value Function Q(s,a; θ):</strong> How good is it to take action \(a\) in state \(s\)? This allows greedy policy extraction without knowing the model.</p>
+            <p><strong>Policy π(a|s; θ):</strong> Directly represent the policy as a parametric distribution over actions. Allows for smooth, stochastic policies which can be optimized via gradient ascent.</p>
+          </div>
+          <div class="math-pane" id="math-obj">
+            <div class="math-block">
+              <div class="math-label">State-Value Function</div>
+              $$V^\pi(s) = \mathbb{E}_\pi\!\left[\sum_{t=0}^\infty \gamma^t R(s_t, a_t) \;\Big|\; s_0 = s\right]$$
+            </div>
+            <div class="math-block">
+              <div class="math-label">Action-Value Function</div>
+              $$Q^\pi(s,a) = \mathbb{E}_\pi\!\left[\sum_{t=0}^\infty \gamma^t R(s_t, a_t) \;\Big|\; s_0 = s, a_0 = a\right]$$
+            </div>
+            <div class="math-block">
+              <div class="math-label">Parameterized Policy</div>
+              $$\pi_\theta(a|s) = \frac{\exp(f_\theta(s,a))}{\sum_{a'}\exp(f_\theta(s,a'))} \quad \text{(softmax policy)}$$
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Function Classes -->
+    <section id="function-classes">
+      <h2><span class="section-num">§3</span> Function Classes</h2>
+
+      <h3 id="linear-approx">Linear Function Approximation</h3>
+      <p>The most theoretically tractable class. The approximated value function is linear in the <em>feature representation</em> of states:</p>
+      <div class="math-block">$$\hat{V}(s;\theta) = \theta^\top \phi(s) = \sum_{j=1}^d \theta_j \phi_j(s)$$</div>
+      <p>where \(\phi: \mathcal{S} \to \mathbb{R}^d\) is a <strong>feature map</strong> and \(\theta \in \mathbb{R}^d\) are learnable weights. The key property: the function is linear in \(\theta\), not necessarily in \(s\) — the features \(\phi(s)\) can be highly nonlinear.</p>
+
+      <div class="callout callout-success">
+        <div class="callout-title">✓ Advantages of Linear FA</div>
+        <p>Convergence guarantees with TD-learning (under on-policy). Unique global minimum (convex optimization). Efficient computation — only \(d\) parameters. Clear geometric interpretation as projection onto the linear function space.</p>
+      </div>
+      <div class="callout callout-warning">
+        <div class="callout-title">⚠ Limitations</div>
+        <p>Representational capacity is fundamentally limited — the true value function may not be linearly realizable. Performance is heavily dependent on feature engineering. Cannot model interaction effects without explicitly including them.</p>
+      </div>
+
+      <h3>Basis Functions</h3>
+      <h4>Polynomial Basis</h4>
+      <p>For \(s \in \mathbb{R}^n\), polynomial features: \(\phi(s) = [1, s_1, s_2, \ldots, s_1^2, s_1 s_2, \ldots]\). Degree-\(k\) polynomials give \(\binom{n+k}{k}\) features — still exponential in \(n\).</p>
+
+      <h4>Fourier Basis</h4>
+      <p>Periodic features that capture oscillatory structure:</p>
+      <div class="math-block">$$\phi_i(s) = \cos\!\left(\pi \mathbf{c}_i^\top s\right), \quad \mathbf{c}_i \in \mathbb{Z}^n$$</div>
+
+      <h4>Radial Basis Functions (RBF)</h4>
+      <p>Gaussian bumps centered at prototype states \(\{s_1, \ldots, s_d\}\):</p>
+      <div class="math-block">$$\phi_i(s) = \exp\!\left(-\frac{\|s - s_i\|^2}{2\sigma^2}\right)$$</div>
+
+      <!-- Interactive: Basis functions visualization -->
+      <div class="viz-container">
+        <div class="viz-header">
+          <div>
+            <div class="viz-title">Interactive Basis Functions</div>
+            <div class="viz-subtitle">Approximating a target function with different basis sets</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn active-btn" onclick="setBasis('rbf')" id="btn-rbf">RBF</button>
+            <button class="btn" onclick="setBasis('fourier')" id="btn-fourier">Fourier</button>
+            <button class="btn" onclick="setBasis('poly')" id="btn-poly">Poly</button>
+          </div>
+        </div>
+        <div class="viz-body">
+          <canvas id="basis-chart" width="700" height="260" style="width:100%;height:260px;"></canvas>
+          <div class="viz-controls">
+            <span class="ctrl-label">Basis functions (d):</span>
+            <input type="range" id="basis-d" min="1" max="15" value="5" style="width:120px">
+            <span id="basis-d-val" style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">d=5</span>
+            <button class="btn btn-primary" onclick="fitBasis()">Fit Least Squares</button>
+          </div>
+        </div>
+      </div>
+
+      <h3>Neural Networks</h3>
+      <p>Neural networks are <strong>universal function approximators</strong> — given sufficient width/depth, they can approximate any continuous function on a compact domain to arbitrary precision (Universal Approximation Theorem).</p>
+      <div class="math-block">
+        $$\hat{V}(s;\theta) = f_L \circ f_{L-1} \circ \cdots \circ f_1(s)$$
+        $$f_\ell(x) = \sigma(W_\ell x + b_\ell), \quad \sigma = \text{ReLU, tanh, ...}$$
+      </div>
+      <p>In practice, neural networks provide extraordinary expressiveness but come with optimization challenges: non-convex loss landscapes, saddle points, and — critically in RL — <em>non-stationarity of training targets</em>.</p>
+
+      <div class="callout callout-danger">
+        <div class="callout-title">⚠ Neural Networks in RL: Key Challenges</div>
+        <p>Unlike supervised learning, RL training targets (e.g., Bellman targets) are themselves functions of the current network weights. This creates a moving-target problem that can destabilize learning. The three elements of the Deadly Triad amplify this.</p>
+      </div>
+    </section>
+
+    <!-- Section 4: Value Function Approximation -->
+    <section id="vfa">
+      <h2><span class="section-num">§4</span> Value Function Approximation</h2>
+
+      <h3>The Projection View</h3>
+      <p>Let \(\mathcal{F} = \{\hat{V}(\cdot;\theta) : \theta \in \mathbb{R}^d\}\) be our function class. For linear FA, \(\mathcal{F}\) is a \(d\)-dimensional linear subspace of the space of all functions \(\mathcal{S} \to \mathbb{R}\).</p>
+
+      <div class="toggle-panel">
+        <div class="toggle-tabs">
+          <button class="toggle-tab active" onclick="switchTab(this, 'intuition-proj')">Show Intuition</button>
+          <button class="toggle-tab" onclick="switchTab(this, 'math-proj')">Show Math</button>
+        </div>
+        <div class="toggle-content">
+          <div class="intuition-pane active" id="intuition-proj">
+            <p>Think of the space of all possible value functions as a very high-dimensional space. Our parameterized function class \(\mathcal{F}\) is a low-dimensional <em>manifold</em> (or subspace, for linear FA) within this space. The true value function \(V^\pi\) lives somewhere in this ambient space, often outside \(\mathcal{F}\). </p>
+            <p>The best we can do is find the point in \(\mathcal{F}\) closest to \(V^\pi\) — this is the <em>projection</em> \(\Pi V^\pi\). The distance between \(V^\pi\) and \(\Pi V^\pi\) is the <em>approximation error</em>, which we cannot reduce by training — it's the price we pay for using a restricted function class.</p>
+          </div>
+          <div class="math-pane" id="math-proj">
+            <p>Define the \(\mu\)-weighted \(L^2\) norm: \(\|V\|_\mu^2 = \sum_s \mu(s) V(s)^2\), where \(\mu\) is a state distribution (often the on-policy distribution).</p>
+            <p>The projection operator \(\Pi\) onto the linear function space \(\mathcal{F}\) is:</p>
+            <div class="math-block">$$\Pi V = \Phi(\Phi^\top D \Phi)^{-1} \Phi^\top D V$$</div>
+            <p>where \(\Phi \in \mathbb{R}^{|\mathcal{S}| \times d}\) is the feature matrix and \(D = \text{diag}(\mu)\). This is a weighted least-squares projection.</p>
+            <p>The <strong>mean squared value error</strong> is:</p>
+            <div class="math-block">$$\overline{VE}(\theta) = \|V^\pi - \hat{V}(\cdot;\theta)\|_\mu^2 = \sum_s \mu(s)\left[V^\pi(s) - \theta^\top\phi(s)\right]^2$$</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Projection Visualization -->
+      <div class="viz-container">
+        <div class="viz-header">
+          <div>
+            <div class="viz-title">Projection of True Value Function</div>
+            <div class="viz-subtitle">Best linear approximation in a 2D function space</div>
+          </div>
+        </div>
+        <div class="viz-body" style="display:flex;gap:16px;flex-wrap:wrap;">
+          <canvas id="proj-chart" width="360" height="280" style="width:min(360px,100%);height:280px;"></canvas>
+          <div style="flex:1;min-width:200px;font-size:14px;color:var(--ink-muted);line-height:1.7;">
+            <p style="margin-bottom:12px;">The <span style="color:var(--ink);font-weight:600;">black curve</span> is the true value function \(V^\pi(s)\). The <span style="color:var(--accent);font-weight:600;">blue line</span> is the best linear approximation \(\Pi V^\pi\).</p>
+            <p style="margin-bottom:12px;">The <span style="color:var(--rose);font-weight:600;">red shaded region</span> shows the approximation error — the component of \(V^\pi\) orthogonal to the function class.</p>
+            <p>No amount of training can reduce this error. It's the <strong>bias</strong> of the function class.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>The Bellman Operator</h3>
+      <p>The <span class="tooltip-wrap"><span class="tooltip-trigger">Bellman operator</span><span class="tooltip-box">The Bellman operator 𝒯 maps value functions to value functions. Its fixed point is the true value function V*. Key property: it is a γ-contraction under the max-norm.</span></span> \(\mathcal{T}^\pi\) is central to all RL algorithms. For policy \(\pi\):</p>
+      <div class="math-block">$$(\mathcal{T}^\pi V)(s) = \sum_a \pi(a|s)\left[R(s,a) + \gamma \sum_{s'} P(s'|s,a) V(s')\right]$$</div>
+      <p>Key property: \(\mathcal{T}^\pi\) is a <strong>\(\gamma\)-contraction</strong> under the \(L^\infty\) norm, meaning repeated application converges to \(V^\pi\):</p>
+      <div class="math-block">$$\|\mathcal{T}^\pi V - \mathcal{T}^\pi U\|_\infty \leq \gamma \|V - U\|_\infty$$</div>
+
+      <h3 id="deadly-triad">The Deadly Triad</h3>
+      <p>Sutton and Barto identified three conditions whose simultaneous presence leads to <strong>instability and divergence</strong> in RL with function approximation.</p>
+
+      <div class="triad-container">
+        <svg width="320" height="280" viewBox="0 0 320 280">
+          <!-- Triangle -->
+          <polygon points="160,30 30,250 290,250" fill="none" stroke="#e5e7eb" stroke-width="2"/>
+          <!-- Circles at vertices -->
+          <circle cx="160" cy="30" r="42" fill="#fff1f2" stroke="#e11d48" stroke-width="2"/>
+          <circle cx="30" cy="250" r="42" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+          <circle cx="290" cy="250" r="42" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+          <!-- Labels -->
+          <text x="160" y="24" text-anchor="middle" font-size="11" font-weight="700" fill="#e11d48">Function</text>
+          <text x="160" y="38" text-anchor="middle" font-size="11" font-weight="700" fill="#e11d48">Approximation</text>
+          <text x="30" y="242" text-anchor="middle" font-size="11" font-weight="700" fill="#d97706">Bootstrapping</text>
+          <text x="30" y="258" text-anchor="middle" font-size="10" fill="#d97706">(TD / DP)</text>
+          <text x="290" y="242" text-anchor="middle" font-size="11" font-weight="700" fill="#7c3aed">Off-policy</text>
+          <text x="290" y="258" text-anchor="middle" font-size="10" fill="#7c3aed">Training</text>
+          <!-- Center explosion -->
+          <circle cx="160" cy="160" r="28" fill="#fee2e2" stroke="#e11d48" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <text x="160" y="155" text-anchor="middle" font-size="11" font-weight="700" fill="#e11d48">⚡ Fatal</text>
+          <text x="160" y="169" text-anchor="middle" font-size="10" fill="#e11d48">Combo</text>
+          <!-- Edge labels -->
+          <text x="90" y="145" text-anchor="middle" font-size="10" fill="#6b6b8a" transform="rotate(-58,90,145)">+ bootstrapping</text>
+          <text x="227" y="145" text-anchor="middle" font-size="10" fill="#6b6b8a" transform="rotate(58,227,145)">+ off-policy</text>
+          <text x="160" y="268" text-anchor="middle" font-size="10" fill="#6b6b8a">Baird's example: always diverges</text>
+        </svg>
+      </div>
+
+      <div class="callout callout-danger">
+        <div class="callout-title">💀 The Deadly Triad</div>
+        <p>Any two elements together are safe. All three together can cause <strong>divergence</strong> — the approximated values grow without bound, even for simple MDPs (Baird's Counterexample). This is not a bug but a fundamental theoretical limitation.</p>
+      </div>
+
+      <div class="collapsible">
+        <button class="collapsible-trigger" onclick="toggleCollapsible(this)">📖 Baird's Counterexample — Proof of Divergence</button>
+        <div class="collapsible-body">
+          <p>Baird (1995) constructed a simple 7-state MDP where semi-gradient TD with linear FA and off-policy sampling diverges. The state space has 7 states, linear features, and a specific off-policy behavior policy.</p>
+          <p>Let \(\phi(s_i) = e_i\) (standard basis), except \(\phi(s_7) = 2\mathbf{1}\). The target policy transitions always to \(s_7\), but the behavior policy transitions uniformly at random. Under these conditions, the TD update matrix has eigenvalues with positive real parts, causing exponential growth of \(\|\theta_t\|\).</p>
+          <p>Formally, the TD update is \(\theta_{t+1} = \theta_t + \alpha \delta_t \phi(s_t)\), where \(\delta_t\) is the TD error. The expected update in matrix form is \(\mathbb{E}[\theta_{t+1}] = (I - \alpha A)\theta_t + \alpha b\), where \(A = \Phi^\top D(I - \gamma P^\pi)\Phi\). When \(A\) is not positive definite (which happens with off-policy \(D\)), the iteration diverges.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Core Algorithms -->
+    <section id="algorithms">
+      <h2><span class="section-num">§5</span> Core Algorithms</h2>
+
+      <h3 id="td0">TD(0) with Function Approximation</h3>
+      <div class="toggle-panel">
+        <div class="toggle-tabs">
+          <button class="toggle-tab active" onclick="switchTab(this, 'intuition-td')">Show Intuition</button>
+          <button class="toggle-tab" onclick="switchTab(this, 'math-td')">Show Math</button>
+        </div>
+        <div class="toggle-content">
+          <div class="intuition-pane active" id="intuition-td">
+            <p>TD(0) is the simplest temporal difference method. After each transition \((s, a, r, s')\), we update our value estimate: the prediction for \(s\) should be consistent with the reward we received plus the discounted prediction for \(s'\). We're essentially doing <em>stochastic gradient descent</em> toward a bootstrap target.</p>
+            <p>The "temporal difference" is the error between our current prediction and this bootstrap target. It's like learning that if you know the value of tomorrow, you can update today's value estimate with just a one-step look-ahead, without needing the full episode return.</p>
+          </div>
+          <div class="math-pane" id="math-td">
+            <p>The TD target is \(y_t = r_t + \gamma \hat{V}(s_{t+1};\theta_t)\). The TD error is:</p>
+            <div class="math-block">$$\delta_t = r_t + \gamma \hat{V}(s_{t+1};\theta_t) - \hat{V}(s_t;\theta_t)$$</div>
+            <p>If we were doing true gradient descent on \(\overline{VE}(\theta)\), the gradient w.r.t. \(\theta\) would include a term from differentiating the target, which we drop. This gives the <em>semi-gradient</em> update:</p>
+            <div class="math-block">$$\theta_{t+1} = \theta_t + \alpha \delta_t \nabla_\theta \hat{V}(s_t;\theta_t)$$</div>
+            <p>For linear FA, \(\nabla_\theta \hat{V}(s;\theta) = \phi(s)\), so: \(\theta_{t+1} = \theta_t + \alpha \delta_t \phi(s_t)\)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="algorithm-box">
+        <div class="algorithm-header">⚙ Algorithm: Semi-Gradient TD(0) for Policy Evaluation</div>
+        <div class="algorithm-body">
+          <div class="algo-line"><span class="algo-keyword">Input:</span> Policy π, feature map φ, learning rate α</div>
+          <div class="algo-line"><span class="algo-keyword">Initialize:</span> θ ← 0</div>
+          <div class="algo-line"><span class="algo-keyword">for</span> each episode:</div>
+          <div class="algo-line algo-indent-1">s ← s₀ (initial state)</div>
+          <div class="algo-line algo-indent-1"><span class="algo-keyword">while</span> s is not terminal:</div>
+          <div class="algo-line algo-indent-2">a ~ π(·|s)</div>
+          <div class="algo-line algo-indent-2">Take action a; observe r, s'</div>
+          <div class="algo-line algo-indent-2 algo-comment">// Compute TD error</div>
+          <div class="algo-line algo-indent-2">δ ← r + γ·θᵀφ(s') − θᵀφ(s)</div>
+          <div class="algo-line algo-indent-2 algo-update">// Semi-gradient update</div>
+          <div class="algo-line algo-indent-2 algo-update">θ ← θ + α·δ·φ(s)</div>
+          <div class="algo-line algo-indent-2">s ← s'</div>
+        </div>
+      </div>
+
+      <div class="callout callout-warning">
+        <div class="callout-title">⚠ Why "Semi-Gradient"?</div>
+        <p>TD(0) is NOT a true gradient method. The target \(r + \gamma \hat{V}(s';\theta)\) depends on \(\theta\), so the true gradient of the loss includes \(-\gamma \nabla_\theta \hat{V}(s';\theta)\). TD drops this term, treating the target as fixed. This makes the update biased but stable (under on-policy conditions).</p>
+      </div>
+
+      <h3 id="semigrad">Convergence of Semi-Gradient TD</h3>
+      <div class="callout callout-theorem">
+        <div class="callout-title">📐 Theorem (Tsitsiklis & Van Roy, 1997)</div>
+        <p>Under on-policy sampling, linear function approximation, and step-sizes satisfying the Robbins-Monro conditions (\(\sum \alpha_t = \infty\), \(\sum \alpha_t^2 < \infty\)), TD(0) converges almost surely to \(\theta^*\) where:</p>
+        <div class="math-block">$$\overline{VE}(\theta^*) \leq \frac{1}{1-\gamma} \min_\theta \overline{VE}(\theta)$$</div>
+        <p>This is a <strong>bounded approximation error</strong> result — TD finds a solution within a \(\frac{1}{1-\gamma}\) factor of the best possible in the function class.</p>
+      </div>
+
+      <div class="collapsible">
+        <button class="collapsible-trigger" onclick="toggleCollapsible(this)">📖 Proof Sketch — TD Convergence via ODE Analysis</button>
+        <div class="collapsible-body">
+          <p>The expected TD update direction is \(\mathbb{E}[\delta_t \phi(s_t)] = -A\theta + b\) where:</p>
+          <div class="math-block">$$A = \Phi^\top D(I - \gamma P^\pi)\Phi, \quad b = \Phi^\top D r$$</div>
+          <p>where \(D = \text{diag}(\mu)\) with \(\mu\) the on-policy stationary distribution, and \(P^\pi\) the policy transition matrix.</p>
+          <p>Under on-policy sampling, \(D\) satisfies \(\mu^\top P^\pi = \mu^\top\), making \(\mu\) a stationary distribution. One can show \(A\) is positive definite (PD), which is the key condition for stability.</p>
+          <p>The ODE \(\dot{\theta} = -A\theta + b\) has a unique stable fixed point \(\theta^* = A^{-1}b\). By the ODE method (Benaïm, Borkar), stochastic approximation convergence follows. The bound follows from the projection error analysis.</p>
+        </div>
+      </div>
+
+      <h3 id="gtd">Gradient TD Methods (GTD2, TDC)</h3>
+      <p>To address off-policy divergence, Sutton et al. (2009) developed <em>true gradient</em> methods that converge under off-policy sampling by minimizing the <span class="tooltip-wrap"><span class="tooltip-trigger">projected Bellman error</span><span class="tooltip-box">The Projected Bellman Error (PBE) is ‖ΠTᵖV − V‖²_μ. Unlike VE, its gradient includes terms from differentiating the TD target, making it a true gradient.</span></span>.</p>
+
+      <div class="toggle-panel">
+        <div class="toggle-tabs">
+          <button class="toggle-tab active" onclick="switchTab(this, 'intuition-gtd')">Show Intuition</button>
+          <button class="toggle-tab" onclick="switchTab(this, 'math-gtd')">Show Math</button>
+        </div>
+        <div class="toggle-content">
+          <div class="intuition-pane active" id="intuition-gtd">
+            <p>The insight behind GTD is to minimize the Projected Bellman Error (PBE) rather than the Mean Squared TD Error. PBE has a true gradient that can be computed efficiently. The trick is to introduce a <em>secondary weight vector</em> \(w\) that helps estimate the gradient direction. This doubles the number of parameters but enables principled off-policy learning.</p>
+          </div>
+          <div class="math-pane" id="math-gtd">
+            <p>The objective is the Projected Bellman Error (PBE):</p>
+            <div class="math-block">$$\overline{PBE}(\theta) = \|\Pi \mathcal{T}^\pi \hat{V}(\cdot;\theta) - \hat{V}(\cdot;\theta)\|_\mu^2$$</div>
+            <p><strong>GTD2:</strong> maintains secondary weights \(w\) and updates:</p>
+            <div class="math-block">$$w_{t+1} = w_t + \beta (\delta_t - \phi(s_t)^\top w_t)\phi(s_t)$$</div>
+            <div class="math-block">$$\theta_{t+1} = \theta_t + \alpha \rho_t (\phi(s_t) - \gamma\phi(s_{t+1}))(\phi(s_t)^\top w_t)$$</div>
+            <p>where \(\rho_t = \pi(a_t|s_t)/b(a_t|s_t)\) is the importance sampling ratio for off-policy correction.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 id="fvi">Fitted Value Iteration</h3>
+      <p>An alternative: treat value estimation as a supervised regression problem. In each iteration, use the current value function to generate targets, then fit a new function.</p>
+      <div class="algorithm-box">
+        <div class="algorithm-header">⚙ Algorithm: Fitted Value Iteration (FVI)</div>
+        <div class="algorithm-body">
+          <div class="algo-line"><span class="algo-keyword">Input:</span> Dataset 𝒟 = {(s, a, r, s')}, function class ℱ</div>
+          <div class="algo-line"><span class="algo-keyword">Initialize:</span> Q̂₀ ← 0</div>
+          <div class="algo-line"><span class="algo-keyword">for</span> k = 0, 1, 2, ..., K-1:</div>
+          <div class="algo-line algo-indent-1 algo-comment">// Compute regression targets</div>
+          <div class="algo-line algo-indent-1">yᵢ ← rᵢ + γ max_a Q̂ₖ(s'ᵢ, a)  for each i</div>
+          <div class="algo-line algo-indent-1 algo-update">// Supervised regression</div>
+          <div class="algo-line algo-indent-1 algo-update">Q̂ₖ₊₁ ← argmin_{f∈ℱ} Σᵢ (f(sᵢ, aᵢ) − yᵢ)²</div>
+          <div class="algo-line"><span class="algo-keyword">return</span> Q̂ₖ</div>
+        </div>
+      </div>
+      <div class="callout callout-note">
+        <div class="callout-title">📝 Key Property</div>
+        FVI decouples the function approximation step from the RL structure. Any regression oracle can be used — neural networks, random forests, etc. However, off-policy data and function approximation error interact to prevent clean convergence guarantees.
+      </div>
+    </section>
+
+    <!-- Section 6: Q-Learning + FA -->
+    <section id="qlearn">
+      <h2><span class="section-num">§6</span> Q-Learning with Function Approximation</h2>
+
+      <h3>Semi-Gradient Q-Learning</h3>
+      <p>Q-learning directly estimates the optimal Q-function \(Q^*\). With function approximation:</p>
+      <div class="math-block">$$\delta_t = r_t + \gamma \max_{a'} \hat{Q}(s_{t+1}, a';\theta_t) - \hat{Q}(s_t, a_t;\theta_t)$$</div>
+      <div class="math-block">$$\theta_{t+1} = \theta_t + \alpha \delta_t \nabla_\theta \hat{Q}(s_t, a_t;\theta_t)$$</div>
+
+      <div class="callout callout-danger">
+        <div class="callout-title">⚠ Divergence with Off-Policy Q-Learning</div>
+        Q-learning is inherently off-policy (uses max over actions, not the current behavior policy). Combined with function approximation, this hits the Deadly Triad. Tabular Q-learning converges; Q-learning + FA can diverge wildly.
+      </div>
+
+      <h3>Deep Q-Network (DQN)</h3>
+      <p>Mnih et al. (2015) made Q-learning with neural networks work in practice via two key tricks:</p>
+
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-symbol">🔄</div>
+          <div class="def-name">Experience Replay</div>
+          <div class="def-desc">Store transitions in a replay buffer \(\mathcal{D}\). Sample mini-batches at random. Breaks temporal correlations, improves data efficiency, and enables multiple gradient steps per environment step.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">🎯</div>
+          <div class="def-name">Target Network</div>
+          <div class="def-desc">Maintain a separate "target network" \(\theta^-\) for computing Bellman targets, updated slowly (every \(C\) steps). Stabilizes the moving-target problem. Loss becomes:</div>
+        </div>
+      </div>
+
+      <div class="math-block">
+        $$\mathcal{L}(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}}\!\left[\left(r + \gamma \max_{a'}\hat{Q}(s',a';\theta^-) - \hat{Q}(s,a;\theta)\right)^2\right]$$
+      </div>
+
+      <!-- DQN Interactive Demo -->
+      <div class="viz-container">
+        <div class="viz-header">
+          <div>
+            <div class="viz-title">DQN Training Dynamics</div>
+            <div class="viz-subtitle">Observe the stabilizing effect of target network + replay</div>
+          </div>
+        </div>
+        <div class="viz-body">
+          <canvas id="dqn-chart" width="700" height="220" style="width:100%;height:220px;"></canvas>
+          <div class="viz-controls">
+            <button class="btn btn-primary" onclick="runDQNSim()">Simulate Training</button>
+            <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-ui);font-size:12px;">
+              <input type="checkbox" id="use-target" checked> Target Network
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-ui);font-size:12px;">
+              <input type="checkbox" id="use-replay" checked> Experience Replay
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <h3>DQN Variants</h3>
+      <table>
+        <tr><th>Algorithm</th><th>Key Innovation</th><th>Addresses</th></tr>
+        <tr><td><strong>Double DQN</strong></td><td>Separate networks for action selection and evaluation</td><td>Overestimation bias in max operator</td></tr>
+        <tr><td><strong>Dueling DQN</strong></td><td>Split stream for V(s) and A(s,a) = Q(s,a) - V(s)</td><td>Inefficient value estimation</td></tr>
+        <tr><td><strong>Prioritized ER</strong></td><td>Sample high-TD-error transitions more often</td><td>Sample efficiency</td></tr>
+        <tr><td><strong>Rainbow</strong></td><td>Combination of above + distributional RL + noisy nets</td><td>Multiple biases simultaneously</td></tr>
+        <tr><td><strong>C51 / QR-DQN</strong></td><td>Learn full return distribution, not just expectation</td><td>Risk-sensitivity, better gradients</td></tr>
       </table>
-    </div>
-    <div class="sep"></div>
-    <div class="section-tag">Essential Reading</div>
-    <div class="cards-grid">
-      <div class="card anim-item" style="--card-accent:var(--accent1)"><h3>📘 Sutton & Barto (2018)</h3><p>"Reinforcement Learning: An Introduction" — Chapters 9-13 cover function approximation comprehensively. The definitive textbook, available free online.</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent2)"><h3>📄 Tsitsiklis & Van Roy (1997)</h3><p>"An Analysis of Temporal-Difference Learning with Function Approximation." IEEE Trans. Auto. Control. Foundational convergence proofs for linear TD.</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent3)"><h3>📄 Sutton et al. (2009)</h3><p>"Fast Gradient-Descent Methods for TD Learning." GTD, GTD2, TDC — the first guaranteed-convergent off-policy linear methods.</p></div>
-      <div class="card anim-item" style="--card-accent:var(--accent4)"><h3>📄 Mnih et al. (2015)</h3><p>"Human-level control through deep RL." Nature. DQN — the paper that launched modern deep RL research.</p></div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<footer>
-  <p style="margin-top:12px;font-size:11px;color:var(--muted)">
-  © <span id="year"></span> Soumyadeep Roy
-</p>
-</footer>
+    <!-- Section 7: Policy Gradient -->
+    <section id="policy-gradient">
+      <h2><span class="section-num">§7</span> Policy Gradient & Actor-Critic</h2>
+
+      <h3>REINFORCE</h3>
+      <div class="toggle-panel">
+        <div class="toggle-tabs">
+          <button class="toggle-tab active" onclick="switchTab(this, 'intuition-pg')">Show Intuition</button>
+          <button class="toggle-tab" onclick="switchTab(this, 'math-pg')">Show Math</button>
+        </div>
+        <div class="toggle-content">
+          <div class="intuition-pane active" id="intuition-pg">
+            <p>Instead of learning a value function and deriving a policy, directly optimize the policy parameters. The objective is the expected return \(J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[G(\tau)]\). We want to perform gradient ascent on \(J(\theta)\).</p>
+            <p>The trick: we can write the gradient of \(J\) as an expectation under the policy itself, which we can estimate by collecting rollouts. Actions that led to high returns get their probabilities increased; actions with low returns get decreased.</p>
+          </div>
+          <div class="math-pane" id="math-pg">
+            <p>The <strong>Policy Gradient Theorem</strong> (Sutton et al., 2000):</p>
+            <div class="math-block">$$\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\left[\nabla_\theta \log \pi_\theta(a|s) \cdot Q^{\pi_\theta}(s,a)\right]$$</div>
+            <p>REINFORCE uses the Monte Carlo return \(G_t = \sum_{k=0}^\infty \gamma^k r_{t+k}\) as an unbiased estimate of \(Q^{\pi_\theta}(s_t, a_t)\):</p>
+            <div class="math-block">$$\theta \leftarrow \theta + \alpha \sum_t \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot G_t$$</div>
+            <p>Adding a baseline \(b(s)\) reduces variance without introducing bias:</p>
+            <div class="math-block">$$\theta \leftarrow \theta + \alpha \sum_t \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot (G_t - b(s_t))$$</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>Actor-Critic Methods</h3>
+      <p>Replace the Monte Carlo return with a bootstrapped critic estimate to reduce variance:</p>
+      <div class="math-block">$$\theta \leftarrow \theta + \alpha_\theta \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot \hat{A}(s_t, a_t)$$</div>
+      <p>where \(\hat{A}(s,a) = r + \gamma \hat{V}(s';\omega) - \hat{V}(s;\omega)\) is the <strong>advantage estimate</strong>. Two sets of parameters: \(\theta\) for the actor (policy), \(\omega\) for the critic (value function).</p>
+
+      <div class="callout callout-theorem">
+        <div class="callout-title">📐 Compatible Function Approximation</div>
+        <p>To avoid introducing bias from the critic, use a critic that is "compatible" with the actor: \(\hat{Q}(s,a;\omega) = \omega^\top \nabla_\theta \log \pi_\theta(a|s)\). Then the policy gradient theorem holds exactly with this critic. This motivates the Natural Policy Gradient and Fisher information matrix preconditioning.</p>
+      </div>
+
+      <h3>PPO, TRPO, SAC</h3>
+      <table>
+        <tr><th>Algorithm</th><th>Key Idea</th><th>Stability Mechanism</th></tr>
+        <tr><td><strong>TRPO</strong></td><td>Trust-region constraint on policy update size</td><td>KL divergence constraint</td></tr>
+        <tr><td><strong>PPO</strong></td><td>Clipped surrogate objective, simpler than TRPO</td><td>Ratio clipping: clip(ρ, 1-ε, 1+ε)</td></tr>
+        <tr><td><strong>SAC</strong></td><td>Max entropy RL — maximize return + policy entropy</td><td>Automatic temperature tuning</td></tr>
+        <tr><td><strong>TD3</strong></td><td>Clipped double Q-learning for continuous actions</td><td>Delayed policy updates, target smoothing</td></tr>
+      </table>
+    </section>
+
+    <!-- Section 8: ADP -->
+    <section id="adp">
+      <h2><span class="section-num">§8</span> Approximate Dynamic Programming</h2>
+
+      <h3>Fitted Q-Iteration (FQI)</h3>
+      <p>FQI is the batch analog of Q-learning. Given a fixed dataset \(\mathcal{D}\), it iteratively applies the Bellman optimality operator and projects back onto the function class:</p>
+      <div class="math-block">$$Q_{k+1} \leftarrow \text{argmin}_{f \in \mathcal{F}} \sum_{(s,a,r,s') \in \mathcal{D}} \left(f(s,a) - \left(r + \gamma \max_{a'} Q_k(s',a')\right)\right)^2$$</div>
+
+      <div class="callout callout-warning">
+        <div class="callout-title">⚠ Accumulation of Approximation Error</div>
+        <p>Each FQI iteration introduces approximation error \(\epsilon_k\). These errors accumulate. Munos (2003, 2005) showed that the final policy's suboptimality is bounded by \(\frac{C \gamma}{(1-\gamma)^2} \max_k \epsilon_k\), where \(C\) is a concentrability coefficient that captures distributional mismatch.</p>
+      </div>
+
+      <h3>Batch RL</h3>
+      <p>Batch RL encompasses methods that learn from a fixed dataset without additional interaction. Key algorithms include:</p>
+      <ul style="padding-left:24px;margin-bottom:16px;line-height:2;">
+        <li><strong>Fitted Q-Iteration (FQI)</strong>: Regression-based Bellman iteration</li>
+        <li><strong>LSTD (Least-Squares TD)</strong>: Direct solution to the linear TD fixed-point equation</li>
+        <li><strong>LSPI (Least-Squares Policy Iteration)</strong>: Policy iteration using LSTD for evaluation</li>
+        <li><strong>NFQ (Neural Fitted Q-Iteration)</strong>: FQI with neural network function approximator</li>
+      </ul>
+
+      <h3>LSTD: Direct Solution</h3>
+      <p>For linear FA, the TD fixed-point satisfies \(A\theta = b\). LSTD estimates \(A\) and \(b\) from data and solves directly:</p>
+      <div class="math-block">$$\hat{A} = \sum_t \phi(s_t)(\phi(s_t) - \gamma\phi(s_{t+1}))^\top, \quad \hat{b} = \sum_t r_t \phi(s_t)$$</div>
+      <div class="math-block">$$\theta_{\text{LSTD}} = \hat{A}^{-1}\hat{b}$$</div>
+      <p>LSTD is data-efficient (no learning rate) but \(\mathcal{O}(d^2)\) in memory and \(\mathcal{O}(d^3)\) in computation per update. For large feature dimensions, LSTD(λ) or recursive variants are needed.</p>
+    </section>
+
+    <!-- Section 9: Offline RL -->
+    <section id="offline-rl">
+      <h2><span class="section-num">§9</span> Offline RL Connection</h2>
+
+      <h3>The Offline RL Problem</h3>
+      <p>Offline (or batch) RL aims to learn the best possible policy from a fixed dataset \(\mathcal{D} = \{(s, a, r, s')\}\) collected by some (possibly unknown) behavior policy \(\mu\), without further environment interaction.</p>
+
+      <div class="key-insight">
+        <div class="key-insight-label">🔑 Core Challenge</div>
+        <p>Online RL can query the environment to resolve uncertainty. Offline RL cannot. If the dataset lacks coverage of certain state-action regions, the learned Q-function will have uncontrolled extrapolation error in those regions — and greedy policy extraction will exploit these errors catastrophically.</p>
+      </div>
+
+      <h3>Distribution Shift</h3>
+      <p>The learned policy \(\pi_\theta\) may visit state-action pairs not in the training distribution \(\mu\). Under the learned policy, the true Q-values in out-of-distribution (OOD) regions are unknown, but the model may assign arbitrarily high values there.</p>
+
+      <div class="toggle-panel">
+        <div class="toggle-tabs">
+          <button class="toggle-tab active" onclick="switchTab(this, 'intuition-ood')">Show Intuition</button>
+          <button class="toggle-tab" onclick="switchTab(this, 'math-ood')">Show Math</button>
+        </div>
+        <div class="toggle-content">
+          <div class="intuition-pane active" id="intuition-ood">
+            <p>Think of the Q-function as a model that's only been trained on some regions of the state-action space. In those regions, it's accurate. In untrained regions, it extrapolates — and neural networks can extrapolate wildly. When we greedily extract a policy, it finds the highest-Q action, which may be in a completely unconstrained OOD region.</p>
+            <p>This is the "deadly combination" for offline RL: function approximation enables extrapolation, and greedy action selection actively seeks out the highest-valued extrapolations.</p>
+          </div>
+          <div class="math-pane" id="math-ood">
+            <p>Let \(d^\pi\) be the state-action distribution under policy \(\pi\), and \(d^\mu\) under the behavior policy. The concentrability coefficient is:</p>
+            <div class="math-block">$$C^\pi_{\mu} = \left\|\frac{d^\pi}{d^\mu}\right\|_\infty$$</div>
+            <p>Suboptimality of an offline-learned policy is bounded by Munos (2003):</p>
+            <div class="math-block">$$V^* - V^{\hat{\pi}} \leq \frac{2\gamma C^\pi_\mu}{(1-\gamma)^2}\sqrt{\frac{\epsilon_{\text{approx}} + \epsilon_{\text{stat}}}{n}}$$</div>
+            <p>When \(d^\pi \not\ll d^\mu\) (policy explores OOD regions), \(C^\pi_\mu = \infty\) and the bound is vacuous.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Offline RL Solutions</h3>
+      <table>
+        <tr><th>Approach</th><th>Algorithm</th><th>Mechanism</th></tr>
+        <tr><td>Policy Constraint</td><td>BCQ, BEAR</td><td>Constrain \(\pi\) to stay close to \(\mu\)</td></tr>
+        <tr><td>Value Pessimism</td><td>CQL, IQL</td><td>Penalize OOD Q-values during training</td></tr>
+        <tr><td>Model-Based</td><td>MOPO, MOREL</td><td>Use model uncertainty as reward penalty</td></tr>
+        <tr><td>Implicit Constraint</td><td>TD3+BC, DT</td><td>Behavioral cloning regularization</td></tr>
+      </table>
+
+      <h3>Conservative Q-Learning (CQL)</h3>
+      <p>CQL (Kumar et al., 2020) adds a regularization term to the standard Q-learning objective that pushes down Q-values for OOD actions while maintaining accuracy for in-distribution ones:</p>
+      <div class="math-block">$$\mathcal{L}_{\text{CQL}}(\theta) = \mathcal{L}_{\text{TD}}(\theta) + \alpha \left[\mathbb{E}_{s \sim \mathcal{D}, a \sim \text{uniform}} \hat{Q}(s,a;\theta) - \mathbb{E}_{(s,a) \sim \mathcal{D}} \hat{Q}(s,a;\theta)\right]$$</div>
+    </section>
+
+    <!-- Section 10: Theory -->
+    <section id="theory">
+      <h2><span class="section-num">§10</span> Theory</h2>
+
+      <h3>Approximation vs Estimation Error</h3>
+      <p>The total error in value function learning decomposes into two components:</p>
+      <div class="math-block">
+        $$\underbrace{\|V^\pi - \hat{V}_{\hat{\theta}}\|}_{\text{Total Error}} \leq \underbrace{\|V^\pi - \Pi V^\pi\|}_{\text{Approximation Error (Bias)}} + \underbrace{\|\Pi V^\pi - \hat{V}_{\hat{\theta}}\|}_{\text{Estimation Error (Variance)}}$$
+      </div>
+
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-symbol">📉</div>
+          <div class="def-name">Approximation Error</div>
+          <div class="def-desc">Distance from true V* to best function in the class. Reduced by richer function classes. Cannot be reduced by more data — it's irreducible bias.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">📊</div>
+          <div class="def-name">Estimation Error</div>
+          <div class="def-desc">Distance from best in-class to learned function. Decreases with more data (∝ 1/√n). Increases with function class complexity (VC dimension, covering number).</div>
+        </div>
+      </div>
+
+      <h3>Bellman Error Minimization</h3>
+      <p>The <strong>Bellman residual</strong> or <strong>Bellman error</strong> at a function \(f\) is:</p>
+      <div class="math-block">$$\text{BE}(f) = \|f - \mathcal{T}^\pi f\|_\mu^2 = \sum_s \mu(s)\left[f(s) - (\mathcal{T}^\pi f)(s)\right]^2$$</div>
+      <p>Minimizing BE directly is appealing but faces the <em>double sampling problem</em>: the gradient of BE requires two independent samples from the same state, which is typically unavailable in sequential data.</p>
+
+      <div class="collapsible">
+        <button class="collapsible-trigger" onclick="toggleCollapsible(this)">📖 Double Sampling Problem — Technical Details</button>
+        <div class="collapsible-body">
+          <p>The gradient of BE w.r.t. \(\theta\) is:</p>
+          <div class="math-block">$$\nabla_\theta \text{BE}(\theta) = 2\mathbb{E}_\mu\left[(\hat{V}(s;\theta) - \mathcal{T}^\pi \hat{V}(s;\theta))\nabla_\theta(\hat{V}(s;\theta) - \mathcal{T}^\pi \hat{V}(s;\theta))\right]$$</div>
+          <p>Expanding: \(\nabla_\theta \mathcal{T}^\pi \hat{V}(s;\theta) = \gamma \mathbb{E}_{s'}[\nabla_\theta \hat{V}(s';\theta)]\). Estimating this requires a separate \(s'\) sample from the same \(s\), independent of the one used to estimate \(\mathcal{T}^\pi \hat{V}\). In online RL, we observe only one transition from each state, causing a biased estimator. GTD methods sidestep this via the PBE objective.</p>
+        </div>
+      </div>
+
+      <h3>Stability: Positive Definiteness of A</h3>
+      <p>For linear TD, the key stability condition is that the matrix \(A = \Phi^\top D(I - \gamma P^\pi)\Phi\) be positive definite. This holds when:</p>
+      <ul style="padding-left:24px;margin-bottom:16px;line-height:2;">
+        <li><strong>On-policy:</strong> \(D\) is the stationary distribution of \(\pi\), which satisfies a balance condition making \(A\) PD.</li>
+        <li><strong>Off-policy:</strong> No guarantee. \(A\) can have negative eigenvalues, causing divergence (Baird's example).</li>
+      </ul>
+
+      <h3>Concentrability Coefficients</h3>
+      <p>Munos (2003, 2005) formalized how the mismatch between training distribution \(\mu\) and target distribution affects error propagation in ADP. The concentrability coefficient:</p>
+      <div class="math-block">$$c(m) = \sup_\pi \left\|\frac{(P^\pi)^m d_0}{d^\mu}\right\|_\infty$$</div>
+      <p>measures how quickly the policy occupancy can grow relative to the data distribution. When data lacks coverage, \(c(m)\) is large, and approximation errors compound over policy iterations.</p>
+
+      <div class="callout callout-theorem">
+        <div class="callout-title">📐 Munos's ADP Error Bound (2003)</div>
+        <div class="math-block">$$\|Q^* - Q^{\hat{\pi}_K}\|^2_{d_0} \leq \frac{\gamma^2 C}{(1-\gamma)^4} \max_{1 \leq k \leq K} \epsilon_k$$</div>
+        <p>where \(C = \sum_{m=1}^\infty m \gamma^m c(m)\) accumulates all concentrability over the horizon, \(\epsilon_k\) is the regression error per iteration, and \(\hat{\pi}_K\) is the greedy policy w.r.t. \(Q^K\).</p>
+      </div>
+
+      <h3>Neural Tangent Kernel (NTK) Perspective</h3>
+      <p>For overparameterized neural networks, training dynamics in the lazy training regime are governed by the Neural Tangent Kernel \(K(s, s') = \nabla_\theta f_\theta(s)^\top \nabla_\theta f_\theta(s')\). This kernel remains approximately constant during training, effectively reducing to linear FA in feature space defined by the network Jacobian.</p>
+    </section>
+
+    <!-- Section 11: Modern Advances -->
+    <section id="modern">
+      <h2><span class="section-num">§11</span> Modern Advances</h2>
+
+      <h3>Deep RL Scaling</h3>
+      <p>Modern deep RL systems (AlphaZero, MuZero, Gato, RT-2) show that scale matters enormously. Larger networks, more diverse training environments, and longer training lead to emergent capabilities not seen in smaller systems. Key insights:</p>
+      <ul style="padding-left:24px;margin-bottom:16px;line-height:2;">
+        <li>Transformer-based policies (Decision Transformer, Gato) treat RL as sequence modeling</li>
+        <li>World models (DreamerV3) enable efficient learning from raw pixels via imagined rollouts</li>
+        <li>Foundation model pre-training for RL initialization</li>
+      </ul>
+
+      <h3>Representation Learning in RL</h3>
+      <p>The quality of the state representation \(\phi(s)\) fundamentally determines the difficulty of function approximation. Modern approaches to learning representations:</p>
+
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-symbol">🔮</div>
+          <div class="def-name">Auxiliary Tasks</div>
+          <div class="def-desc">Learn features that predict future states, rewards, or observations (UNREAL, AUX-tasks). Better representations for the main task emerge as a byproduct.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">🌀</div>
+          <div class="def-name">Bisimulation Metrics</div>
+          <div class="def-desc">Learn representations where similar behavioral states (same future reward distribution) are metrically close. DBC, MICo, SimPLe.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">📡</div>
+          <div class="def-name">Self-Supervised</div>
+          <div class="def-desc">Contrastive and predictive coding methods (CURL, SPR, ATC) pre-train encoders without reward signals.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">⚡</div>
+          <div class="def-name">Linear Successor Rep.</div>
+          <div class="def-desc">Successor features decompose Q(s,a) = w⊤ψ(s,a), enabling fast transfer across reward functions.</div>
+        </div>
+      </div>
+
+      <h3>Offline RL Progress</h3>
+      <p>Offline RL has seen dramatic progress since 2020, enabling learning from large pre-collected datasets:</p>
+      <ul style="padding-left:24px;margin-bottom:16px;line-height:2;">
+        <li><strong>IQL (Implicit Q-Learning)</strong>: Avoids evaluating OOD actions entirely via expectile regression</li>
+        <li><strong>Decision Transformer</strong>: Reframes offline RL as conditional sequence modeling</li>
+        <li><strong>Offline-to-Online</strong>: Fine-tuning offline-learned policies with online interaction</li>
+        <li><strong>Dataset scaling</strong>: D4RL, RoboMimic, Bridge Data — larger offline datasets enable better policies</li>
+      </ul>
+
+      <h3>Implicit Regularization in Neural FA</h3>
+      <p>Recent work shows that gradient descent on neural networks in RL has implicit regularization effects. Overparameterized networks may converge to minimum-norm solutions, and the inductive biases of specific architectures (CNNs for spatial tasks, Transformers for sequential tasks) can be understood through the lens of function approximation.</p>
+    </section>
+
+    <!-- Section 12: Timeline -->
+    <section id="timeline">
+      <h2><span class="section-num">§12</span> Historical Timeline</h2>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1957</div>
+          <div class="timeline-title">Bellman Equations & Dynamic Programming</div>
+          <div class="timeline-desc">Richard Bellman establishes the mathematical foundation of sequential decision making. Value functions and the Bellman optimality principle are born.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1988</div>
+          <div class="timeline-title">TD Learning (Sutton)</div>
+          <div class="timeline-desc">Temporal difference learning introduced. TD(λ) unifies Monte Carlo and DP methods via eligibility traces. First formal treatment of learning with FA.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1989</div>
+          <div class="timeline-title">Q-Learning (Watkins)</div>
+          <div class="timeline-desc">Model-free off-policy control algorithm introduced. Tabular convergence proven. Foundation for modern deep RL.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1992</div>
+          <div class="timeline-title">TD-Gammon (Tesauro)</div>
+          <div class="timeline-desc">First impressive demonstration of neural FA in RL — learns backgammon at grandmaster level using TD(0) with a neural network.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1995</div>
+          <div class="timeline-title">Baird's Counterexample</div>
+          <div class="timeline-desc">Shows that off-policy TD with linear FA can diverge. Formalizes the Deadly Triad. Motivates decades of research into stable algorithms.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1997</div>
+          <div class="timeline-title">Convergence of Linear TD (Tsitsiklis & Van Roy)</div>
+          <div class="timeline-desc">Proves that on-policy TD(0) with linear FA converges almost surely, and characterizes the solution as within 1/(1-γ) of optimal in class.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">2003</div>
+          <div class="timeline-title">Error Propagation in ADP (Munos)</div>
+          <div class="timeline-desc">Provides first rigorous error bounds for approximate policy iteration with concentrability coefficients. Framework for understanding offline RL.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">2009</div>
+          <div class="timeline-title">Gradient TD (Sutton et al.)</div>
+          <div class="timeline-desc">GTD2 and TDC — true gradient methods for off-policy learning. Convergent under off-policy sampling via two-timescale analysis.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">2013–2015</div>
+          <div class="timeline-title">Deep Q-Network (DQN, Mnih et al.)</div>
+          <div class="timeline-desc">Experience replay + target networks enable stable Q-learning with CNNs. Human-level performance on 49 Atari games. Ignites the deep RL revolution.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">2016</div>
+          <div class="timeline-title">AlphaGo / A3C</div>
+          <div class="timeline-desc">Deep policy gradient methods at scale. Asynchronous training enables large parallelism. Policy gradient enters the mainstream.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">2018–2020</div>
+          <div class="timeline-title">Offline RL Surge</div>
+          <div class="timeline-desc">BCQ, BEAR, CQL — offline RL with function approximation. D4RL benchmark establishes standardized evaluation.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">2021–2025</div>
+          <div class="timeline-title">Scaling & Foundation Models</div>
+          <div class="timeline-desc">Decision Transformer, Gato, RT-2, DreamerV3. RL meets large-scale pretraining. Function approximation with billions of parameters.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section id="summary">
+      <h2>Summary</h2>
+      <div class="callout callout-note">
+        <div class="callout-title">🗺 The Big Picture</div>
+        <p>Function approximation is the bridge between tabular RL theory and real-world applicability. The core tension: richer function classes reduce approximation error but increase estimation error and destabilize training. The Deadly Triad (FA + bootstrapping + off-policy) is the central challenge. Modern deep RL navigates this through architectural choices (target networks, replay), algorithmic design (CQL, PPO), and implicit regularization. Theory increasingly lags practice, especially for neural FA, making this an active and exciting research frontier.</p>
+      </div>
+
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-symbol">1</div>
+          <div class="def-name">Start with Linear FA</div>
+          <div class="def-desc">Strong theoretical guarantees. Understand the geometry before going nonlinear.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">2</div>
+          <div class="def-name">Know the Deadly Triad</div>
+          <div class="def-desc">Any practical system must address FA + bootstrapping + off-policy. No free lunch.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">3</div>
+          <div class="def-name">Representation Matters</div>
+          <div class="def-desc">The feature map φ(s) determines approximation error. Invest in representation.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-symbol">4</div>
+          <div class="def-name">Offline RL is Hard</div>
+          <div class="def-desc">Distribution shift + OOD extrapolation require explicit pessimism or constraints.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- References -->
+    <section id="references">
+      <h2>References</h2>
+      <ul class="ref-list">
+        <li class="ref-item">
+          <div class="ref-num">[1]</div>
+          <div>
+            <div class="ref-title">Reinforcement Learning: An Introduction (2nd ed.)</div>
+            <div class="ref-authors">Sutton, R.S. & Barto, A.G. (2018). MIT Press. — The canonical textbook. Chapters 9–13 cover function approximation thoroughly.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[2]</div>
+          <div>
+            <div class="ref-title">An Analysis of Temporal-Difference Learning with Function Approximation</div>
+            <div class="ref-authors">Tsitsiklis, J.N. & Van Roy, B. (1997). IEEE Transactions on Automatic Control. — Proves convergence of linear TD under on-policy sampling.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[3]</div>
+          <div>
+            <div class="ref-title">Error Bounds for Approximate Policy Iteration</div>
+            <div class="ref-authors">Munos, R. (2003). ICML. — Introduces concentrability coefficients and error propagation bounds for ADP.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[4]</div>
+          <div>
+            <div class="ref-title">Fast Gradient-Descent Methods for Temporal-Difference Learning</div>
+            <div class="ref-authors">Sutton, R.S., Maei, H.R., et al. (2009). ICML. — GTD2 and TDC: true gradient methods for off-policy learning.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[5]</div>
+          <div>
+            <div class="ref-title">Human-Level Control through Deep Reinforcement Learning</div>
+            <div class="ref-authors">Mnih, V., et al. (2015). Nature. — DQN: experience replay + target networks enable deep Q-learning.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[6]</div>
+          <div>
+            <div class="ref-title">Reinforcement Learning: Theory and Algorithms</div>
+            <div class="ref-authors">Agarwal, A., Jiang, N., Kakade, S., & Sun, W. (2022). — Modern theoretical treatment with sample complexity guarantees.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[7]</div>
+          <div>
+            <div class="ref-title">Conservative Q-Learning for Offline Reinforcement Learning</div>
+            <div class="ref-authors">Kumar, A., et al. (2020). NeurIPS. — CQL: pessimistic Q-learning for offline settings.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[8]</div>
+          <div>
+            <div class="ref-title">Offline Reinforcement Learning: Tutorial, Review, and Perspectives</div>
+            <div class="ref-authors">Levine, S., Kumar, A., Tucker, G., & Fu, J. (2020). arXiv. — Comprehensive survey of offline RL methods and theory.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[9]</div>
+          <div>
+            <div class="ref-title">Policy Gradient Methods for Reinforcement Learning with Function Approximation</div>
+            <div class="ref-authors">Sutton, R.S., McAllester, D., Singh, S., & Mansour, Y. (2000). NeurIPS. — The Policy Gradient Theorem.</div>
+          </div>
+        </li>
+        <li class="ref-item">
+          <div class="ref-num">[10]</div>
+          <div>
+            <div class="ref-title">Mastering Atari, Go, Chess and Shogi without Rules (MuZero)</div>
+            <div class="ref-authors">Schrittwieser, J., et al. (2020). Nature. — Deep model-based RL at scale with learned world models.</div>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <footer>
+      Built as a research reference for PhD / MTech students in Reinforcement Learning.<br>
+      All mathematical content follows Sutton & Barto (2018), Tsitsiklis & Van Roy (1997), and Munos (2003, 2005).
+    </footer>
+  </main>
+</div>
 
 <script>
-// ===== CURSOR =====
-const cursor=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
-let mx=0,my=0,rx=0,ry=0;
-document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.left=(mx-6)+'px';cursor.style.top=(my-6)+'px';});
-(function animRing(){rx+=(mx-rx-18)*0.15;ry+=(my-ry-18)*0.15;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing);})();
-document.querySelectorAll('a,button,input,.card,.nav-pill,.tab-btn,.btn').forEach(el=>{
-  el.addEventListener('mouseenter',()=>{cursor.style.transform='scale(2)';ring.style.transform='scale(1.5)';cursor.style.background='#7c3aed';});
-  el.addEventListener('mouseleave',()=>{cursor.style.transform='scale(1)';ring.style.transform='scale(1)';cursor.style.background='var(--accent1)';});
+// ===================== PROGRESS BAR =====================
+window.addEventListener('scroll', () => {
+  const doc = document.documentElement;
+  const progress = (doc.scrollTop) / (doc.scrollHeight - doc.clientHeight) * 100;
+  document.getElementById('progress-bar').style.width = progress + '%';
+  updateActiveNav();
+  updateTOC();
 });
 
-// ===== PROGRESS =====
-window.addEventListener('scroll',()=>{
-  document.getElementById('progress').style.width=(window.scrollY/(document.body.scrollHeight-window.innerHeight)*100)+'%';
-  document.getElementById('topnav').classList.toggle('scrolled',window.scrollY>10);
-});
-
-// ===== PARTICLES =====
-const pc=document.getElementById('particle-canvas'),pctx=pc.getContext('2d');
-function resizePC(){pc.width=window.innerWidth;pc.height=window.innerHeight;}
-resizePC(); window.addEventListener('resize',resizePC);
-const pts=Array.from({length:70},()=>({x:Math.random()*pc.width,y:Math.random()*pc.height,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.5+.5,a:Math.random()*.5+.2}));
-(function animP(){
-  pctx.clearRect(0,0,pc.width,pc.height);
-  pts.forEach(p=>{
-    p.x+=p.vx;p.y+=p.vy;
-    if(p.x<0||p.x>pc.width)p.vx*=-1;
-    if(p.y<0||p.y>pc.height)p.vy*=-1;
-    pctx.beginPath();pctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    pctx.fillStyle=`rgba(0,212,255,${p.a})`;pctx.fill();
+// ===================== NAV ACTIVE =====================
+function updateActiveNav() {
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.nav-link');
+  let current = '';
+  sections.forEach(s => {
+    if (s.getBoundingClientRect().top <= 100) current = s.id;
   });
-  pts.forEach((p,i)=>pts.slice(i+1).forEach(q=>{
-    const d=Math.hypot(p.x-q.x,p.y-q.y);
-    if(d<120){pctx.beginPath();pctx.moveTo(p.x,p.y);pctx.lineTo(q.x,q.y);pctx.strokeStyle=`rgba(0,212,255,${.07*(1-d/120)})`;pctx.lineWidth=.5;pctx.stroke();}
-  }));
-  requestAnimationFrame(animP);
+  navLinks.forEach(l => {
+    l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+  });
+}
+
+function updateTOC() {
+  const sections = document.querySelectorAll('section[id], h3[id]');
+  const tocLinks = document.querySelectorAll('.toc-item');
+  let current = '';
+  sections.forEach(s => {
+    if (s.getBoundingClientRect().top <= 100) current = s.id;
+  });
+  tocLinks.forEach(l => {
+    l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+  });
+}
+
+// ===================== TOGGLE TABS =====================
+function switchTab(btn, targetId) {
+  const panel = btn.closest('.toggle-panel');
+  panel.querySelectorAll('.toggle-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  panel.querySelectorAll('.intuition-pane, .math-pane').forEach(p => p.classList.remove('active'));
+  const target = panel.querySelector('#' + targetId);
+  if (target) target.classList.add('active');
+  if (window.MathJax) MathJax.typesetPromise([target]);
+}
+
+// ===================== COLLAPSIBLE =====================
+function toggleCollapsible(btn) {
+  btn.classList.toggle('open');
+  const body = btn.nextElementSibling;
+  body.classList.toggle('open');
+  if (body.classList.contains('open') && window.MathJax) MathJax.typesetPromise([body]);
+}
+
+// ===================== CURSE OF DIMENSIONALITY CHART =====================
+(function() {
+  const canvas = document.getElementById('cod-chart');
+  const ctx = canvas.getContext('2d');
+  const kSlider = document.getElementById('cod-k');
+  const kVal = document.getElementById('cod-k-val');
+
+  function drawCOD() {
+    const k = parseInt(kSlider.value);
+    kVal.textContent = `k=${k}`;
+    const W = canvas.offsetWidth, H = 220;
+    canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+
+    const maxD = 10;
+    const values = Array.from({length: maxD}, (_, i) => Math.pow(k, i+1));
+    const maxVal = values[values.length-1];
+
+    const pad = {l:60, r:20, t:20, b:40};
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 5; i++) {
+      const y = pad.t + (1 - i/5) * ch;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l+cw, y); ctx.stroke();
+    }
+
+    // Bars
+    const barW = cw / maxD * 0.7;
+    const gap = cw / maxD;
+    values.forEach((v, i) => {
+      const h = Math.min(v / maxVal, 1) * ch;
+      const x = pad.l + i * gap + gap * 0.15;
+      const y = pad.t + ch - h;
+      const alpha = 0.4 + 0.6 * (v / maxVal);
+      ctx.fillStyle = `rgba(37,99,235,${alpha})`;
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, h, 4);
+      ctx.fill();
+
+      // Label
+      ctx.fillStyle = '#6b6b8a'; ctx.font = `11px Outfit, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(`d=${i+1}`, x + barW/2, pad.t + ch + 16);
+
+      // Value label (log scale display)
+      if (v >= 1e12) {
+        ctx.fillStyle = '#2563eb'; ctx.font = `bold 10px Outfit, sans-serif`;
+        ctx.fillText(`${(v/1e12).toFixed(0)}T`, x + barW/2, Math.max(y - 4, pad.t + 12));
+      } else if (v >= 1e6) {
+        ctx.fillStyle = '#2563eb'; ctx.font = `bold 10px Outfit, sans-serif`;
+        ctx.fillText(`${(v/1e6).toFixed(0)}M`, x + barW/2, Math.max(y - 4, pad.t + 12));
+      } else if (v >= 1000) {
+        ctx.fillStyle = '#2563eb'; ctx.font = `bold 10px Outfit, sans-serif`;
+        ctx.fillText(`${(v/1000).toFixed(0)}K`, x + barW/2, Math.max(y - 4, pad.t + 12));
+      }
+    });
+
+    // Y-axis
+    ctx.fillStyle = '#6b6b8a'; ctx.font = `11px Outfit, sans-serif`; ctx.textAlign = 'right';
+    ctx.fillText('Table entries', pad.l - 6, pad.t - 6);
+
+    // X axis label
+    ctx.textAlign = 'center'; ctx.fillStyle = '#6b6b8a';
+    ctx.fillText('State dimensions (d)', pad.l + cw/2, H - 4);
+  }
+
+  kSlider.addEventListener('input', drawCOD);
+  drawCOD();
+  window.addEventListener('resize', drawCOD);
 })();
 
-// ===== SCROLL ANIMATIONS =====
-const obs=new IntersectionObserver(e=>e.forEach(i=>{if(i.isIntersecting)i.target.classList.add('visible');}),{threshold:.08});
-document.querySelectorAll('.card,.tl-item,.anim-item').forEach(el=>obs.observe(el));
-document.querySelectorAll('.cards-grid').forEach(g=>g.querySelectorAll('.card').forEach((c,i)=>c.style.animationDelay=(i*.1)+'s'));
-document.querySelectorAll('.tl-item').forEach((el,i)=>el.style.transitionDelay=(i*.08)+'s');
+// ===================== BASIS FUNCTION CHART =====================
+let currentBasis = 'rbf';
+let currentFitted = false;
+let fittedTheta = null;
 
-// ===== TABS =====
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const id=btn.dataset.tab; if(!id) return;
-    const bar=btn.closest('.tab-bar');
-    bar.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const section=bar.closest('section')||document.body;
-    section.querySelectorAll('.tab-content').forEach(tc=>tc.classList.toggle('active',tc.id==='tab-'+id));
-    setTimeout(()=>{
-      if(id==='lin-polynomial')drawPolyBasis();
-      if(id==='lin-fourier')drawFourier();
-      if(id==='lin-tile')drawTiling();
-      if(id==='lin-rbf')drawRBF();
-      if(id==='algo-td')drawLambda();
-    },50);
+function targetFn(x) {
+  return 0.4 * Math.sin(3 * x) + 0.3 * Math.cos(5 * x) + 0.2 * x;
+}
+
+function rbfBasis(x, d) {
+  const centers = Array.from({length: d}, (_, i) => -1 + 2 * i / (d-1 || 1));
+  const sigma = 2 / (d || 1);
+  return centers.map(c => Math.exp(-Math.pow(x - c, 2) / (2 * sigma * sigma)));
+}
+
+function fourierBasis(x, d) {
+  const res = [];
+  for (let i = 0; i < d; i++) {
+    res.push(Math.cos(Math.PI * i * (x + 1) / 2));
+  }
+  return res;
+}
+
+function polyBasis(x, d) {
+  return Array.from({length: d}, (_, i) => Math.pow(x, i));
+}
+
+function getBasisFn(x, d) {
+  if (currentBasis === 'rbf') return rbfBasis(x, d);
+  if (currentBasis === 'fourier') return fourierBasis(x, d);
+  return polyBasis(x, d);
+}
+
+function setBasis(b) {
+  currentBasis = b;
+  currentFitted = false; fittedTheta = null;
+  ['rbf','fourier','poly'].forEach(n => {
+    document.getElementById('btn-'+n).className = 'btn' + (n===b ? ' btn-primary' : '');
   });
-});
-
-// ===== CANVAS HELPERS =====
-function clr(ctx,canvas){ctx.fillStyle='#0b1020';ctx.fillRect(0,0,canvas.width,canvas.height);}
-function axes(ctx,W,H,pad=30){ctx.strokeStyle='#1e2d4a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,pad);ctx.lineTo(pad,H-pad);ctx.stroke();ctx.beginPath();ctx.moveTo(pad,H-pad);ctx.lineTo(W-pad,H-pad);ctx.stroke();}
-
-// ===== APPROX DEMO =====
-const ac=document.getElementById('approx-canvas').getContext('2d');
-let pts2=[];
-function gaussElim(A,b){
-  const n=b.length,M=A.map((row,i)=>[...row,b[i]]);
-  for(let c=0;c<n;c++){
-    let mx=c;
-    for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[mx][c]))mx=r;
-    [M[c],M[mx]]=[M[mx],M[c]];
-    for(let r=c+1;r<n;r++){const f=M[r][c]/(M[c][c]||1e-9);for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}
-  }
-  const x=new Array(n).fill(0);
-  for(let i=n-1;i>=0;i--){x[i]=M[i][n]/(M[i][i]||1e-9);for(let j=i+1;j<n;j++)x[i]-=M[i][j]*x[j]/(M[i][i]||1e-9);}
-  return x;
-}
-function polyFit(points,deg){
-  const d=deg+1,X=points.map(p=>Array.from({length:d},(_,k)=>Math.pow(p.x,k))),y=points.map(p=>p.y);
-  const XtX=Array.from({length:d},(_,i)=>Array.from({length:d},(_,j)=>X.reduce((s,r)=>s+r[i]*r[j],0)));
-  const Xty=Array.from({length:d},(_,i)=>X.reduce((s,r,ri)=>s+r[i]*y[ri],0));
-  const c=gaussElim(XtX,Xty);
-  return x=>c.reduce((s,ci,k)=>s+ci*Math.pow(x,k),0);
-}
-function genPts(){
-  const n=parseInt(document.getElementById('noise-lvl').value);
-  pts2=Array.from({length:22},(_,i)=>{const x=i/21;return{x,y:Math.sin(x*Math.PI*2)*.4+.5+(Math.random()-.5)*n/200};});
-}
-function drawApprox(){
-  const W=340,H=220,pad=30,deg=parseInt(document.getElementById('poly-deg').value);
-  const canvas=document.getElementById('approx-canvas');
-  clr(ac,canvas);axes(ac,W,H,pad);
-  if(!pts2.length)return;
-  const fn=polyFit(pts2,deg);
-  // true fn
-  ac.beginPath();ac.strokeStyle='#1e2d4a';ac.lineWidth=1.5;ac.setLineDash([4,4]);
-  for(let i=0;i<=100;i++){const x=i/100,y=Math.sin(x*Math.PI*2)*.4+.5;i===0?ac.moveTo(pad+x*(W-2*pad),pad+(1-y)*(H-2*pad)):ac.lineTo(pad+x*(W-2*pad),pad+(1-y)*(H-2*pad));}
-  ac.stroke();ac.setLineDash([]);
-  // fit
-  ac.beginPath();ac.strokeStyle='#00d4ff';ac.lineWidth=2;
-  for(let i=0;i<=200;i++){const x=i/200,y=Math.max(0,Math.min(1,fn(x)));i===0?ac.moveTo(pad+x*(W-2*pad),pad+(1-y)*(H-2*pad)):ac.lineTo(pad+x*(W-2*pad),pad+(1-y)*(H-2*pad));}
-  ac.stroke();
-  // points
-  pts2.forEach(p=>{ac.beginPath();ac.arc(pad+p.x*(W-2*pad),pad+(1-p.y)*(H-2*pad),3,0,Math.PI*2);ac.fillStyle='#f59e0b';ac.fill();});
-  ac.fillStyle='#00d4ff';ac.font='11px JetBrains Mono';ac.textAlign='right';ac.fillText('deg='+deg,W-8,18);ac.textAlign='left';
-  document.getElementById('poly-info').textContent='φ(s)=[1, s, s², ..., s^'+deg+']  |  d='+(deg+1)+' parameters';
-}
-document.getElementById('poly-deg').addEventListener('input',drawApprox);
-document.getElementById('noise-lvl').addEventListener('input',()=>{genPts();drawApprox();});
-document.getElementById('resample-btn').addEventListener('click',()=>{genPts();drawApprox();});
-genPts();
-
-// ===== POLY BASIS =====
-function drawPolyBasis(){
-  const c=document.getElementById('poly-basis-canvas');if(!c)return;
-  const ctx=c.getContext('2d'),W=c.width,H=c.height,pad=20;
-  clr(ctx,c);axes(ctx,W,H,pad);
-  const cols=['#00d4ff','#7c3aed','#f59e0b','#10b981','#f87171'];
-  for(let d=0;d<=4;d++){
-    ctx.beginPath();ctx.strokeStyle=cols[d];ctx.lineWidth=1.8;
-    for(let i=0;i<=100;i++){const x=i/100,y=Math.pow(x,d),px=pad+x*(W-2*pad),py=pad+(1-y*.9)*(H-2*pad);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
-    ctx.stroke();
-    ctx.fillStyle=cols[d];ctx.font='10px JetBrains Mono';ctx.textAlign='left';ctx.fillText('s^'+d,W-pad-22,pad+d*20+10);
-  }
+  drawBasis();
 }
 
-// ===== FOURIER =====
-function drawFourier(){
-  const c=document.getElementById('fourier-canvas');if(!c)return;
-  const ctx=c.getContext('2d'),W=c.width,H=c.height,pad=20;
-  clr(ctx,c);axes(ctx,W,H,pad);
-  const cols=['#00d4ff','#7c3aed','#f59e0b','#10b981','#f87171','#a78bfa'];
-  for(let k=0;k<=5;k++){
-    ctx.beginPath();ctx.strokeStyle=cols[k];ctx.lineWidth=1.8;
-    for(let i=0;i<=200;i++){const x=i/200,y=(Math.cos(Math.PI*k*x)+1)/2,px=pad+x*(W-2*pad),py=pad+(1-y*.85)*(H-2*pad);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
-    ctx.stroke();
-    ctx.fillStyle=cols[k];ctx.font='10px JetBrains Mono';ctx.textAlign='left';ctx.fillText('c='+k,W-pad-22,pad+k*18+10);
-  }
-}
+function fitBasis() {
+  const d = parseInt(document.getElementById('basis-d').value);
+  const N = 50;
+  const xs = Array.from({length: N}, (_, i) => -1 + 2 * i / (N-1));
 
-// ===== TILE CODING =====
-function drawTiling(){
-  const c=document.getElementById('tile-canvas');if(!c)return;
-  const ctx=c.getContext('2d'),W=c.width,H=c.height,pad=20,n=parseInt(document.getElementById('tiling-count').value);
-  document.getElementById('tiling-val').textContent=n;
-  clr(ctx,c);
-  const cols=['rgba(0,212,255,0.4)','rgba(124,58,237,0.4)','rgba(245,158,11,0.4)','rgba(16,185,129,0.4)','rgba(248,113,113,0.4)','rgba(167,139,250,0.4)','rgba(251,146,60,0.4)','rgba(52,211,153,0.4)'];
-  const tW=(W-2*pad)/4,tH=(H-2*pad-24)/4;
-  for(let t=0;t<n;t++){
-    const ox=t*(tW/n),oy=t*(tH/n);
-    ctx.strokeStyle=cols[t%cols.length];ctx.lineWidth=1.5;
-    for(let i=-1;i<=5;i++)for(let j=-1;j<=5;j++){
-      const x=pad+i*tW-ox,y=pad+j*tH-oy;
-      if(x>pad-tW&&x<W-pad&&y>pad-tH&&y<H-pad-20)ctx.strokeRect(x,y,tW,tH);
-    }
-  }
-  const px=W*.57,py=H*.44;
-  ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
-  ctx.fillStyle='#f59e0b';ctx.font='10px JetBrains Mono';ctx.textAlign='left';ctx.fillText('s',px+8,py+4);
-  ctx.fillStyle='#64748b';ctx.font='10px JetBrains Mono';ctx.fillText(n+' tilings | 4×4 tiles each',pad,H-6);
-}
-document.getElementById('tiling-count').addEventListener('input',drawTiling);
+  // Build design matrix
+  const Phi = xs.map(x => getBasisFn(x, d));
+  const y = xs.map(targetFn);
 
-// ===== RBF =====
-function drawRBF(){
-  const c=document.getElementById('rbf-canvas');if(!c)return;
-  const ctx=c.getContext('2d'),W=c.width,H=c.height,pad=20;
-  clr(ctx,c);axes(ctx,W,H,pad);
-  const centers=[.12,.3,.5,.7,.88],sigma=.12,cols=['#00d4ff','#7c3aed','#f59e0b','#10b981','#f87171'];
-  centers.forEach((ci,idx)=>{
-    ctx.beginPath();ctx.strokeStyle=cols[idx];ctx.lineWidth=1.8;
-    for(let i=0;i<=200;i++){const x=i/200,y=Math.exp(-Math.pow(x-ci,2)/(2*sigma*sigma)),px=pad+x*(W-2*pad),py=pad+(1-y*.9)*(H-2*pad);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
-    ctx.stroke();
-    ctx.beginPath();ctx.arc(pad+ci*(W-2*pad),H-pad,4,0,Math.PI*2);ctx.fillStyle=cols[idx];ctx.fill();
-  });
-  ctx.fillStyle='#64748b';ctx.font='10px JetBrains Mono';ctx.textAlign='left';ctx.fillText('σ='+sigma+' | 5 RBF centers',pad,16);
-}
-
-// ===== NEURAL NET =====
-const nnC=document.getElementById('nn-canvas'),nnCtx=nnC.getContext('2d');
-let outputType='V',nnL=3,nnW=4;
-function setOutput(t){
-  outputType=t;
-  ['v','q','pi'].forEach(id=>document.getElementById('btn-'+id).classList.remove('active'));
-  document.getElementById('btn-'+t.toLowerCase()).classList.add('active');
-  drawNN();
-}
-function getLayers(){
-  const inp=outputType==='Q'?6:4;
-  const out=outputType==='V'?1:outputType==='Q'?4:6;
-  return [inp,...Array(nnL).fill(nnW),out];
-}
-function drawNN(hlayer=-1,hprog=0){
-  const W=nnC.width,H=nnC.height;
-  clr(nnCtx,nnC);
-  const layers=getLayers(),L=layers.length,xStep=(W-80)/(L-1);
-  const lpos=layers.map((n,li)=>{const x=40+li*xStep,ys=(H-60)/(n+1);return Array.from({length:n},(_,i)=>({x,y:30+(i+1)*ys}));});
-  // Connections
-  for(let li=0;li<L-1;li++){
-    const isA=li<hlayer,isCur=li===hlayer;
-    lpos[li].forEach(f=>lpos[li+1].forEach(t=>{
-      nnCtx.beginPath();nnCtx.moveTo(f.x,f.y);nnCtx.lineTo(t.x,t.y);
-      nnCtx.strokeStyle=isA?'rgba(0,212,255,0.3)':isCur?`rgba(0,212,255,${hprog*.5})`:'rgba(30,45,74,0.8)';
-      nnCtx.lineWidth=isA||isCur?1.2:.7;nnCtx.stroke();
-    }));
-  }
-  // Nodes
-  const outLabels=outputType==='V'?['V(s)']:outputType==='Q'?['Q(s,a₁)','Q(s,a₂)','Q(s,a₃)','Q(s,a₄)']:['π(a₁|s)','π(a₂|s)','π(a₃|s)','π(a₄|s)','π(a₅|s)','π(a₆|s)'];
-  lpos.forEach((layer,li)=>{
-    const isA=li<=hlayer&&hlayer>=0;
-    layer.forEach(node=>{
-      nnCtx.beginPath();nnCtx.arc(node.x,node.y,10,0,Math.PI*2);
-      nnCtx.fillStyle=isA&&li<hlayer?'rgba(0,212,255,0.35)':isA?`rgba(0,212,255,${hprog*.35})`:li===0?'rgba(0,212,255,0.1)':li===L-1?'rgba(16,185,129,0.1)':'rgba(124,58,237,0.1)';
-      nnCtx.strokeStyle=li===0?'#00d4ff':li===L-1?'#10b981':'#7c3aed';
-      nnCtx.lineWidth=1.5;nnCtx.fill();nnCtx.stroke();
-      if(li>0&&li<L-1){nnCtx.fillStyle='#94a3b8';nnCtx.font='8px JetBrains Mono';nnCtx.textAlign='center';nnCtx.fillText('σ',node.x,node.y+3);}
+  // Least squares: theta = (Phi'Phi)^-1 Phi' y
+  // Simple gradient descent for simplicity
+  let theta = new Array(d).fill(0);
+  const lr = 0.05;
+  for (let iter = 0; iter < 2000; iter++) {
+    const grad = new Array(d).fill(0);
+    xs.forEach((x, i) => {
+      const phi = Phi[i];
+      const pred = phi.reduce((s, p, j) => s + theta[j] * p, 0);
+      const err = pred - y[i];
+      phi.forEach((p, j) => grad[j] += err * p / N);
     });
-    const lbl=['Input',...Array(nnL).fill('').map((_,i)=>'H'+(i+1)),'Output'];
-    nnCtx.fillStyle='#64748b';nnCtx.font='10px JetBrains Mono';nnCtx.textAlign='center';
-    nnCtx.fillText((lbl[li]||'')+'('+layers[li]+')',layer[0].x,H-6);
-    if(li===L-1)layer.forEach((node,i)=>{if(outLabels[i]){nnCtx.fillStyle='#10b981';nnCtx.font='9px JetBrains Mono';nnCtx.textAlign='left';nnCtx.fillText(outLabels[i],node.x+14,node.y+3);}});
-  });
-  nnCtx.textAlign='left';
+    theta = theta.map((t, j) => t - lr * grad[j]);
+  }
+  fittedTheta = theta;
+  currentFitted = true;
+  drawBasis();
 }
-document.getElementById('nn-layers').addEventListener('input',function(){nnL=parseInt(this.value);document.getElementById('nn-layers-val').textContent=nnL;drawNN();});
-document.getElementById('nn-width').addEventListener('input',function(){nnW=parseInt(this.value);document.getElementById('nn-width-val').textContent=nnW;drawNN();});
-let animating=false;
-document.getElementById('animate-nn-btn').addEventListener('click',()=>{
-  if(animating)return;animating=true;
-  const layers=getLayers();let li=0,prog=0;
-  (function step(){
-    prog+=0.06;if(prog>=1){prog=0;li++;}
-    if(li>=layers.length){animating=false;drawNN();return;}
-    drawNN(li,prog);requestAnimationFrame(step);
-  })();
+
+function drawBasis() {
+  const canvas = document.getElementById('basis-chart');
+  const ctx = canvas.getContext('2d');
+  const d = parseInt(document.getElementById('basis-d').value);
+  document.getElementById('basis-d-val').textContent = `d=${d}`;
+
+  const W = canvas.offsetWidth, H = 260;
+  canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const pad = {l:50, r:20, t:20, b:40};
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  const N = 200;
+  const xs = Array.from({length: N}, (_, i) => -1 + 2 * i / (N-1));
+
+  ctx.clearRect(0, 0, W, H);
+
+  function toScreen(x, y) {
+    return [(x + 1) / 2 * cw + pad.l, pad.t + ch/2 - y * ch * 0.4];
+  }
+
+  // Grid
+  ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+  for (let i = -2; i <= 2; i++) {
+    const [,sy] = toScreen(0, i * 0.5);
+    ctx.beginPath(); ctx.moveTo(pad.l, sy); ctx.lineTo(pad.l+cw, sy); ctx.stroke();
+  }
+  // Axes
+  const [, sy0] = toScreen(0, 0);
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, sy0); ctx.lineTo(pad.l+cw, sy0); ctx.stroke();
+
+  // Basis functions (dim)
+  const colors = ['#bfdbfe','#c4b5fd','#bbf7d0','#fde68a','#fca5a5','#a5f3fc'];
+  for (let j = 0; j < d; j++) {
+    ctx.strokeStyle = colors[j % colors.length];
+    ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+    ctx.beginPath();
+    xs.forEach((x, i) => {
+      const phi = getBasisFn(x, d);
+      const [sx, sy] = toScreen(x, phi[j]);
+      i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // True function
+  ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  xs.forEach((x, i) => {
+    const [sx, sy] = toScreen(x, targetFn(x));
+    i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  });
+  ctx.stroke();
+
+  // Fitted function
+  if (currentFitted && fittedTheta) {
+    ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    xs.forEach((x, i) => {
+      const phi = getBasisFn(x, d);
+      const pred = phi.reduce((s, p, j) => s + fittedTheta[j] * p, 0);
+      const [sx, sy] = toScreen(x, pred);
+      i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+    });
+    ctx.stroke();
+
+    // Legend
+    ctx.fillStyle = '#2563eb'; ctx.font = '11px Outfit,sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('— Fitted approximation', pad.l + 8, pad.t + 16);
+  }
+
+  // Legend
+  ctx.fillStyle = '#1a1a2e'; ctx.font = 'bold 11px Outfit,sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('— True function', pad.l + 8, pad.t + (currentFitted ? 32 : 16));
+  ctx.fillStyle = '#93c5fd'; ctx.font = '11px Outfit,sans-serif';
+  ctx.fillText('--- Basis functions', pad.l + 8, pad.t + (currentFitted ? 48 : 32));
+
+  // X-axis label
+  ctx.fillStyle = '#6b6b8a'; ctx.textAlign = 'center';
+  ctx.fillText('State s', pad.l + cw/2, H - 4);
+}
+
+document.getElementById('basis-d').addEventListener('input', () => {
+  currentFitted = false; fittedTheta = null;
+  drawBasis();
+});
+drawBasis();
+
+// ===================== PROJECTION CHART =====================
+(function() {
+  const canvas = document.getElementById('proj-chart');
+  const ctx = canvas.getContext('2d');
+  const W = 360, H = 280;
+  canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const pad = {l:40, r:20, t:20, b:36};
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  const N = 150;
+
+  function trueV(x) { return 0.5 * Math.sin(2.5 * x) + 0.3 * x * x - 0.2; }
+  function linApprox(x) { return 0.32 * x + 0.06; } // Best linear fit
+
+  const xs = Array.from({length: N}, (_, i) => -1 + 2 * i / (N-1));
+  const minY = -0.8, maxY = 0.8;
+
+  function toScreen(x, y) {
+    return [(x+1)/2*cw + pad.l, pad.t + (1 - (y-minY)/(maxY-minY))*ch];
+  }
+
+  // Axes
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+  const [, sy0] = toScreen(0, 0);
+  ctx.beginPath(); ctx.moveTo(pad.l, sy0); ctx.lineTo(pad.l+cw, sy0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t+ch); ctx.stroke();
+
+  // Error region
+  ctx.fillStyle = 'rgba(225,29,72,0.08)';
+  ctx.beginPath();
+  xs.forEach((x, i) => {
+    const tv = trueV(x), la = linApprox(x);
+    if (tv > la) {
+      const [sx, sy1] = toScreen(x, tv), [, sy2] = toScreen(x, la);
+      i === 0 ? ctx.moveTo(sx, sy1) : ctx.lineTo(sx, sy1);
+    }
+  });
+  xs.slice().reverse().forEach((x) => {
+    const tv = trueV(x), la = linApprox(x);
+    if (tv > la) {
+      const [sx,] = toScreen(x, la), [,sy2] = toScreen(x, la);
+      ctx.lineTo(toScreen(x,la)[0], toScreen(x,la)[1]);
+    }
+  });
+  ctx.closePath(); ctx.fill();
+
+  // True V
+  ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  xs.forEach((x, i) => {
+    const [sx, sy] = toScreen(x, trueV(x));
+    i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  });
+  ctx.stroke();
+
+  // Linear approx
+  ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  const [sx0,sy0_] = toScreen(-1, linApprox(-1)), [sx1,sy1_] = toScreen(1, linApprox(1));
+  ctx.moveTo(sx0, sy0_); ctx.lineTo(sx1, sy1_);
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#1a1a2e'; ctx.font = 'bold 11px Outfit,sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('V*(s)', pad.l+8, pad.t+18);
+  ctx.fillStyle = '#2563eb';
+  ctx.fillText('ΠV*(s)', pad.l + cw - 52, sy1_ - 6);
+  ctx.fillStyle = 'rgba(225,29,72,0.8)';
+  ctx.fillText('error', pad.l + cw/2, pad.t + 60);
+
+  // X label
+  ctx.fillStyle = '#6b6b8a'; ctx.font = '11px Outfit,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('State s', pad.l + cw/2, H - 4);
+})();
+
+// ===================== DQN SIMULATION =====================
+function runDQNSim() {
+  const canvas = document.getElementById('dqn-chart');
+  const ctx = canvas.getContext('2d');
+  const useTarget = document.getElementById('use-target').checked;
+  const useReplay = document.getElementById('use-replay').checked;
+
+  const W = canvas.offsetWidth, H = 220;
+  canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const pad = {l:50, r:20, t:20, b:36};
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+
+  // Simulate training curve
+  const T = 100;
+  let reward = 0;
+  const rewards = [];
+  const noise = useReplay ? 5 : 12;
+  const instability = (!useTarget && !useReplay) ? 0.04 : (!useTarget || !useReplay) ? 0.015 : 0;
+
+  let r = 10;
+  for (let t = 0; t < T; t++) {
+    r += 0.6 * (1 - instability * t) + (Math.random() - 0.5) * noise;
+    if (instability > 0 && t > 40) r += (Math.random() - 0.2) * 20 * instability * t;
+    rewards.push(Math.max(-20, Math.min(100, r)));
+  }
+
+  const minR = Math.min(...rewards) - 5;
+  const maxR = Math.max(...rewards) + 5;
+
+  function toScreen(t, r) {
+    return [pad.l + t / T * cw, pad.t + (1 - (r - minR)/(maxR - minR)) * ch];
+  }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + i * ch / 4;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l+cw, y); ctx.stroke();
+  }
+
+  // Reward line
+  ctx.strokeStyle = useTarget && useReplay ? '#059669' : (!useTarget && !useReplay) ? '#e11d48' : '#d97706';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  rewards.forEach((r, i) => {
+    const [sx, sy] = toScreen(i, r);
+    i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  });
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#6b6b8a'; ctx.font = '11px Outfit,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Training Steps', pad.l + cw/2, H - 4);
+  ctx.textAlign = 'right';
+  ctx.fillText('Reward', pad.l - 6, pad.t - 6);
+
+  const label = useTarget && useReplay ? '✓ Stable (DQN)' : (!useTarget && !useReplay) ? '✗ Diverging' : '~ Partially stable';
+  const lcolor = useTarget && useReplay ? '#059669' : (!useTarget && !useReplay) ? '#e11d48' : '#d97706';
+  ctx.fillStyle = lcolor; ctx.font = 'bold 13px Outfit,sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(label, pad.l + 8, pad.t + 18);
+}
+runDQNSim();
+
+window.addEventListener('resize', () => {
+  setTimeout(() => {
+    drawBasis();
+    runDQNSim();
+  }, 50);
 });
 
-// ===== LAMBDA =====
-function drawLambda(){
-  const c=document.getElementById('lambda-canvas');if(!c)return;
-  const ctx=c.getContext('2d'),W=c.width,H=c.height,pad=30;
-  clr(ctx,c);axes(ctx,W,H,pad);
-  const lam=parseFloat(document.getElementById('lambda-val').value)/100;
-  document.getElementById('lambda-display').textContent=lam.toFixed(2);
-  const gamma=0.95,eff=1/(1-lam*gamma+.001);
-  ctx.beginPath();ctx.strokeStyle='#00d4ff';ctx.lineWidth=2;
-  for(let n=1;n<=25;n++){
-    const w=(1-lam)*Math.pow(lam,n-1),x=pad+(n/26)*(W-2*pad),y=H-pad-w*(H-2*pad)*10;
-    n===1?ctx.moveTo(x,y):ctx.lineTo(x,y);
-    ctx.fillStyle=`rgba(0,212,255,${Math.min(1,w*8+.05)})`;
-    ctx.fillRect(x-5,Math.max(pad,y),10,H-pad-Math.max(pad,y));
-  }
-  ctx.stroke();
-  ctx.fillStyle='#64748b';ctx.font='10px JetBrains Mono';ctx.textAlign='left';
-  ctx.fillText('λ='+lam.toFixed(2)+'  horizon≈'+eff.toFixed(1),pad,H-6);
-  ctx.fillText('weight on n-step returns',pad,16);
-}
-document.getElementById('lambda-val').addEventListener('input',drawLambda);
-
-// ===== BIAS VARIANCE =====
-function drawBV(){
-  const c=document.getElementById('bv-canvas');if(!c)return;
-  const ctx=c.getContext('2d'),W=c.width,H=c.height,pad=30;
-  clr(ctx,c);axes(ctx,W,H,pad);
-  const cx=parseInt(document.getElementById('complexity').value);
-  document.getElementById('complexity-val').textContent='complexity = '+cx;
-  const bias2=x=>0.65*Math.exp(-0.5*x),variance=x=>0.02*Math.exp(0.42*x),total=x=>bias2(x)+variance(x);
-  const toC=(x,y)=>({px:pad+x*(W-2*pad),py:H-pad-y*(H-2*pad)});
-  [{fn:bias2,col:'#00d4ff'},{fn:variance,col:'#f59e0b'},{fn:total,col:'#10b981'}].forEach(({fn,col})=>{
-    ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2;
-    for(let i=0;i<=100;i++){const x=i/100,{px,py}=toC(x,fn(x));i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
-    ctx.stroke();
-  });
-  const nx=(cx-1)/11,ny=total(nx),{px,py}=toC(nx,ny);
-  ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.fillStyle='#10b981';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.moveTo(px,H-pad);ctx.lineTo(px,py);ctx.strokeStyle='rgba(16,185,129,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle='#94a3b8';ctx.font='10px JetBrains Mono';ctx.textAlign='right';ctx.fillText('complexity →',W-pad,H-pad+18);ctx.textAlign='left';
-  document.getElementById('bv-info').innerHTML='bias²='+bias2(nx).toFixed(3)+'<br>variance='+variance(nx).toFixed(3)+'<br>total='+ny.toFixed(3)+'<br>'+(nx<.35?'← underfitting':nx>.65?'overfitting →':'✓ near optimal');
-}
-document.getElementById('complexity').addEventListener('input',drawBV);
-
-// ===== INIT =====
-setTimeout(()=>{drawApprox();drawPolyBasis();drawFourier();drawRBF();drawTiling();drawNN();drawBV();drawLambda();},200);
-window.addEventListener('resize',()=>{drawApprox();drawNN();drawBV();drawLambda();});
-  document.getElementById("year").textContent = new Date().getFullYear();
+// MathJax config
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$']] },
+  startup: { typeset: true }
+};
 </script>
 </body>
 </html>
