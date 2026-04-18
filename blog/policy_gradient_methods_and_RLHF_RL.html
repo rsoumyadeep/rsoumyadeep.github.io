@@ -3,1598 +3,2320 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Policy Gradient Methods & RLHF</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<title>Policy Gradients & RLHF </title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    packages: {'[+]': ['boldsymbol']}
+  },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
 <style>
- :root {
-  --bg: #ffffff;
-  --surface: #f8fafc;
-  --surface2: #eef2f7;
-
-  --accent: #2563eb;
-  --accent2: #7c3aed;
-  --accent3: #f59e0b;
-  --accent4: #10b981;
-
-  --text: #0f172a;
-  --muted: #475569;
-
-  --border: rgba(0,0,0,0.08);
+:root {
+  --bg: #FAFAF8;
+  --bg2: #F4F3EF;
+  --bg3: #ECEAE3;
+  --text: #1A1917;
+  --text2: #4A4844;
+  --text3: #7A7672;
+  --accent: #C4501A;
+  --accent2: #1A6FC4;
+  --accent3: #1A9C4A;
+  --accent-soft: #F5EDE8;
+  --accent2-soft: #E8F0F9;
+  --accent3-soft: #E8F5ED;
+  --border: #E0DDD5;
+  --border2: #D0CCC2;
+  --shadow: rgba(26,25,23,0.07);
+  --shadow2: rgba(26,25,23,0.14);
+  --mono: 'JetBrains Mono', monospace;
+  --serif: 'Lora', Georgia, serif;
+  --sans: 'Syne', sans-serif;
+  --radius: 8px;
+  --radius2: 14px;
 }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  
-  html { scroll-behavior: smooth; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    overflow-x: hidden;
-    cursor: default;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* Custom cursor */
-  #cursor {
-    position: fixed; width: 12px; height: 12px;
-    background: black; border-radius: 20%;
-    pointer-events: none; z-index: 9999;
-    transform: translate(-50%,-50%);
-    transition: transform 0.1s, width 0.2s, height 0.2s, background 0.2s;
-    mix-blend-mode: screen;
-  }
-  #cursor-trail {
-    position: fixed; width: 36px; height: 36px;
-    border: 1px solid rgba(0,229,255,0.4); border-radius: 50%;
-    pointer-events: none; z-index: 9998;
-    transform: translate(-50%,-50%);
-    transition: transform 0.18s ease, width 0.3s, height 0.3s;
-  }
-  body:has(a:hover) #cursor, body:has(button:hover) #cursor,
-  body:has(.card:hover) #cursor { width: 24px; height: 24px; background: var(--accent3); }
+html { scroll-behavior: smooth; font-size: 16px; }
 
-  /* Animated starfield background */
-  #stars-canvas {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 0; pointer-events: none;
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--serif);
+  line-height: 1.75;
+  overflow-x: hidden;
+}
 
-  /* Layout */
-  .wrapper { position: relative; z-index: 1; }
+/* Progress bar */
+#progress-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  z-index: 1000;
+  transition: width 0.1s linear;
+  width: 0%;
+}
 
-  /* NAV */
-  nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    padding: 1rem 2.5rem;
-    display: flex; align-items: center; justify-content: space-between;
-    background: rgba(255,255,255,0.8);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-  }
-  .nav-logo {
-    font-family: 'Space Mono', monospace;
-    color: var(--accent); font-size: 0.9rem; letter-spacing: 0.05em;
-  }
-  .nav-links { display: flex; gap: 1.5rem; list-style: none; }
-  .nav-links a {
-    color: var(--muted); text-decoration: none; font-size: 0.8rem;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    transition: color 0.2s;
-  }
-  .nav-links a:hover { color: var(--accent); }
+/* Navbar */
+nav {
+  position: fixed;
+  top: 3px; left: 0; right: 0;
+  background: rgba(250,250,248,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 999;
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
-  /* HERO */
-  .hero {
-    min-height: 100vh;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    text-align: center; padding: 6rem 2rem 4rem;
-    position: relative; overflow: hidden;
-  }
-  .hero::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0,229,255,0.07) 0%, transparent 70%),
-                radial-gradient(ellipse 50% 40% at 80% 80%, rgba(124,58,237,0.08) 0%, transparent 60%);
-  }
-  .hero-tag {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.75rem; letter-spacing: 0.2em; color: var(--accent);
-    text-transform: uppercase; margin-bottom: 1.5rem;
-    opacity: 0; animation: fadeUp 0.8s 0.2s forwards;
-  }
-  .hero h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(3rem, 8vw, 7rem);
-    line-height: 1.05; margin-bottom: 1.5rem;
-    opacity: 0; animation: fadeUp 0.8s 0.4s forwards;
-  }
-  .hero h1 span { color: var(--accent); font-style: italic; }
-  .hero-sub {
-    font-size: clamp(0.95rem, 2vw, 1.1rem);
-    color: var(--muted); max-width: 600px; line-height: 1.7;
-    opacity: 0; animation: fadeUp 0.8s 0.6s forwards;
-  }
-  .hero-cta {
-    display: flex; gap: 1rem; margin-top: 2.5rem; flex-wrap: wrap; justify-content: center;
-    opacity: 0; animation: fadeUp 0.8s 0.8s forwards;
-  }
-  .btn-primary {
-    padding: 0.75rem 2rem; background: var(--accent); color: var(--bg);
-    border: none; border-radius: 4px; font-family: 'Syne', sans-serif;
-    font-weight: 700; font-size: 0.9rem; cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    text-decoration: none; display: inline-block;
-  }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,0.3); }
-  .btn-outline {
-    padding: 0.75rem 2rem; background: transparent; color: var(--text);
-    border: 1px solid var(--border); border-radius: 4px; font-family: 'Syne', sans-serif;
-    font-weight: 600; font-size: 0.9rem; cursor: pointer;
-    transition: border-color 0.2s, color 0.2s; text-decoration: none; display: inline-block;
-  }
-  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.nav-brand {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
 
-  /* Scroll indicator */
-  .scroll-hint {
-    position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
-    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-    color: var(--muted); font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
-    animation: bounce 2s infinite;
-  }
-  .scroll-hint .arrow { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--accent), transparent); }
+.nav-links {
+  display: flex;
+  gap: 0.1rem;
+  list-style: none;
+}
 
-  /* SECTION base */
-  section { padding: 6rem 2rem; position: relative; }
-  .section-inner { max-width: 1100px; margin: 0 auto; }
-  .section-tag {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.7rem; letter-spacing: 0.25em; color: var(--accent);
-    text-transform: uppercase; margin-bottom: 0.75rem;
-    display: flex; align-items: center; gap: 0.75rem;
-  }
-  .section-tag::before {
-    content: ''; width: 32px; height: 1px; background: var(--accent);
-  }
-  .section-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(2rem, 5vw, 3.5rem); margin-bottom: 1rem; line-height: 1.1;
-  }
-  .section-desc { color: var(--muted); font-size: 1rem; line-height: 1.75; max-width: 700px; margin-bottom: 3rem; }
+.nav-links a {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text3);
+  text-decoration: none;
+  padding: 0.3rem 0.55rem;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  letter-spacing: 0.01em;
+}
 
-  /* Divider */
-  .divider {
-    height: 1px; background: linear-gradient(to right, transparent, var(--accent), transparent);
-    margin: 0 auto; max-width: 800px; opacity: 0.3;
-  }
+.nav-links a:hover { color: var(--accent); background: var(--accent-soft); }
 
-  /* CARDS */
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border); border-radius: 8px;
-    padding: 1.75rem; transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
-    position: relative; overflow: hidden;
-  }
-  .card::before {
-    content: ''; position: absolute; inset: 0;
-    background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(0,229,255,0.08), transparent 60%);
-    opacity: 0; transition: opacity 0.3s;
-  }
-  .card:hover { transform: translateY(-4px); border-color: rgba(0,229,255,0.35); box-shadow: 0 12px 40px rgba(0,229,255,0.08); }
-  .card:hover::before { opacity: 1; }
-  .card-icon { font-size: 1.75rem; margin-bottom: 1rem; }
-  .card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.6rem; }
-  .card p { color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
-  .card-accent { border-left: 3px solid var(--accent); }
-  .card-accent2 { border-left: 3px solid var(--accent2); }
-  .card-accent3 { border-left: 3px solid var(--accent3); }
-  .card-accent4 { border-left: 3px solid var(--accent4); }
+/* Layout */
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0;
+  min-height: 100vh;
+  padding-top: 59px;
+}
 
-  /* MATH BLOCKS */
-  .math-block {
-    background: rgba(0,229,255,0.04); border: 1px solid rgba(0,229,255,0.2);
-    border-radius: 6px; padding: 1.5rem 2rem; margin: 2rem 0;
-    font-family: 'Space Mono', monospace; font-size: 0.9rem;
-    overflow-x: auto; position: relative;
-  }
-  .math-block .label {
-    position: absolute; top: -0.6rem; left: 1rem;
-    background: var(--bg); padding: 0 0.5rem;
-    font-size: 0.65rem; letter-spacing: 0.15em; color: var(--accent); text-transform: uppercase;
-  }
-  .math-block .eq { color: #0f172a; line-height: 2; }
-  .math-block .comment { color: var(--muted); font-size: 0.8rem; }
+/* Sidebar TOC */
+.sidebar {
+  position: sticky;
+  top: 59px;
+  height: calc(100vh - 59px);
+  overflow-y: auto;
+  padding: 2rem 1.2rem 2rem 1.5rem;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+}
 
-  /* ACCORDION */
-  .accordion { display: flex; flex-direction: column; gap: 0.75rem; }
-  .acc-item {
-    border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .acc-item.open { border-color: rgba(0,229,255,0.3); }
-  .acc-header {
-    padding: 1.25rem 1.5rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: space-between;
-    background: var(--surface); transition: background 0.2s;
-    user-select: none;
-  }
-  .acc-header:hover { background: var(--surface2); }
-  .acc-title { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 0.75rem; }
-  .acc-num { font-family: 'Space Mono', monospace; color: var(--accent); font-size: 0.8rem; }
-  .acc-arrow {
-    width: 20px; height: 20px; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
-    transform: rotate(45deg); transition: transform 0.3s;
-  }
-  .acc-item.open .acc-arrow { transform: rotate(-135deg); }
-  .acc-body {
-    max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s;
-    background: var(--surface2);
-  }
-  .acc-body-inner { padding: 0 1.5rem 1.5rem; color: var(--muted); font-size: 0.9rem; line-height: 1.8; }
-  .acc-body-inner .highlight { color: var(--accent); font-weight: 600; }
-  .acc-body-inner .highlight2 { color: var(--accent3); font-weight: 600; }
-  .acc-body-inner .highlight3 { color: var(--accent4); font-weight: 600; }
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-  /* TABS */
-  .tabs { margin: 2rem 0; }
-  .tab-header { display: flex; gap: 0; border-bottom: 1px solid var(--border); overflow-x: auto; }
-  .tab-btn {
-    padding: 0.9rem 1.5rem; background: none; border: none; border-bottom: 2px solid transparent;
-    color: var(--muted); font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 600;
-    cursor: pointer; transition: color 0.2s, border-color 0.2s; white-space: nowrap;
-    margin-bottom: -1px;
-  }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-content { display: none; padding: 2rem 0; }
-  .tab-content.active { display: block; animation: fadeIn 0.3s; }
+.toc-title {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
 
-  /* ALGO STEPS */
-  .algo-steps { counter-reset: step; display: flex; flex-direction: column; gap: 0; }
-  .algo-step {
-    display: flex; gap: 1.5rem; padding: 1.25rem 0; border-bottom: 1px solid var(--border);
-    position: relative; transition: all 0.2s;
-  }
-  .algo-step:hover { padding-left: 0.5rem; }
-  .algo-step:last-child { border-bottom: none; }
-  .step-num {
-    font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--accent2);
-    width: 28px; flex-shrink: 0; margin-top: 0.15rem;
-    counter-increment: step;
-  }
-  .step-num::before { content: counter(step, decimal-leading-zero); }
-  .step-content h4 { font-size: 0.95rem; margin-bottom: 0.3rem; }
-  .step-content p { color: var(--muted); font-size: 0.85rem; line-height: 1.7; }
+.toc-list { list-style: none; }
 
-  /* PIPELINE / FLOW */
-  .pipeline {
-    display: flex; align-items: stretch; gap: 0; overflow-x: auto;
-    padding: 2rem 0; margin: 1rem 0;
-  }
-  .pipe-node {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 1.25rem 1.5rem; min-width: 160px; flex-shrink: 0;
-    text-align: center; transition: border-color 0.25s, transform 0.25s;
-    position: relative;
-  }
-  .pipe-node:hover { border-color: rgba(0,229,255,0.4); transform: translateY(-3px); }
-  .pipe-node .pipe-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
-  .pipe-node .pipe-label { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.25rem; }
-  .pipe-node .pipe-desc { font-size: 0.7rem; color: var(--muted); line-height: 1.5; }
-  .pipe-arrow {
-    display: flex; align-items: center; padding: 0 0.25rem; flex-shrink: 0;
-    color: var(--accent); font-size: 1.2rem; margin-top: -0.5rem;
-  }
+.toc-list li { margin: 0; }
 
-  /* COMPARISON TABLE */
-  .compare-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  .compare-table th {
-    padding: 0.85rem 1.25rem; text-align: left; background: var(--surface2);
-    font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
-    border-bottom: 1px solid var(--border);
-  }
-  .compare-table th:first-child { color: var(--accent); }
-  .compare-table td {
-    padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border);
-    vertical-align: top; line-height: 1.6;
-  }
-  .compare-table tr { transition: background 0.15s; }
-  .compare-table tr:hover td { background: var(--surface); }
-  .compare-table td:first-child { font-weight: 700; color: var(--text); font-size: 0.82rem; }
-  .compare-table td:not(:first-child) { color: var(--muted); }
-  .badge {
-    display: inline-block; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.7rem;
-    font-family: 'Space Mono', monospace; font-weight: 700;
-  }
-  .badge-green { background: rgba(16,185,129,0.15); color: var(--accent4); }
-  .badge-yellow { background: rgba(245,158,11,0.15); color: var(--accent3); }
-  .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
-  .badge-blue { background: rgba(0,229,255,0.12); color: var(--accent); }
+.toc-list a {
+  display: block;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text3);
+  text-decoration: none;
+  padding: 0.28rem 0.6rem;
+  border-radius: 4px;
+  border-left: 2px solid transparent;
+  transition: all 0.18s;
+  line-height: 1.4;
+}
 
-  /* RLHF SECTION */
-  .rlhf-flow {
-    display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin: 2rem 0;
-  }
-  .rlhf-step {
-    display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: start;
-  }
-  .rlhf-num {
-    width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 1rem; flex-shrink: 0;
-    border: 2px solid;
-  }
-  .rlhf-num.n1 { border-color: var(--accent); color: var(--accent); }
-  .rlhf-num.n2 { border-color: var(--accent2); color: var(--accent2); }
-  .rlhf-num.n3 { border-color: var(--accent3); color: var(--accent3); }
-  .rlhf-num.n4 { border-color: var(--accent4); color: var(--accent4); }
-  .rlhf-body h3 { font-size: 1.05rem; margin-bottom: 0.4rem; }
-  .rlhf-body p { color: var(--muted); font-size: 0.88rem; line-height: 1.75; }
+.toc-list a:hover { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.toc-list a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 
-  /* Animated gradient text */
-  .grad-text {
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+.toc-list .sub a { font-size: 0.67rem; padding-left: 1.2rem; }
 
-  /* VARIANCE REDUCTION visualiser */
-  #variance-canvas { width: 100%; height: 220px; border-radius: 6px; cursor: crosshair; }
+/* Main content */
+main {
+  padding: 3rem 3.5rem 6rem;
+  max-width: 820px;
+}
 
-  /* INTERACTIVE REWARD slider */
-  .slider-container { margin: 1.5rem 0; }
-  .slider-row { display: flex; align-items: center; gap: 1rem; margin: 0.75rem 0; }
-  .slider-label { font-size: 0.8rem; color: var(--muted); width: 140px; flex-shrink: 0; font-family: 'Space Mono', monospace; }
-  input[type=range] {
-    flex: 1; -webkit-appearance: none; height: 3px;
-    background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--pct,50%), var(--surface2) var(--pct,50%), var(--surface2) 100%);
-    border-radius: 2px; outline: none; cursor: pointer;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 14px; height: 14px;
-    background: var(--accent); border-radius: 50%; cursor: pointer;
-    box-shadow: 0 0 8px rgba(0,229,255,0.5);
-  }
-  .slider-val { font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--accent); width: 50px; text-align: right; }
-  #reward-output {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-    padding: 1rem 1.5rem; margin-top: 1rem; font-family: 'Space Mono', monospace; font-size: 0.85rem;
-  }
-  #reward-output .rout-label { color: var(--muted); font-size: 0.7rem; margin-bottom: 0.25rem; }
-  #reward-output .rout-val { color: var(--accent3); font-size: 1.1rem; font-weight: 700; }
+/* Hero */
+.hero {
+  margin-bottom: 4rem;
+  padding-bottom: 3rem;
+  border-bottom: 1px solid var(--border);
+}
 
-  /* TOOLTIP */
-  .has-tooltip { position: relative; cursor: help; border-bottom: 1px dashed var(--muted); }
-  .tooltip {
-    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
-    padding: 0.6rem 0.9rem; font-size: 0.78rem; color: var(--text); width: 220px;
-    pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 50; text-align: center;
-    font-family: 'Space Mono', monospace; line-height: 1.5;
-  }
-  .has-tooltip:hover .tooltip { opacity: 1; }
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(196,80,26,0.2);
+  padding: 0.3rem 0.8rem;
+  border-radius: 100px;
+  margin-bottom: 1.4rem;
+}
 
-  /* Keyframes */
-  @keyframes fadeUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: none; } }
-  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-  @keyframes bounce {
-    0%,100% { transform: translateX(-50%) translateY(0); }
-    50% { transform: translateX(-50%) translateY(8px); }
-  }
-  @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
-  @keyframes shimmer {
-    0%{ background-position: -200% center; }
-    100%{ background-position: 200% center; }
-  }
+h1.hero-title {
+  font-family: var(--sans);
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin-bottom: 1.2rem;
+}
 
-  /* Intersection observer fade-in */
-  .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease, transform 0.6s ease; }
-  .reveal.visible { opacity: 1; transform: none; }
+h1.hero-title span { color: var(--accent); }
 
-  /* CODE snippet */
-.code-block {
-  background: #ffffff;                 /* cleaner than grey */
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+.hero-sub {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  color: var(--text2);
+  line-height: 1.7;
+  max-width: 640px;
+  margin-bottom: 1.8rem;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 1.5rem;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  color: var(--text3);
+}
+
+.hero-meta span { display: flex; align-items: center; gap: 0.35rem; }
+
+/* Mode toggle */
+.mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 0.2rem;
+  gap: 0.1rem;
+  margin-bottom: 3rem;
+}
+
+.mode-btn {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.9rem;
+  border-radius: 100px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn.active {
+  background: white;
+  color: var(--text);
+  box-shadow: 0 1px 4px var(--shadow2);
+}
+
+/* Sections */
+section {
+  margin-bottom: 4rem;
+  scroll-margin-top: 80px;
+}
+
+h2 {
+  font-family: var(--sans);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+  margin-top: 0.5rem;
+  line-height: 1.3;
+}
+
+.section-number {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--text3);
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+h3 {
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2rem;
+  margin-bottom: 0.6rem;
+}
+
+h4 {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text2);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+p {
+  color: var(--text2);
+  margin-bottom: 1rem;
+  font-size: 0.985rem;
+}
+
+/* Divider */
+.section-divider {
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  border-radius: 2px;
+  margin-bottom: 1.5rem;
+}
+
+/* Math blocks */
+.math-block {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent2);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.5rem;
+  margin: 1.4rem 0;
+  overflow-x: auto;
+  font-size: 1rem;
+}
+
+.math-block.theorem {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.math-block.result {
+  border-left-color: var(--accent3);
+  background: var(--accent3-soft);
+}
+
+.math-label {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 0.6rem;
+}
+
+.math-label.theorem { color: var(--accent); }
+.math-label.result { color: var(--accent3); }
+
+/* Intuition boxes */
+.intuition-box {
+  background: #FFFBF8;
+  border: 1px solid rgba(196,80,26,0.2);
+  border-radius: var(--radius2);
+  padding: 1.3rem 1.5rem;
+  margin: 1.4rem 0;
+}
+
+.intuition-label {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.intuition-label::before { content: '💡'; font-size: 0.9rem; }
+
+/* Expandable derivation */
+.derivation-container {
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
   overflow: hidden;
   margin: 1.5rem 0;
 }
 
-.code-header {
+.derivation-header {
+  background: var(--bg2);
+  padding: 1rem 1.4rem;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.6rem 1rem;
-  background: #f1f5f9;
-  border-bottom: 1px solid #d1d5db;
+  user-select: none;
+  transition: background 0.2s;
 }
 
-.code-dots {
+.derivation-header:hover { background: var(--bg3); }
+
+.derivation-header-left {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 0.8rem;
 }
 
-.code-dots span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.code-dots span:nth-child(1) { background: #ff5f57; }
-.code-dots span:nth-child(2) { background: #ffbd2e; }
-.code-dots span:nth-child(3) { background: #28c840; }
-
-.code-lang {
-  font-family: monospace;
+.derivation-icon {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
   font-size: 0.75rem;
-  color: #475569;
+  font-family: var(--sans);
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.code-body {
-  padding: 1.25rem 1.5rem;
-  font-family: monospace;
-  font-size: 0.9rem;                  /* 🔥 bigger = readable */
-  line-height: 1.8;
+.derivation-title {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.derivation-subtitle {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text3);
+  margin-top: 0.1rem;
+}
+
+.derivation-chevron {
+  font-size: 0.8rem;
+  color: var(--text3);
+  transition: transform 0.3s;
+}
+
+.derivation-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+.derivation-body.open { max-height: 4000px; }
+
+.derivation-steps { padding: 1.4rem; }
+
+.step {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 0 1rem;
+  margin-bottom: 1.6rem;
+  padding-bottom: 1.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.step:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+.step-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.step-content {}
+
+.step-label {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.4rem;
+}
+
+.step-math {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin: 0.6rem 0;
   overflow-x: auto;
-  color: #111827;                     /* 🔥 strong contrast */
+  border: 1px solid var(--border);
 }
 
-/* Clean high-contrast colors */
-.code-body .kw  { color: #6d28d9; font-weight: 600; }
-.code-body .fn  { color: #1d4ed8; }
-.code-body .str { color: #15803d; }
-.code-body .cm  { color: #6b7280; font-style: italic; }
-.code-body .num { color: #b45309; }
-.code-body .var { color: #111827; }
+.step-explain {
+  font-size: 0.88rem;
+  color: var(--text2);
+  line-height: 1.65;
+}
 
-  /* TIMELINE */
-  .timeline { position: relative; padding-left: 2rem; }
-  .timeline::before {
-    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px;
-    background: linear-gradient(to bottom, var(--accent), var(--accent2), var(--accent3));
-  }
-  .tl-item { position: relative; margin-bottom: 2rem; }
-  .tl-dot {
-    position: absolute; left: -2.4rem; top: 0.25rem;
-    width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
-    box-shadow: 0 0 10px rgba(0,229,255,0.5);
-  }
-  .tl-year { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--accent); margin-bottom: 0.3rem; }
-  .tl-title { font-weight: 700; margin-bottom: 0.3rem; }
-  .tl-desc { color: var(--muted); font-size: 0.85rem; line-height: 1.7; }
+/* Tooltip */
+.tooltip-wrap {
+  position: relative;
+  display: inline;
+  cursor: help;
+}
 
-  /* Footer */
-  footer {
-    border-top: 1px solid var(--border); padding: 3rem 2rem;
-    text-align: center; color: var(--muted); font-size: 0.8rem; font-family: 'Space Mono', monospace;
-  }
+.tooltip-word {
+  border-bottom: 1px dashed var(--accent2);
+  color: var(--accent2);
+}
 
-  /* Responsive */
-  @media(max-width:768px) {
-    nav { padding: 1rem 1.25rem; }
-    .nav-links { display: none; }
-    section { padding: 4rem 1.25rem; }
-    .pipeline { flex-direction: column; }
-    .pipe-arrow { transform: rotate(90deg); align-self: center; }
-    .rlhf-step { grid-template-columns: 1fr; }
-  }
+.tooltip-box {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: white;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  width: 220px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+  text-align: left;
+  font-weight: 400;
+}
+
+.tooltip-box::after {
+  content: '';
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+}
+
+.tooltip-wrap:hover .tooltip-box { opacity: 1; }
+
+/* Algorithm box */
+.algorithm-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+
+.algo-header {
+  background: var(--text);
+  color: white;
+  padding: 0.7rem 1.2rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.algo-body {
+  padding: 1.1rem 1.4rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.8;
+  color: var(--text2);
+  overflow-x: auto;
+}
+
+.algo-body .kw { color: var(--accent); font-weight: 600; }
+.algo-body .cm { color: var(--text3); font-style: italic; }
+.algo-body .hl { background: rgba(196,80,26,0.08); padding: 0 3px; border-radius: 3px; }
+.algo-body .indent1 { padding-left: 1.5rem; }
+.algo-body .indent2 { padding-left: 3rem; }
+.algo-body .indent3 { padding-left: 4.5rem; }
+
+/* Comparison table */
+table.compare {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.4rem 0;
+  font-size: 0.85rem;
+}
+
+table.compare th {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  background: var(--bg2);
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+}
+
+table.compare td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: top;
+}
+
+table.compare tr:hover td { background: var(--bg2); }
+
+table.compare td:first-child { font-weight: 600; color: var(--text); font-family: var(--sans); font-size: 0.82rem; }
+
+/* Tag pills */
+.tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.8rem 0; }
+
+.tag {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.tag.blue { background: var(--accent2-soft); color: var(--accent2); }
+.tag.orange { background: var(--accent-soft); color: var(--accent); }
+.tag.green { background: var(--accent3-soft); color: var(--accent3); }
+
+/* Canvas for visualizations */
+.viz-container {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 1.4rem;
+  margin: 1.5rem 0;
+}
+
+.viz-title {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1rem;
+}
+
+.viz-controls {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+  align-items: center;
+}
+
+.viz-btn {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+  background: white;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.viz-btn:hover { border-color: var(--accent); color: var(--accent); }
+.viz-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.viz-btn.primary:hover { background: #a83e12; }
+
+.viz-slider-label { font-family: var(--mono); font-size: 0.72rem; color: var(--text3); white-space: nowrap; }
+
+canvas {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius);
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding: 1rem 0;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 80px; top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), var(--accent2), var(--accent3));
+}
+
+.tl-item {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 0 1.5rem;
+  margin-bottom: 1.8rem;
+  position: relative;
+}
+
+.tl-year {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text3);
+  padding-top: 0.15rem;
+  text-align: right;
+}
+
+.tl-dot {
+  position: absolute;
+  left: 76px; top: 0.25rem;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.tl-content {
+  padding-left: 0.5rem;
+}
+
+.tl-event {
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.2rem;
+}
+
+.tl-desc {
+  font-size: 0.8rem;
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+/* RLHF Pipeline */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.pipe-stage {
+  flex: 1;
+  min-width: 140px;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+  text-align: center;
+  position: relative;
+}
+
+.pipe-stage + .pipe-stage::before {
+  content: '→';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text3);
+  font-size: 1rem;
+  font-weight: 300;
+}
+
+.pipe-icon { font-size: 1.4rem; margin-bottom: 0.4rem; }
+.pipe-name {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.2rem;
+}
+
+.pipe-desc { font-size: 0.68rem; color: var(--text3); line-height: 1.4; }
+
+/* Summary card grid */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.summary-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 1.1rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.summary-card:hover { box-shadow: 0 4px 16px var(--shadow2); transform: translateY(-2px); }
+
+.sc-tag {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.sc-title {
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+
+.sc-text { font-size: 0.78rem; color: var(--text3); line-height: 1.5; }
+
+/* Callout */
+.callout {
+  border-radius: var(--radius);
+  padding: 1rem 1.3rem;
+  margin: 1.2rem 0;
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+.callout.info { background: var(--accent2-soft); border-left: 3px solid var(--accent2); }
+.callout.warn { background: #FFF8E8; border-left: 3px solid #D4A017; }
+.callout.key { background: var(--accent3-soft); border-left: 3px solid var(--accent3); }
+
+.callout-icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.1rem; }
+
+.callout-body { font-size: 0.875rem; color: var(--text2); line-height: 1.6; }
+.callout-body strong { color: var(--text); font-family: var(--sans); }
+
+/* Inline code */
+code {
+  font-family: var(--mono);
+  font-size: 0.83em;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  color: var(--accent);
+}
+
+/* Math mode visibility */
+body.math-mode .intuition-only { display: none; }
+body.intuition-mode .math-only { display: none; }
+
+/* Show both by default */
+
+/* Responsive */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  main { padding: 2rem 1.5rem 4rem; }
+  h1.hero-title { font-size: 1.9rem; }
+  .nav-links { display: none; }
+}
+
+/* Smooth reveal */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+section { animation: fadeUp 0.5s ease both; }
+
+/* Scroll fade for sections */
+.fade-in {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.fade-in.visible { opacity: 1; transform: none; }
+
+hr.section-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 3.5rem 0;
+}
+
+.note {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text3);
+  padding: 0.8rem 1rem;
+  background: var(--bg2);
+  border-radius: var(--radius);
+  margin: 1rem 0;
+}
 </style>
 </head>
 <body>
 
-<canvas id="stars-canvas"></canvas>
-<div id="cursor"></div>
-<div id="cursor-trail"></div>
+<div id="progress-bar"></div>
 
 <nav>
-  <div class="nav-logo">∇θ J(π)</div>
+  <div class="nav-brand">Policy Gradients & RLHF</div>
   <ul class="nav-links">
-    <li><a href="#foundations">Foundations</a></li>
-    <li><a href="#algorithms">Algorithms</a></li>
+    <li><a href="#motivation">Motivation</a></li>
+    <li><a href="#theorem">PG Theorem</a></li>
+    <li><a href="#reinforce">REINFORCE</a></li>
     <li><a href="#variance">Variance</a></li>
-    <li><a href="#actor-critic">Actor-Critic</a></li>
     <li><a href="#advanced">Advanced</a></li>
+    <li><a href="#ppo">PPO</a></li>
     <li><a href="#rlhf">RLHF</a></li>
-    <li><a href="#llm">LLM Post-Training</a></li>
+    <li><a href="#llms">LLMs</a></li>
+    <li><a href="#timeline">Timeline</a></li>
   </ul>
 </nav>
 
-<div class="wrapper">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="toc-title">Contents</div>
+    <ul class="toc-list" id="toc">
+      <li><a href="#motivation">1. Motivation & Intuition</a></li>
+      <li><a href="#parameterization">2. Policy Parameterization</a></li>
+      <li><a href="#pg-intuition">3. PG Intuition</a></li>
+      <li><a href="#theorem">4. PG Theorem</a></li>
+      <li class="sub"><ul class="toc-list"><li><a href="#theorem-formal">Formal Statement</a></li><li><a href="#derivation-main">Full Derivation</a></li></ul></li>
+      <li><a href="#reinforce">5. REINFORCE</a></li>
+      <li><a href="#variance">6. Variance Reduction</a></li>
+      <li><a href="#actor-critic">7. Actor–Critic</a></li>
+      <li><a href="#advanced">8. Advanced PG Methods</a></li>
+      <li><a href="#ppo">9. PPO Derivation</a></li>
+      <li><a href="#stochastic">10. Stochastic Approx.</a></li>
+      <li><a href="#deep-pg">11. Deep PG Methods</a></li>
+      <li><a href="#rlhf">12. RLHF Connection</a></li>
+      <li><a href="#llms">13. RLHF for LLMs</a></li>
+      <li><a href="#modern">14. Modern Perspective</a></li>
+      <li><a href="#summary">15. Summary</a></li>
+      <li><a href="#timeline">16. Timeline</a></li>
+    </ul>
+  </aside>
 
-<!-- HERO -->
-<section class="hero" id="top">
-  <div class="hero-tag">Reinforcement Learning · Deep Dive</div>
-  <h1>Policy <span>Gradient</span><br>Methods & RLHF</h1>
-  <p class="hero-sub">A comprehensive technical reference covering the mathematics, algorithms, variance reduction, actor-critic methods, and the bridge to RLHF and LLM post-training.</p>
-  <div class="hero-cta">
-    <a href="#foundations" class="btn-primary">Start Learning</a>
-    <a href="#rlhf" class="btn-outline">Jump to RLHF →</a>
-  </div>
-  <div class="scroll-hint">
-    <span>scroll</span>
-    <div class="arrow"></div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- SECTION 1: FOUNDATIONS -->
-<section id="foundations">
-  <div class="section-inner">
-    <div class="section-tag reveal">01 — Foundations</div>
-    <h2 class="section-title reveal">The <span class="grad-text">Policy Gradient</span> Theorem</h2>
-    <p class="section-desc reveal">Policy gradient methods directly optimize the policy by computing gradients of the expected cumulative reward. Unlike value-based methods, they work natively in continuous action spaces and naturally represent stochastic policies.</p>
-
-    <div class="card-grid reveal">
-      <div class="card card-accent">
-        <div class="card-icon">🎯</div>
-        <h3>The Objective</h3>
-        <p>Maximize the expected return J(θ) = 𝔼<sub>τ~π<sub>θ</sub></sub>[R(τ)] — the expected sum of discounted rewards under the parameterized policy π<sub>θ</sub>.</p>
-      </div>
-      <div class="card card-accent2">
-        <div class="card-icon">🔗</div>
-        <h3>Policy Parameterization</h3>
-        <p>Policies are parameterized by θ (neural net weights). For discrete actions: softmax. For continuous: Gaussian with learned mean and variance.</p>
-      </div>
-      <div class="card card-accent3">
-        <div class="card-icon">🌊</div>
-        <h3>Trajectory Distribution</h3>
-        <p>p<sub>θ</sub>(τ) = p(s<sub>0</sub>) ∏<sub>t</sub> π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) p(s<sub>t+1</sub>|s<sub>t</sub>,a<sub>t</sub>). Transitions are part of the environment; we only control the policy factor.</p>
-      </div>
-      <div class="card card-accent4">
-        <div class="card-icon">📐</div>
-        <h3>Log-Derivative Trick</h3>
-        <p>∇<sub>θ</sub> p<sub>θ</sub>(τ) = p<sub>θ</sub>(τ) ∇<sub>θ</sub> log p<sub>θ</sub>(τ). Converts an intractable gradient of an expectation into an expectation of a gradient — the key identity.</p>
+  <main>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-badge">Research Reference · RL & LLM Alignment</div>
+      <h1 class="hero-title">Policy Gradient Methods<br>& <span>RLHF</span></h1>
+      <p class="hero-sub">
+        A first-principles guide to policy gradient methods — from the foundational theorem through REINFORCE, PPO, and the full pipeline behind modern LLM post-training. Designed for PhD-level depth.
+      </p>
+      <div class="hero-meta">
+        <span>📐 Full derivations</span>
+        <span>🔬 Research depth</span>
+        <span>🤖 RLHF & LLMs</span>
+        <span>📊 Interactive visualizations</span>
       </div>
     </div>
 
-    <div class="math-block reveal">
-      <span class="label">Policy Gradient Theorem — Core Identity</span>
-      <div class="eq">∇<sub>θ</sub> J(θ) = 𝔼<sub>τ~π<sub>θ</sub></sub> [ Σ<sub>t</sub> ∇<sub>θ</sub> log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) · Q<sup>π</sup>(s<sub>t</sub>, a<sub>t</sub>) ]</div>
-      <div class="comment">// Environment dynamics cancel — gradient depends only on the policy's score function and the Q-values</div>
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="setMode('both', this)">Intuition + Math</button>
+      <button class="mode-btn" onclick="setMode('intuition', this)">Intuition Only</button>
+      <button class="mode-btn" onclick="setMode('math', this)">Math Only</button>
     </div>
 
-    <div class="math-block reveal">
-      <span class="label">Score Function Gradient Estimator</span>
-      <div class="eq">∇<sub>θ</sub> J(θ) ≈ (1/N) Σ<sub>i</sub> Σ<sub>t</sub> ∇<sub>θ</sub> log π<sub>θ</sub>(a<sub>t</sub><sup>i</sup>|s<sub>t</sub><sup>i</sup>) · R(τ<sup>i</sup>)</div>
-      <div class="comment">// Monte Carlo estimate over N rollout trajectories — unbiased but high variance</div>
-    </div>
+    <!-- SECTION 1: MOTIVATION -->
+    <section id="motivation" class="fade-in">
+      <span class="section-number">§ 01</span>
+      <h2>Motivation & Intuition</h2>
+      <div class="section-divider"></div>
 
-    <div class="reveal">
-      <h3 style="margin-bottom:1.25rem;font-family:'DM Serif Display',serif;font-size:1.5rem;">Derivation: Where Does It Come From?</h3>
-      <div class="algo-steps">
-        <div class="algo-step">
-          <div class="step-num"></div>
-          <div class="step-content">
-            <h4>Write J(θ) as an integral</h4>
-            <p>J(θ) = ∫ p<sub>θ</sub>(τ) R(τ) dτ. Objective is a continuous sum over all possible trajectories weighted by their probability under the policy.</p>
+      <div class="intuition-only">
+        <div class="intuition-box">
+          <div class="intuition-label">Why Policy Gradients?</div>
+          <p>Imagine teaching a robot to walk. You can't hand-program every muscle twitch. Instead, you want the robot to <em>try things</em>, see what works, and <em>get better</em>. Policy gradients formalize exactly this: directly optimize a parameterized behavior (policy) by ascending a reward gradient.</p>
+        </div>
+      </div>
+
+      <p>In reinforcement learning, an agent interacts with an environment: it observes states, takes actions, and receives rewards. The goal is to find a policy — a mapping from states to actions — that maximizes the expected cumulative reward.</p>
+
+      <p>There are broadly two families of approaches:</p>
+
+      <table class="compare">
+        <tr><th>Approach</th><th>Idea</th><th>Key Limitation</th></tr>
+        <tr><td>Value-based (Q-learning, DQN)</td><td>Learn value functions, extract greedy policy</td><td>Indirect; hard with continuous/high-dim actions</td></tr>
+        <tr><td>Policy-based (PG)</td><td>Directly parameterize & optimize the policy</td><td>High variance gradients; slower convergence</td></tr>
+        <tr><td>Actor–Critic</td><td>Combine both: policy + value function</td><td>More stable; most modern methods use this</td></tr>
+      </table>
+
+      <p>Policy gradient methods shine when:</p>
+      <ul style="color:var(--text2);margin-left:1.4rem;margin-bottom:1rem;font-size:0.97rem;">
+        <li>The action space is continuous or very large</li>
+        <li>We need stochastic policies (exploration, partial observability)</li>
+        <li>The value function is hard to learn directly</li>
+        <li>We want end-to-end differentiable optimization (as in LLM fine-tuning)</li>
+      </ul>
+
+      <div class="callout info">
+        <span class="callout-icon">🧭</span>
+        <div class="callout-body"><strong>Modern relevance:</strong> RLHF for LLMs uses policy gradient methods (specifically PPO) to optimize language models against human preference reward signals. Understanding these foundations is essential for LLM alignment research.</div>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 2: PARAMETERIZATION -->
+    <section id="parameterization" class="fade-in">
+      <span class="section-number">§ 02</span>
+      <h2>Policy Parameterization</h2>
+      <div class="section-divider"></div>
+
+      <p>A <span class="tooltip-wrap"><span class="tooltip-word">policy</span><span class="tooltip-box">A policy π maps states to probability distributions over actions. Deterministic: a = π(s). Stochastic: a ~ π(·|s).</span></span> $\pi_\theta(a|s)$ is parameterized by $\theta \in \mathbb{R}^d$ (e.g., neural network weights). For each state $s$, it outputs a probability distribution over actions.</p>
+
+      <div class="math-block">
+        <div class="math-label">Policy</div>
+        $$\pi_\theta : \mathcal{S} \times \mathcal{A} \to [0,1], \quad \sum_{a \in \mathcal{A}} \pi_\theta(a|s) = 1$$
+      </div>
+
+      <h3>Common Parameterizations</h3>
+      <div class="tags">
+        <span class="tag orange">Softmax (discrete)</span>
+        <span class="tag blue">Gaussian (continuous)</span>
+        <span class="tag green">Neural network</span>
+      </div>
+
+      <div class="math-block">
+        <div class="math-label">Softmax Policy (discrete actions)</div>
+        $$\pi_\theta(a|s) = \frac{\exp(\phi(s,a)^\top \theta)}{\sum_{a'}\exp(\phi(s,a')^\top \theta)}$$
+      </div>
+
+      <div class="math-block">
+        <div class="math-label">Gaussian Policy (continuous actions)</div>
+        $$\pi_\theta(a|s) = \mathcal{N}(\mu_\theta(s),\, \sigma^2_\theta(s)), \quad \mu_\theta(s) = \phi(s)^\top \theta$$
+      </div>
+
+      <p>The key question: <em>how do we update $\theta$ to maximize expected return?</em></p>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 3: PG INTUITION -->
+    <section id="pg-intuition" class="fade-in">
+      <span class="section-number">§ 03</span>
+      <h2>Policy Gradient Intuition</h2>
+      <div class="section-divider"></div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">Core Idea</div>
+        <p style="margin:0;font-size:0.95rem;">If a trajectory produced high reward → increase the probability of actions taken in that trajectory. If low reward → decrease their probability. The gradient tells us exactly <em>how much</em> and <em>in which direction</em> to push $\theta$.</p>
+      </div>
+
+      <!-- Interactive Policy Visualization -->
+      <div class="viz-container">
+        <div class="viz-title">📈 Policy Update Visualization — How probabilities shift</div>
+        <div class="viz-controls">
+          <button class="viz-btn primary" onclick="runPolicyViz()">▶ Animate Update</button>
+          <button class="viz-btn" onclick="resetPolicyViz()">↺ Reset</button>
+          <span class="viz-slider-label">Reward signal: </span>
+          <input type="range" id="reward-signal" min="-2" max="2" step="0.1" value="1.5" style="width:100px;" oninput="updateRewardLabel(this.value)">
+          <span class="viz-slider-label" id="reward-label">+1.5</span>
+        </div>
+        <canvas id="policy-canvas" height="180"></canvas>
+        <p style="font-size:0.72rem;color:var(--text3);margin-top:0.6rem;font-family:var(--mono);">
+          Blue = current policy π_θ(a|s). Orange = updated policy after gradient step. Reward signal controls the direction and magnitude.
+        </p>
+      </div>
+
+      <p>The update rule takes the form:</p>
+      <div class="math-block">
+        $$\theta \leftarrow \theta + \alpha \cdot \nabla_\theta J(\theta)$$
+      </div>
+      <p>The central challenge: computing $\nabla_\theta J(\theta)$ when $J$ involves expectations over trajectories sampled from $\pi_\theta$ itself.</p>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 4: POLICY GRADIENT THEOREM -->
+    <section id="theorem" class="fade-in">
+      <span class="section-number">§ 04</span>
+      <h2>The Policy Gradient Theorem</h2>
+      <div class="section-divider"></div>
+
+      <h3 id="theorem-formal">Formal Statement</h3>
+
+      <p>Define the objective as the expected discounted return under $\pi_\theta$, starting from a state distribution $d_0$:</p>
+
+      <div class="math-block theorem">
+        <div class="math-label theorem">Objective</div>
+        $$J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\left[\sum_{t=0}^{T} \gamma^t r_t\right] = \mathbb{E}_{s_0 \sim d_0}\left[V^{\pi_\theta}(s_0)\right]$$
+      </div>
+
+      <div class="math-block theorem" id="pg-theorem-box">
+        <div class="math-label theorem">Policy Gradient Theorem (Sutton et al. 2000)</div>
+        $$\nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\left[\sum_{t=0}^{T} \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot G_t\right]$$
+        <p style="margin-top:0.6rem;font-size:0.82rem;color:var(--text3);">where $G_t = \sum_{t'=t}^{T} \gamma^{t'-t} r_{t'}$ is the return from step $t$.</p>
+      </div>
+
+      <div class="callout key">
+        <span class="callout-icon">🔑</span>
+        <div class="callout-body"><strong>Why $\log\pi$?</strong> The log-derivative trick converts the gradient of an expectation into an expectation of a gradient — solvable by Monte Carlo sampling without knowing the environment's transition dynamics.</div>
+      </div>
+
+      <!-- DERIVATION -->
+      <h3 id="derivation-main">Full Step-by-Step Derivation</h3>
+
+      <div class="derivation-container">
+        <div class="derivation-header" onclick="toggleDerivation('deriv-pg')">
+          <div class="derivation-header-left">
+            <div class="derivation-icon">∇</div>
+            <div>
+              <div class="derivation-title">Policy Gradient Theorem — Complete Derivation</div>
+              <div class="derivation-subtitle">6 steps · Log-derivative trick · No steps skipped</div>
+            </div>
           </div>
+          <div class="derivation-chevron" id="chevron-deriv-pg">▼</div>
         </div>
-        <div class="algo-step">
-          <div class="step-num"></div>
-          <div class="step-content">
-            <h4>Differentiate under the integral sign</h4>
-            <p>∇<sub>θ</sub> J(θ) = ∫ ∇<sub>θ</sub> p<sub>θ</sub>(τ) R(τ) dτ. Allowed because reward R(τ) doesn't depend on θ.</p>
-          </div>
-        </div>
-        <div class="algo-step">
-          <div class="step-num"></div>
-          <div class="step-content">
-            <h4>Apply log-derivative trick</h4>
-            <p>∇<sub>θ</sub> p<sub>θ</sub>(τ) = p<sub>θ</sub>(τ) ∇<sub>θ</sub> log p<sub>θ</sub>(τ). Reintroduce p<sub>θ</sub>(τ) to convert to an expectation: 𝔼<sub>τ~π<sub>θ</sub></sub>[∇<sub>θ</sub> log p<sub>θ</sub>(τ) · R(τ)].</p>
-          </div>
-        </div>
-        <div class="algo-step">
-          <div class="step-num"></div>
-          <div class="step-content">
-            <h4>Expand log p<sub>θ</sub>(τ) — dynamics vanish</h4>
-            <p>log p<sub>θ</sub>(τ) = log p(s<sub>0</sub>) + Σ<sub>t</sub> log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) + Σ<sub>t</sub> log p(s<sub>t+1</sub>|s<sub>t</sub>,a<sub>t</sub>). Gradient of constant and dynamics terms is zero — only the policy log-prob survives.</p>
-          </div>
-        </div>
-        <div class="algo-step">
-          <div class="step-num"></div>
-          <div class="step-content">
-            <h4>Causality: use future rewards only</h4>
-            <p>Action a<sub>t</sub> can only influence future rewards. Replace R(τ) with the reward-to-go: R̂<sub>t</sub> = Σ<sub>t'≥t</sub> γ<sup>t'-t</sup> r<sub>t'</sub>. This does not introduce bias but reduces variance.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+        <div class="derivation-body" id="deriv-pg">
+          <div class="derivation-steps">
 
-<div class="divider"></div>
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-label">Write the Objective</div>
+                <div class="step-math">$$J(\theta) = \int_\tau P(\tau;\theta)\, R(\tau)\, d\tau$$</div>
+                <div class="step-explain">We write the expected return as an integral over trajectories $\tau = (s_0,a_0,r_0,\ldots,s_T)$. Here $P(\tau;\theta)$ is the probability of trajectory $\tau$ under policy $\pi_\theta$, and $R(\tau) = \sum_t \gamma^t r_t$ is the total discounted return. We can sample from this expectation but cannot differentiate through $P(\tau;\theta)$ directly.</div>
+              </div>
+            </div>
 
-<!-- SECTION 2: ALGORITHMS -->
-<section id="algorithms" style="background: linear-gradient(180deg, transparent, rgba(124,58,237,0.03), transparent);">
-  <div class="section-inner">
-    <div class="section-tag reveal">02 — Algorithms</div>
-    <h2 class="section-title reveal">Core <span class="grad-text">Algorithms</span></h2>
-    <p class="section-desc reveal">From vanilla REINFORCE to proximal policy optimization — each algorithm addresses specific shortcomings of its predecessor.</p>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-label">Unpack Trajectory Probability</div>
+                <div class="step-math">$$P(\tau;\theta) = d_0(s_0)\prod_{t=0}^{T} \pi_\theta(a_t|s_t)\, p(s_{t+1}|s_t,a_t)$$</div>
+                <div class="step-explain">The probability of a trajectory factorizes: initial state distribution $d_0$, then at each step the policy probability $\pi_\theta(a_t|s_t)$ and the environment transition $p(s_{t+1}|s_t,a_t)$. Crucially: only $\pi_\theta$ depends on $\theta$!</div>
+              </div>
+            </div>
 
-    <div class="tabs reveal">
-      <div class="tab-header">
-        <button class="tab-btn active" data-tab="reinforce">REINFORCE</button>
-        <button class="tab-btn" data-tab="reinforce-baseline">REINFORCE+Baseline</button>
-        <button class="tab-btn" data-tab="trpo">TRPO</button>
-        <button class="tab-btn" data-tab="ppo">PPO</button>
-        <button class="tab-btn" data-tab="comparison">Comparison</button>
-      </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-label">Differentiate Under the Integral</div>
+                <div class="step-math">$$\nabla_\theta J(\theta) = \int_\tau \nabla_\theta P(\tau;\theta)\, R(\tau)\, d\tau$$</div>
+                <div class="step-explain">We move $\nabla_\theta$ inside the integral (assuming regularity conditions for interchange of derivative and integral — Leibniz rule). The challenge is now computing $\nabla_\theta P(\tau;\theta)$.</div>
+              </div>
+            </div>
 
-      <!-- REINFORCE -->
-      <div class="tab-content active" id="tab-reinforce">
-        <h3 style="margin-bottom:1rem;">REINFORCE (Williams, 1992)</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">The original Monte Carlo policy gradient algorithm. Simple and unbiased but suffers from high variance due to full-trajectory returns.</p>
-        <div class="algo-steps">
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Initialize policy π<sub>θ</sub></h4><p>Randomly initialize neural network parameters θ.</p></div></div>
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Sample trajectory τ = (s₀,a₀,r₀, …, s<sub>T</sub>)</h4><p>Roll out the policy in the environment until termination.</p></div></div>
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Compute returns G<sub>t</sub></h4><p>G<sub>t</sub> = Σ<sub>t'=t</sub><sup>T</sup> γ<sup>t'-t</sup> r<sub>t'</sub>. Discounted cumulative reward from time t.</p></div></div>
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Compute policy gradient</h4><p>∇<sub>θ</sub> J ≈ Σ<sub>t</sub> ∇<sub>θ</sub> log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) · G<sub>t</sub></p></div></div>
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Update parameters</h4><p>θ ← θ + α ∇<sub>θ</sub> J. Repeat from step 2.</p></div></div>
-        </div>
-        <div class="math-block">
-          <span class="label">Loss (negative for gradient ascent via Adam)</span>
-          <div class="eq">ℒ(θ) = -Σ<sub>t</sub> log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) · G<sub>t</sub></div>
-          <div class="comment">// Unbiased estimator. High variance O(T) grows with episode length.</div>
-        </div>
-        <div class="code-block">
-          <div class="code-header"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Python · PyTorch</span></div>
-          <div class="code-body"><span class="kw">def</span> <span class="fn">reinforce_update</span>(<span class="var">policy</span>, <span class="var">optimizer</span>, <span class="var">trajectories</span>, <span class="var">gamma</span>=<span class="num">0.99</span>):
-    <span class="var">loss</span> = <span class="num">0</span>
-    <span class="kw">for</span> <span class="var">states</span>, <span class="var">actions</span>, <span class="var">rewards</span> <span class="kw">in</span> <span class="var">trajectories</span>:
-        <span class="var">returns</span> = <span class="fn">compute_returns</span>(<span class="var">rewards</span>, <span class="var">gamma</span>)          <span class="cm"># G_t for each t</span>
-        <span class="var">log_probs</span> = <span class="var">policy</span>.<span class="fn">log_prob</span>(<span class="var">states</span>, <span class="var">actions</span>)
-        <span class="var">loss</span> -= (<span class="var">log_probs</span> * <span class="var">returns</span>).<span class="fn">sum</span>()
-    <span class="var">optimizer</span>.<span class="fn">zero_grad</span>(); <span class="var">loss</span>.<span class="fn">backward</span>(); <span class="var">optimizer</span>.<span class="fn">step</span>()</div>
-        </div>
-      </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-label">Apply the Log-Derivative Trick</div>
+                <div class="step-math">$$\nabla_\theta \log P(\tau;\theta) = \frac{\nabla_\theta P(\tau;\theta)}{P(\tau;\theta)} \implies \nabla_\theta P(\tau;\theta) = P(\tau;\theta)\, \nabla_\theta \log P(\tau;\theta)$$</div>
+                <div class="step-explain">Using the identity $\frac{d}{dx}\log f(x) = \frac{f'(x)}{f(x)}$, rearranged. This is the <strong>log-derivative trick</strong> (also called the REINFORCE trick or score function estimator). It is the core algebraic move that makes policy gradients tractable.</div>
+              </div>
+            </div>
 
-      <!-- REINFORCE+Baseline -->
-      <div class="tab-content" id="tab-reinforce-baseline">
-        <h3 style="margin-bottom:1rem;">REINFORCE with Baseline</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">Adding a baseline b(s<sub>t</sub>) that doesn't depend on actions reduces variance without introducing bias. The value function V<sup>π</sup>(s<sub>t</sub>) is the optimal baseline.</p>
-        <div class="math-block">
-          <span class="label">Gradient with Baseline</span>
-          <div class="eq">∇<sub>θ</sub> J(θ) = 𝔼<sub>τ</sub> [ Σ<sub>t</sub> ∇<sub>θ</sub> log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) · (G<sub>t</sub> - b(s<sub>t</sub>)) ]</div>
-          <div class="comment">// 𝔼[∇<sub>θ</sub> log π · b] = 0 → baseline does not change the expectation</div>
-        </div>
-        <div class="math-block">
-          <span class="label">Why baseline doesn't bias the gradient</span>
-          <div class="eq">𝔼<sub>a~π</sub>[∇<sub>θ</sub> log π<sub>θ</sub>(a|s) · b(s)] = b(s) 𝔼<sub>a~π</sub>[∇<sub>θ</sub> log π<sub>θ</sub>(a|s)]</div>
-          <div class="eq">= b(s) · ∇<sub>θ</sub> 𝔼<sub>a~π</sub>[1] = b(s) · ∇<sub>θ</sub> 1 = 0</div>
-        </div>
-        <div class="card-grid" style="grid-template-columns:1fr 1fr;margin-top:1.5rem;">
-          <div class="card card-accent4">
-            <h3>Optimal Baseline</h3>
-            <p>The variance-minimizing baseline is b*(s) = 𝔼[‖∇ log π‖² G] / 𝔼[‖∇ log π‖²]. In practice V<sup>π</sup>(s) works very well and is simpler to implement.</p>
-          </div>
-          <div class="card card-accent3">
-            <h3>Advantage Function</h3>
-            <p>A<sup>π</sup>(s,a) = Q<sup>π</sup>(s,a) − V<sup>π</sup>(s). Positive advantage → action is better than average at that state. This is the object Actor-Critic methods learn to estimate.</p>
-          </div>
-        </div>
-      </div>
+            <div class="step">
+              <div class="step-num">5</div>
+              <div class="step-content">
+                <div class="step-label">Simplify the Log-Probability</div>
+                <div class="step-math">$$\nabla_\theta \log P(\tau;\theta) = \nabla_\theta \sum_{t=0}^T \log \pi_\theta(a_t|s_t)$$</div>
+                <div class="step-explain">Taking $\nabla_\theta$ of $\log P(\tau;\theta)$: the terms $\log d_0(s_0)$ and $\log p(s_{t+1}|s_t,a_t)$ do not depend on $\theta$ and vanish. Only $\sum_t \log\pi_\theta(a_t|s_t)$ survives.</div>
+              </div>
+            </div>
 
-      <!-- TRPO -->
-      <div class="tab-content" id="tab-trpo">
-        <h3 style="margin-bottom:1rem;">Trust Region Policy Optimization (Schulman et al., 2015)</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">Addresses the step-size problem in policy gradients: too large an update can catastrophically degrade the policy. TRPO constrains each update to a trust region via a KL divergence constraint.</p>
-        <div class="math-block">
-          <span class="label">TRPO Constrained Optimization</span>
-          <div class="eq">maximize<sub>θ</sub>  𝔼<sub>t</sub>[ π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) / π<sub>θ<sub>old</sub></sub>(a<sub>t</sub>|s<sub>t</sub>) · Â<sub>t</sub> ]</div>
-          <div class="eq">subject to  𝔼<sub>t</sub>[ KL[π<sub>θ<sub>old</sub></sub>(·|s<sub>t</sub>) ‖ π<sub>θ</sub>(·|s<sub>t</sub>)] ] ≤ δ</div>
-          <div class="comment">// δ typically 0.01. Solved via conjugate gradient + line search (expensive)</div>
-        </div>
-        <div class="algo-steps">
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Collect trajectories with π<sub>θ<sub>old</sub></sub></h4><p>Gather samples to estimate the surrogate objective and KL constraint.</p></div></div>
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Compute surrogate objective gradient g</h4><p>g = ∇<sub>θ</sub> L<sub>θ<sub>old</sub></sub>(θ) evaluated at θ = θ<sub>old</sub>.</p></div></div>
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Compute Fisher-vector products</h4><p>Use conjugate gradient to solve Fx = g where F is the Fisher information matrix (KL Hessian). O(n) per iteration instead of O(n²).</p></div></div>
-          <div class="algo-step"><div class="step-num"></div><div class="step-content"><h4>Backtracking line search</h4><p>Find step size α such that the constraint is satisfied and objective improves.</p></div></div>
-        </div>
-        <div class="card card-accent" style="margin-top:1.5rem;border-left-color:var(--accent3);">
-          <h3>⚠️ TRPO Limitations</h3>
-          <p>Second-order method: computationally expensive (conjugate gradient solve). Difficult to implement correctly. Does not support shared parameters between actor and critic easily. PPO addresses all of these.</p>
-        </div>
-      </div>
+            <div class="step">
+              <div class="step-num">6</div>
+              <div class="step-content">
+                <div class="step-label">Reassemble as an Expectation</div>
+                <div class="step-math">
+$$\nabla_\theta J(\theta) = \int_\tau P(\tau;\theta)\left[\sum_t \nabla_\theta \log \pi_\theta(a_t|s_t)\right] R(\tau)\, d\tau$$
+$$= \mathbb{E}_{\tau\sim\pi_\theta}\!\left[\sum_{t=0}^T \nabla_\theta \log \pi_\theta(a_t|s_t)\cdot G_t\right]$$
+                </div>
+                <div class="step-explain">We substitute back and recognize the integral as an expectation over $P(\tau;\theta)$. Using causality ($G_t$ only depends on rewards from step $t$ onward, not earlier — past actions don't affect future rewards, so we replace $R(\tau)$ with the return-to-go $G_t$), we arrive at the Policy Gradient Theorem. This estimator can be computed by Monte Carlo sampling!</div>
+              </div>
+            </div>
 
-      <!-- PPO -->
-      <div class="tab-content" id="tab-ppo">
-        <h3 style="margin-bottom:1rem;">Proximal Policy Optimization (Schulman et al., 2017)</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">PPO approximates the TRPO constraint using a simpler clipped surrogate objective. First-order method, easy to implement, robust in practice. The de-facto standard for policy optimization.</p>
-        <div class="math-block">
-          <span class="label">PPO-Clip Objective</span>
-          <div class="eq">r<sub>t</sub>(θ) = π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) / π<sub>θ<sub>old</sub></sub>(a<sub>t</sub>|s<sub>t</sub>)   (probability ratio)</div>
-          <div class="eq">ℒ<sup>CLIP</sup>(θ) = 𝔼<sub>t</sub>[ min( r<sub>t</sub>(θ) Â<sub>t</sub>,  clip(r<sub>t</sub>(θ), 1-ε, 1+ε) Â<sub>t</sub> ) ]</div>
-          <div class="comment">// ε = 0.1 or 0.2. Clipping prevents large policy updates without expensive constrained optimization</div>
-        </div>
-        <div class="math-block">
-          <span class="label">Full PPO Loss (with value function and entropy bonus)</span>
-          <div class="eq">ℒ<sup>PPO</sup>(θ) = ℒ<sup>CLIP</sup>(θ) − c₁ ℒ<sup>VF</sup>(θ) + c₂ S[π<sub>θ</sub>](s<sub>t</sub>)</div>
-          <div class="comment">// c₁ ≈ 0.5 (value coeff), c₂ ≈ 0.01 (entropy coeff to encourage exploration)</div>
-        </div>
-        <div class="card-grid" style="grid-template-columns:1fr 1fr;margin-top:1.5rem;">
-          <div class="card card-accent">
-            <h3>When Â<sub>t</sub> > 0</h3>
-            <p>Action was better than expected. Increase its probability — but clip at (1+ε) to avoid going too far.</p>
-          </div>
-          <div class="card card-accent2">
-            <h3>When Â<sub>t</sub> < 0</h3>
-            <p>Action was worse than expected. Decrease its probability — but clip at (1−ε) to avoid going too far in the other direction.</p>
-          </div>
-        </div>
-        <div class="code-block" style="margin-top:1.5rem;">
-          <div class="code-header"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">PPO Update Loop</span></div>
-          <div class="code-body"><span class="cm"># Collect N rollout steps, then do K epochs of minibatch updates</span>
-<span class="kw">for</span> <span class="var">epoch</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="var">K</span>):
-    <span class="kw">for</span> <span class="var">batch</span> <span class="kw">in</span> <span class="fn">minibatches</span>(<span class="var">buffer</span>):
-        <span class="var">ratio</span> = <span class="fn">exp</span>(<span class="var">new_log_probs</span> - <span class="var">old_log_probs</span>)
-        <span class="var">clip_adv</span> = <span class="fn">clamp</span>(<span class="var">ratio</span>, <span class="num">1</span>-<span class="var">eps</span>, <span class="num">1</span>+<span class="var">eps</span>) * <span class="var">advantages</span>
-        <span class="var">policy_loss</span> = -<span class="fn">min</span>(<span class="var">ratio</span> * <span class="var">advantages</span>, <span class="var">clip_adv</span>).<span class="fn">mean</span>()
-        <span class="var">value_loss</span> = <span class="num">0.5</span> * (<span class="var">returns</span> - <span class="var">values</span>).<span class="fn">pow</span>(<span class="num">2</span>).<span class="fn">mean</span>()
-        <span class="var">entropy_bonus</span> = <span class="var">dist</span>.<span class="fn">entropy</span>().<span class="fn">mean</span>()
-        <span class="var">loss</span> = <span class="var">policy_loss</span> + <span class="num">0.5</span>*<span class="var">value_loss</span> - <span class="num">0.01</span>*<span class="var">entropy_bonus</span>
-        <span class="fn">optimize</span>(<span class="var">loss</span>)</div>
-        </div>
-      </div>
-
-      <!-- Comparison -->
-      <div class="tab-content" id="tab-comparison">
-        <h3 style="margin-bottom:1.5rem;">Algorithm Comparison</h3>
-        <div style="overflow-x:auto;">
-        <table class="compare-table">
-          <thead>
-            <tr><th>Algorithm</th><th>Step Size Control</th><th>Sample Efficiency</th><th>Complexity</th><th>Best For</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>REINFORCE</td>
-              <td><span class="badge badge-red">Fixed LR</span></td>
-              <td><span class="badge badge-red">Low</span></td>
-              <td><span class="badge badge-green">O(n)</span></td>
-              <td>Simple envs, teaching</td>
-            </tr>
-            <tr>
-              <td>REINFORCE+Baseline</td>
-              <td><span class="badge badge-red">Fixed LR</span></td>
-              <td><span class="badge badge-yellow">Medium</span></td>
-              <td><span class="badge badge-green">O(n)</span></td>
-              <td>Better than vanilla REINFORCE</td>
-            </tr>
-            <tr>
-              <td>A2C / A3C</td>
-              <td><span class="badge badge-yellow">Fixed LR</span></td>
-              <td><span class="badge badge-yellow">Medium</span></td>
-              <td><span class="badge badge-green">O(n)</span></td>
-              <td>Synchronous/async parallel training</td>
-            </tr>
-            <tr>
-              <td>TRPO</td>
-              <td><span class="badge badge-green">KL constraint</span></td>
-              <td><span class="badge badge-yellow">Medium</span></td>
-              <td><span class="badge badge-red">O(n²)</span></td>
-              <td>When stability is critical</td>
-            </tr>
-            <tr>
-              <td>PPO</td>
-              <td><span class="badge badge-green">Clipped ratio</span></td>
-              <td><span class="badge badge-green">High</span></td>
-              <td><span class="badge badge-green">O(n)</span></td>
-              <td>General purpose, RLHF</td>
-            </tr>
-            <tr>
-              <td>GRPO</td>
-              <td><span class="badge badge-green">Clipped ratio</span></td>
-              <td><span class="badge badge-green">High</span></td>
-              <td><span class="badge badge-blue">O(n), no critic</span></td>
-              <td>LLM reasoning (DeepSeek-R1)</td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- SECTION 3: VARIANCE REDUCTION -->
-<section id="variance">
-  <div class="section-inner">
-    <div class="section-tag reveal">03 — Variance Reduction</div>
-    <h2 class="section-title reveal">Taming the <span class="grad-text">Variance</span></h2>
-    <p class="section-desc reveal">High variance is the central challenge of policy gradient methods. Multiple complementary techniques reduce variance while preserving unbiasedness (baselines, causality) or accepting a bias-variance trade-off (GAE).</p>
-
-    <div class="accordion reveal">
-      <div class="acc-item open">
-        <div class="acc-header">
-          <div class="acc-title"><span class="acc-num">01</span>Reward-to-Go (Causality)</div>
-          <div class="acc-arrow"></div>
-        </div>
-        <div class="acc-body" style="max-height:500px;">
-          <div class="acc-body-inner">
-            Replace full trajectory return R(τ) with reward-to-go R̂<sub>t</sub> = Σ<sub>t'≥t</sub> γ<sup>t'-t</sup> r<sub>t'</sub>. 
-            The <span class="highlight">causality principle</span>: action a<sub>t</sub> cannot affect rewards before time t, so including those rewards only adds noise.
-            This is a <span class="highlight3">zero-bias reduction</span> — the gradient estimate is still unbiased but variance decreases because we remove irrelevant randomness from the past.
-          </div>
-        </div>
-      </div>
-      <div class="acc-item">
-        <div class="acc-header">
-          <div class="acc-title"><span class="acc-num">02</span>Baselines (State-Dependent)</div>
-          <div class="acc-arrow"></div>
-        </div>
-        <div class="acc-body">
-          <div class="acc-body-inner">
-            Any function b(s<sub>t</sub>) can be subtracted from the return without changing the expected gradient:
-            𝔼[∇<sub>θ</sub> log π · b(s)] = 0. The <span class="highlight">optimal baseline</span> (minimum variance) is
-            b*(s) = 𝔼[‖∇ log π‖² G] / 𝔼[‖∇ log π‖²]. In practice, we use <span class="highlight2">V<sup>π</sup>(s<sub>t</sub>)</span> — the learned state value function — which serves double duty as a zero-bias variance reducer and a critic.
-          </div>
-        </div>
-      </div>
-      <div class="acc-item">
-        <div class="acc-header">
-          <div class="acc-title"><span class="acc-num">03</span>Generalized Advantage Estimation (GAE)</div>
-          <div class="acc-arrow"></div>
-        </div>
-        <div class="acc-body">
-          <div class="acc-body-inner">
-            GAE (Schulman et al., 2016) interpolates between high-variance Monte Carlo returns and low-variance but biased 1-step TD via an exponentially weighted average of k-step advantages:
-            <br><br>
-            <span class="highlight">Â<sup>GAE(γ,λ)</sup><sub>t</sub> = Σ<sub>l=0</sub><sup>∞</sup> (γλ)<sup>l</sup> δ<sub>t+l</sub></span>
-            <br><br>
-            where δ<sub>t</sub> = r<sub>t</sub> + γ V(s<sub>t+1</sub>) − V(s<sub>t</sub>) is the TD residual.
-            <span class="highlight2">λ=0</span>: pure 1-step TD (low variance, high bias). <span class="highlight3">λ=1</span>: Monte Carlo (high variance, no bias). λ ∈ (0,1) trades off. Typically λ = 0.95.
-          </div>
-        </div>
-      </div>
-      <div class="acc-item">
-        <div class="acc-header">
-          <div class="acc-title"><span class="acc-num">04</span>Reward Normalization & Whitening</div>
-          <div class="acc-arrow"></div>
-        </div>
-        <div class="acc-body">
-          <div class="acc-body-inner">
-            Normalize advantages within a mini-batch: Â ← (Â − mean(Â)) / (std(Â) + ε). This is a <span class="highlight2">heuristic</span> (not theoretically motivated like the others) but is crucial in practice: prevents reward scale from affecting step size, stabilizes training. Used in PPO, RLHF pipelines universally.
-          </div>
-        </div>
-      </div>
-      <div class="acc-item">
-        <div class="acc-header">
-          <div class="acc-title"><span class="acc-num">05</span>Control Variates & Importance Sampling</div>
-          <div class="acc-arrow"></div>
-        </div>
-        <div class="acc-body">
-          <div class="acc-body-inner">
-            <span class="highlight">Importance sampling</span> allows off-policy data reuse: w<sub>t</sub> = π<sub>θ</sub>/π<sub>old</sub>. Allows multiple gradient steps per batch of data (as in PPO). The clipping in PPO can be seen as a truncated importance weight. In RLHF, off-policy rollouts from the SFT model are sometimes reused with IS correction.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Interactive GAE visualiser -->
-    <div class="reveal" style="margin-top:3rem;">
-      <h3 style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin-bottom:0.5rem;">Interactive GAE λ Explorer</h3>
-      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">Adjust λ to see the bias-variance trade-off in advantage estimation weights (γ=0.99).</p>
-      <div class="slider-container">
-        <div class="slider-row">
-          <span class="slider-label">λ (GAE lambda)</span>
-          <input type="range" id="lam-slider" min="0" max="100" value="95" oninput="updateGAE(this)">
-          <span class="slider-val" id="lam-val">0.95</span>
-        </div>
-        <div class="slider-row">
-          <span class="slider-label">γ (discount)</span>
-          <input type="range" id="gam-slider" min="80" max="100" value="99" oninput="updateGAE(this)">
-          <span class="slider-val" id="gam-val">0.99</span>
-        </div>
-      </div>
-      <canvas id="variance-canvas"></canvas>
-      <div id="reward-output" style="margin-top:1rem;">
-        <div class="rout-label">Effective horizon (steps contributing >1% of total weight)</div>
-        <div class="rout-val" id="eff-horizon">— steps</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- SECTION 4: ACTOR-CRITIC -->
-<section id="actor-critic" style="background: linear-gradient(180deg, transparent, rgba(0,229,255,0.02), transparent);">
-  <div class="section-inner">
-    <div class="section-tag reveal">04 — Actor-Critic</div>
-    <h2 class="section-title reveal"><span class="grad-text">Actor-Critic</span> Architecture</h2>
-    <p class="section-desc reveal">Actor-critic methods combine a policy (actor) with a learned value function (critic) to reduce variance while maintaining lower bias than pure TD methods.</p>
-
-    <div class="pipeline reveal">
-      <div class="pipe-node">
-        <div class="pipe-icon">🌍</div>
-        <div class="pipe-label">Environment</div>
-        <div class="pipe-desc">Provides s<sub>t</sub>, r<sub>t</sub>, s<sub>t+1</sub></div>
-      </div>
-      <div class="pipe-arrow">→</div>
-      <div class="pipe-node" style="border-color:rgba(0,229,255,0.3);">
-        <div class="pipe-icon">🎭</div>
-        <div class="pipe-label">Actor π<sub>θ</sub></div>
-        <div class="pipe-desc">Selects action a<sub>t</sub> ~ π<sub>θ</sub>(·|s<sub>t</sub>)</div>
-      </div>
-      <div class="pipe-arrow">→</div>
-      <div class="pipe-node" style="border-color:rgba(124,58,237,0.3);">
-        <div class="pipe-icon">📊</div>
-        <div class="pipe-label">Critic V<sub>w</sub></div>
-        <div class="pipe-desc">Estimates V<sup>π</sup>(s<sub>t</sub>) for advantage</div>
-      </div>
-      <div class="pipe-arrow">→</div>
-      <div class="pipe-node" style="border-color:rgba(245,158,11,0.3);">
-        <div class="pipe-icon">📐</div>
-        <div class="pipe-label">Advantage Â<sub>t</sub></div>
-        <div class="pipe-desc">GAE or TD residuals</div>
-      </div>
-      <div class="pipe-arrow">→</div>
-      <div class="pipe-node" style="border-color:rgba(16,185,129,0.3);">
-        <div class="pipe-icon">⬆️</div>
-        <div class="pipe-label">Update θ, w</div>
-        <div class="pipe-desc">Policy + value gradients</div>
-      </div>
-    </div>
-
-    <div class="card-grid reveal">
-      <div class="card card-accent">
-        <h3>A2C — Advantage Actor-Critic</h3>
-        <p>Synchronous version of A3C. Multiple parallel environments collect experience; a central gradient update step uses advantages estimated by the critic. Stable training, easy parallelism.</p>
-      </div>
-      <div class="card card-accent2">
-        <h3>A3C — Async Advantage Actor-Critic</h3>
-        <p>Asynchronous gradient updates from N workers. Each worker maintains a copy of the policy, computes gradients, pushes to shared network. Lock-free. Faster wall-clock but noisier gradients.</p>
-      </div>
-      <div class="card card-accent3">
-        <h3>SAC — Soft Actor-Critic</h3>
-        <p>Off-policy actor-critic with maximum entropy objective: J = 𝔼[Σ γ<sup>t</sup>(r<sub>t</sub> + α H(π))]. Automatically tunes temperature α. State-of-the-art for continuous control.</p>
-      </div>
-      <div class="card card-accent4">
-        <h3>TD3 — Twin Delayed DDPG</h3>
-        <p>Addresses Q-function overestimation in DDPG with twin critics (take min), delayed policy updates, and target policy smoothing. Deterministic policy, off-policy, very sample-efficient.</p>
-      </div>
-    </div>
-
-    <div class="math-block reveal">
-      <span class="label">Actor-Critic Update Rules</span>
-      <div class="eq">δ<sub>t</sub> = r<sub>t</sub> + γ V<sub>w</sub>(s<sub>t+1</sub>) − V<sub>w</sub>(s<sub>t</sub>)      (TD error ≈ advantage)</div>
-      <div class="eq">θ ← θ + α<sub>actor</sub>  ∇<sub>θ</sub> log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) · δ<sub>t</sub></div>
-      <div class="eq">w ← w − α<sub>critic</sub>  δ<sub>t</sub> · ∇<sub>w</sub> V<sub>w</sub>(s<sub>t</sub>)   (MSE gradient)</div>
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- SECTION 5: ADVANCED TOPICS -->
-<section id="advanced">
-  <div class="section-inner">
-    <div class="section-tag reveal">05 — Advanced Topics</div>
-    <h2 class="section-title reveal">Advanced <span class="grad-text">Concepts</span></h2>
-
-    <div class="tabs reveal">
-      <div class="tab-header">
-        <button class="tab-btn active" data-tab="natural">Natural Policy Gradient</button>
-        <button class="tab-btn" data-tab="entropy">Entropy Regularization</button>
-        <button class="tab-btn" data-tab="grpo">GRPO</button>
-        <button class="tab-btn" data-tab="offpolicy">Off-Policy PG</button>
-      </div>
-
-      <div class="tab-content active" id="tab-natural">
-        <h3 style="margin-bottom:1rem;">Natural Policy Gradient</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">Standard gradient ascent is invariant to Euclidean geometry in parameter space, not the distribution space. The natural gradient uses the Fisher Information Matrix (FIM) to follow the steepest ascent in distribution space.</p>
-        <div class="math-block">
-          <span class="label">Natural Gradient Update</span>
-          <div class="eq">θ ← θ + α F(θ)⁻¹ ∇<sub>θ</sub> J(θ)</div>
-          <div class="eq">F(θ) = 𝔼<sub>s,a~π</sub>[ ∇<sub>θ</sub> log π<sub>θ</sub>(a|s) ∇<sub>θ</sub> log π<sub>θ</sub>(a|s)ᵀ ]</div>
-          <div class="comment">// F is the Fisher Info Matrix = KL Hessian. TRPO approximates F⁻¹ via conjugate gradient.</div>
-        </div>
-        <p style="color:var(--muted);line-height:1.75;font-size:0.9rem;">The natural gradient is invariant to reparameterization of the policy — it measures progress in terms of change in the policy distribution, not parameter change. TRPO and K-FAC approximate the natural gradient efficiently.</p>
-      </div>
-
-      <div class="tab-content" id="tab-entropy">
-        <h3 style="margin-bottom:1rem;">Maximum Entropy RL & Entropy Regularization</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">Add an entropy bonus to the objective to encourage exploration and prevent premature convergence to deterministic policies.</p>
-        <div class="math-block">
-          <span class="label">Max-Entropy Objective</span>
-          <div class="eq">J<sub>MaxEnt</sub>(θ) = 𝔼<sub>τ</sub>[ Σ<sub>t</sub> γ<sup>t</sup> (r<sub>t</sub> + α H(π<sub>θ</sub>(·|s<sub>t</sub>))) ]</div>
-          <div class="eq">H(π(·|s)) = −𝔼<sub>a~π</sub>[log π(a|s)]   (policy entropy at state s)</div>
-          <div class="comment">// α: temperature. Higher α → more stochastic policy. SAC auto-tunes α.</div>
-        </div>
-        <div class="card-grid" style="grid-template-columns:1fr 1fr;margin-top:1rem;">
-          <div class="card card-accent4">
-            <h3>Benefits</h3>
-            <p>Encourages exploration, leads to more robust policies, avoids deterministic optima, better generalization. Foundation of SAC and connects to energy-based models.</p>
-          </div>
-          <div class="card card-accent2">
-            <h3>In RLHF</h3>
-            <p>Entropy bonus in PPO during RLHF fine-tuning prevents over-optimization and mode collapse, similar to the KL penalty between the fine-tuned and reference policy.</p>
           </div>
         </div>
       </div>
 
-      <div class="tab-content" id="tab-grpo">
-        <h3 style="margin-bottom:1rem;">GRPO — Group Relative Policy Optimization (DeepSeek, 2024)</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">GRPO eliminates the value function critic entirely. Instead, advantages are computed by comparing rewards across a group of sampled outputs for the same question — much cheaper for LLMs.</p>
-        <div class="math-block">
-          <span class="label">GRPO Advantage Estimation</span>
-          <div class="eq">Sample G outputs {o<sub>1</sub>, …, o<sub>G</sub>} for question q from π<sub>θ<sub>old</sub></sub></div>
-          <div class="eq">Â<sub>i</sub> = (r<sub>i</sub> − mean({r<sub>j</sub>})) / std({r<sub>j</sub>})   (group-normalized reward)</div>
-          <div class="comment">// No critic network needed. Naturally handles sparse rewards from verifiers.</div>
-        </div>
-        <div class="math-block">
-          <span class="label">GRPO Objective</span>
-          <div class="eq">ℒ<sup>GRPO</sup>(θ) = 𝔼<sub>q,o</sub>[ min(r·Â, clip(r,1-ε,1+ε)·Â) ] − β KL[π<sub>θ</sub>‖π<sub>ref</sub>]</div>
-          <div class="comment">// β-KL regularization replaces value function loss. Used in DeepSeek-R1, Qwen GRPO.</div>
-        </div>
-        <div class="card card-accent3" style="margin-top:1rem;">
-          <h3>Why GRPO for LLMs?</h3>
-          <p>Training a value function that operates on tokens is expensive and tricky. For math/code tasks with binary verifiable rewards, GRPO's group-normalized reward naturally provides relative advantage signal without a separate critic model.</p>
+      <div class="math-block result">
+        <div class="math-label result">Key Insight</div>
+        $$\nabla_\theta J(\theta) = \mathbb{E}_{\tau\sim\pi_\theta}\!\left[\sum_{t=0}^T \underbrace{\nabla_\theta \log \pi_\theta(a_t|s_t)}_{\text{score function}} \cdot \underbrace{G_t}_{\text{signal}}\right]$$
+        <p style="font-size:0.82rem;color:var(--text3);margin-top:0.6rem;">The score function $\nabla_\theta\log\pi_\theta(a|s)$ points in the direction that increases $\log\pi_\theta(a|s)$. Scaled by $G_t$: actions with high return are reinforced, actions with low return are suppressed.</p>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 5: REINFORCE -->
+    <section id="reinforce" class="fade-in">
+      <span class="section-number">§ 05</span>
+      <h2>REINFORCE Algorithm</h2>
+      <div class="section-divider"></div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">Williams (1992)</div>
+        <p style="margin:0;font-size:0.95rem;">REINFORCE is the simplest policy gradient algorithm. Sample complete episodes under $\pi_\theta$, then update $\theta$ using the empirical gradient estimate. No value function needed.</p>
+      </div>
+
+      <div class="math-block">
+        <div class="math-label">REINFORCE Update</div>
+        $$\theta \leftarrow \theta + \alpha \sum_{t=0}^T \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot G_t$$
+      </div>
+
+      <div class="algorithm-box">
+        <div class="algo-header">📋 Algorithm: REINFORCE (Monte Carlo Policy Gradient)</div>
+        <div class="algo-body">
+          <div><span class="kw">Initialize</span>: $\theta$ randomly</div>
+          <div><span class="kw">for</span> episode = 1, 2, ... <span class="kw">do</span></div>
+          <div class="indent1"><span class="cm">// Sample trajectory using current policy</span></div>
+          <div class="indent1">Sample $\tau = (s_0,a_0,r_0,\ldots,s_T)$ from $\pi_\theta$</div>
+          <div class="indent1"><span class="kw">for</span> t = 0, 1, ..., T <span class="kw">do</span></div>
+          <div class="indent2">Compute $G_t = \sum_{t'=t}^T \gamma^{t'-t} r_{t'}$</div>
+          <div class="indent2"><span class="hl">$\theta \leftarrow \theta + \alpha \gamma^t G_t \nabla_\theta \log\pi_\theta(a_t|s_t)$</span></div>
+          <div class="indent1"><span class="kw">end for</span></div>
+          <div><span class="kw">end for</span></div>
         </div>
       </div>
 
-      <div class="tab-content" id="tab-offpolicy">
-        <h3 style="margin-bottom:1rem;">Off-Policy Policy Gradients</h3>
-        <p style="color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">Reusing data from old policies or a different behavior policy via importance sampling. Enables higher sample efficiency at the cost of variance from IS weights.</p>
-        <div class="math-block">
-          <span class="label">Off-Policy Gradient Estimator</span>
-          <div class="eq">∇<sub>θ</sub> J(θ) ≈ 𝔼<sub>τ~π<sub>β</sub></sub>[ ∏<sub>t'≤t</sub>(π<sub>θ</sub>/π<sub>β</sub>) · ∇<sub>θ</sub> log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) · Q<sup>π<sub>β</sub></sup>(s<sub>t</sub>,a<sub>t</sub>) ]</div>
-          <div class="comment">// Product of IS weights can have exponential variance over long horizons — clip or per-step IS</div>
-        </div>
-        <p style="color:var(--muted);line-height:1.75;font-size:0.9rem;">PPO uses a truncated 1-step IS ratio (the clipping). V-trace (IMPALA) uses per-step truncated IS for distributed training. Retrace uses off-policy safe return targets.</p>
-      </div>
-    </div>
+      <h3>The Variance Problem</h3>
+      <p>REINFORCE is correct in expectation but suffers from <strong>extremely high variance</strong>. The return $G_t$ can vary wildly across episodes — a single unlucky reward can completely mislead the gradient estimate.</p>
 
-    <!-- Timeline of key papers -->
-    <div class="reveal" style="margin-top:3rem;">
-      <h3 style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin-bottom:2rem;">Key Paper Timeline</h3>
+      <div class="callout warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body"><strong>Why high variance?</strong> $G_t$ depends on the full random trajectory, mixing signal (which action caused the reward) with noise (stochastic transitions, other actions). This requires many samples to converge reliably.</div>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 6: VARIANCE REDUCTION -->
+    <section id="variance" class="fade-in">
+      <span class="section-number">§ 06</span>
+      <h2>Variance Reduction</h2>
+      <div class="section-divider"></div>
+
+      <h3>Baselines</h3>
+      <p>We can subtract any function $b(s_t)$ that doesn't depend on the action from $G_t$ without changing the gradient in expectation (since $\mathbb{E}[\nabla_\theta\log\pi_\theta(a|s)\cdot b(s)] = 0$):</p>
+
+      <div class="math-block">
+        <div class="math-label">Gradient with Baseline</div>
+        $$\nabla_\theta J(\theta) = \mathbb{E}\!\left[\sum_t \nabla_\theta\log\pi_\theta(a_t|s_t)\cdot(G_t - b(s_t))\right]$$
+      </div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">Intuition for Baselines</div>
+        <p style="margin:0;font-size:0.95rem;">The baseline shifts the reward signal to be <em>relative</em>: instead of asking "is this return good?", we ask "is this return <strong>better than typical</strong>?". Using $b(s_t) = V^{\pi_\theta}(s_t)$ (the state value) gives the <strong>advantage function</strong>.</p>
+      </div>
+
+      <h3>The Advantage Function</h3>
+
+      <div class="math-block theorem">
+        <div class="math-label theorem">Advantage Function</div>
+        $$A^{\pi}(s_t, a_t) = Q^{\pi}(s_t, a_t) - V^{\pi}(s_t)$$
+        <p style="font-size:0.82rem;color:var(--text3);margin-top:0.6rem;">
+          $Q^{\pi}(s,a)$: expected return starting at $(s,a)$ then following $\pi$<br>
+          $V^{\pi}(s)$: expected return starting at $s$ then following $\pi$<br>
+          $A^{\pi}(s,a)$: how much better is action $a$ than the average action at state $s$?
+        </p>
+      </div>
+
+      <div class="math-block">
+        <div class="math-label">Policy Gradient with Advantage</div>
+        $$\nabla_\theta J(\theta) = \mathbb{E}\!\left[\sum_t \nabla_\theta\log\pi_\theta(a_t|s_t)\cdot A^{\pi_\theta}(s_t,a_t)\right]$$
+      </div>
+
+      <h3>Estimating the Advantage</h3>
+      <table class="compare">
+        <tr><th>Estimator</th><th>Formula</th><th>Bias/Variance</th></tr>
+        <tr><td>Monte Carlo</td><td>$G_t - V(s_t)$</td><td>Low bias, High variance</td></tr>
+        <tr><td>TD(0)</td><td>$r_t + \gamma V(s_{t+1}) - V(s_t)$</td><td>High bias, Low variance</td></tr>
+        <tr><td>GAE($\lambda$)</td><td>$\sum_l (\gamma\lambda)^l \delta_{t+l}$, $\delta_t = r_t + \gamma V(s_{t+1})-V(s_t)$</td><td>Tunable via $\lambda$</td></tr>
+      </table>
+
+      <p><span class="tooltip-wrap"><span class="tooltip-word">GAE (Generalized Advantage Estimation)</span><span class="tooltip-box">GAE interpolates between TD (λ=0, low variance) and Monte Carlo (λ=1, low bias) via an exponentially weighted average of TD errors. Introduced by Schulman et al. 2016.</span></span> is widely used in modern implementations (PPO, A3C).</p>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 7: ACTOR CRITIC -->
+    <section id="actor-critic" class="fade-in">
+      <span class="section-number">§ 07</span>
+      <h2>Actor–Critic</h2>
+      <div class="section-divider"></div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">Two Networks, One Goal</div>
+        <p style="margin:0;font-size:0.95rem;">The <strong>actor</strong> is the policy $\pi_\theta(a|s)$ — it decides what to do. The <strong>critic</strong> is the value function $V_\phi(s)$ — it evaluates how good the current state is. The actor updates via policy gradient; the critic updates via TD learning or regression.</p>
+      </div>
+
+      <div class="viz-container">
+        <div class="viz-title">🎭 Actor–Critic Architecture</div>
+        <canvas id="ac-canvas" height="200"></canvas>
+      </div>
+
+      <div class="math-block">
+        <div class="math-label">Actor Update</div>
+        $$\theta \leftarrow \theta + \alpha_\theta \nabla_\theta\log\pi_\theta(a_t|s_t)\cdot\hat{A}_t$$
+      </div>
+
+      <div class="math-block">
+        <div class="math-label">Critic Update (TD Loss)</div>
+        $$\phi \leftarrow \phi - \alpha_\phi \nabla_\phi \left(V_\phi(s_t) - (r_t + \gamma V_\phi(s_{t+1}))\right)^2$$
+      </div>
+
+      <table class="compare">
+        <tr><th>Variant</th><th>Key Feature</th></tr>
+        <tr><td>A2C</td><td>Synchronous actor-critic; uses GAE advantage</td></tr>
+        <tr><td>A3C</td><td>Asynchronous; multiple parallel workers</td></tr>
+        <tr><td>SAC</td><td>Off-policy; entropy-regularized; continuous actions</td></tr>
+        <tr><td>PPO</td><td>Clipped surrogate; on-policy; most widely used today</td></tr>
+      </table>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 8: ADVANCED PG -->
+    <section id="advanced" class="fade-in">
+      <span class="section-number">§ 08</span>
+      <h2>Advanced Policy Gradient Methods</h2>
+      <div class="section-divider"></div>
+
+      <h3>The Core Problem: Step Size</h3>
+      <p>Vanilla policy gradients are sensitive to the learning rate $\alpha$. Too large → policy collapses. Too small → extremely slow learning. The issue: the parameter space (neural network weights) doesn't align with the policy space (probability distributions).</p>
+
+      <h3>Natural Policy Gradient (Amari 1998, Kakade 2001)</h3>
+      <p>Instead of gradient ascent in <em>parameter space</em>, move in the <em>policy space</em> (distribution space) using the <span class="tooltip-wrap"><span class="tooltip-word">Fisher information metric</span><span class="tooltip-box">The Fisher information matrix F(θ) measures the curvature of KL divergence between policy distributions. The natural gradient F⁻¹∇J is invariant to parameterization.</span></span>:</p>
+
+      <div class="math-block">
+        <div class="math-label">Natural Policy Gradient</div>
+        $$\tilde{\nabla}_\theta J(\theta) = F(\theta)^{-1} \nabla_\theta J(\theta)$$
+        $$F(\theta) = \mathbb{E}_{\pi_\theta}\!\left[\nabla_\theta\log\pi_\theta(a|s)\,\nabla_\theta\log\pi_\theta(a|s)^\top\right]$$
+      </div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">Why Natural Gradient?</div>
+        <p style="margin:0;font-size:0.95rem;">The natural gradient moves in the steepest direction in distribution space, not parameter space. This makes it invariant to reparameterization of the policy — e.g., the gradient doesn't blow up just because you rescaled the network weights.</p>
+      </div>
+
+      <h3>Trust Region Policy Optimization — TRPO (Schulman et al. 2015)</h3>
+      <p>TRPO formalizes the "don't change the policy too much" idea as a constrained optimization:</p>
+
+      <div class="math-block">
+        <div class="math-label">TRPO Objective</div>
+        $$\max_\theta \mathbb{E}_{s,a\sim\pi_{\theta_\text{old}}}\!\left[\frac{\pi_\theta(a|s)}{\pi_{\theta_\text{old}}(a|s)} A^{\pi_{\theta_\text{old}}}(s,a)\right]$$
+        $$\text{subject to } \mathbb{E}_s\!\left[D_\text{KL}\!\left(\pi_{\theta_\text{old}}(\cdot|s)\,\|\,\pi_\theta(\cdot|s)\right)\right] \leq \delta$$
+      </div>
+
+      <p>The ratio $r(\theta) = \frac{\pi_\theta(a|s)}{\pi_{\theta_\text{old}}(a|s)}$ is called the <strong>importance weight</strong>. It enables off-policy evaluation of $\pi_\theta$ using data from $\pi_{\theta_\text{old}}$.</p>
+
+      <div class="callout info">
+        <span class="callout-icon">📐</span>
+        <div class="callout-body"><strong>TRPO limitation:</strong> Solving the constrained optimization requires computing the Fisher-vector product and second-order information (conjugate gradient), which is expensive. PPO addresses this with a simpler objective.</div>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 9: PPO -->
+    <section id="ppo" class="fade-in">
+      <span class="section-number">§ 09</span>
+      <h2>PPO — Full Derivation</h2>
+      <div class="section-divider"></div>
+
+      <div class="tags">
+        <span class="tag orange">Schulman et al. 2017</span>
+        <span class="tag green">State of the Art</span>
+        <span class="tag blue">Used in RLHF</span>
+      </div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">PPO Intuition</div>
+        <p style="margin:0;font-size:0.95rem;">Proximal Policy Optimization keeps the simplicity of first-order optimization (gradient descent) while preventing catastrophically large policy updates — without the computational cost of TRPO's second-order constrained optimization.</p>
+      </div>
+
+      <!-- PPO DERIVATION -->
+      <div class="derivation-container">
+        <div class="derivation-header" onclick="toggleDerivation('deriv-ppo')">
+          <div class="derivation-header-left">
+            <div class="derivation-icon" style="background:var(--accent2);">∂</div>
+            <div>
+              <div class="derivation-title">PPO Clipped Objective — Complete Derivation</div>
+              <div class="derivation-subtitle">5 steps · From TRPO → trust region → clipping</div>
+            </div>
+          </div>
+          <div class="derivation-chevron" id="chevron-deriv-ppo">▼</div>
+        </div>
+        <div class="derivation-body" id="deriv-ppo">
+          <div class="derivation-steps">
+
+            <div class="step">
+              <div class="step-num" style="background:var(--accent2);">1</div>
+              <div class="step-content">
+                <div class="step-label" style="color:var(--accent2);">Start: TRPO Surrogate Objective</div>
+                <div class="step-math">$$L^{\text{CPI}}(\theta) = \mathbb{E}_t\!\left[\frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_\text{old}}(a_t|s_t)} A_t\right] = \mathbb{E}_t\!\left[r_t(\theta)\, A_t\right]$$</div>
+                <div class="step-explain">Define the probability ratio $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_\text{old}}(a_t|s_t)}$. The TRPO surrogate $L^{\text{CPI}}$ (Conservative Policy Iteration) uses data collected from $\pi_{\theta_\text{old}}$ to estimate the performance of the new $\pi_\theta$. Without constraints, maximizing $L^{\text{CPI}}$ could lead to excessively large policy updates.</div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num" style="background:var(--accent2);">2</div>
+              <div class="step-content">
+                <div class="step-label" style="color:var(--accent2);">The Trust Region Idea</div>
+                <div class="step-math">
+$$\text{TRPO: } \max_\theta L^{\text{CPI}}(\theta) \text{ s.t. } \mathbb{E}_s[D_\text{KL}(\pi_{\theta_\text{old}}\|\pi_\theta)] \leq \delta$$
+                </div>
+                <div class="step-explain">TRPO enforces a KL constraint to keep the new policy close to the old. This theoretically guarantees monotonic improvement (via the surrogate objective lower bound). The problem: this requires solving a constrained optimization problem at each step, involving expensive second-order methods (conjugate gradient, Fisher-vector products).</div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num" style="background:var(--accent2);">3</div>
+              <div class="step-content">
+                <div class="step-label" style="color:var(--accent2);">Key Observation — When does the ratio matter?</div>
+                <div class="step-math">
+$$r_t(\theta) = 1 \text{ when } \theta = \theta_\text{old}$$
+$$\text{Large deviation: } r_t(\theta) \ll 1 \text{ or } r_t(\theta) \gg 1$$
+                </div>
+                <div class="step-explain">When $r_t \gg 1$: the new policy places much more probability on action $a_t$ than the old. When $A_t > 0$, this seems good — but we're extrapolating far beyond our data. When $r_t \ll 1$: the new policy avoids $a_t$. The surrogate may become unreliable when $r_t$ strays far from 1.</div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num" style="background:var(--accent2);">4</div>
+              <div class="step-content">
+                <div class="step-label" style="color:var(--accent2);">PPO — Clip the Ratio</div>
+                <div class="step-math">
+$$L^{\text{CLIP}}(\theta) = \mathbb{E}_t\!\left[\min\!\left(r_t(\theta)A_t,\; \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\,A_t\right)\right]$$
+                </div>
+                <div class="step-explain">
+                  Instead of a hard KL constraint, PPO clips $r_t(\theta)$ to $[1-\epsilon, 1+\epsilon]$ (typically $\epsilon = 0.1$ or $0.2$). The $\min$ is crucial:
+                  <br>• If $A_t > 0$: we want to increase $r_t$ (do action more), but clip at $1+\epsilon$ — preventing excessive increase.
+                  <br>• If $A_t < 0$: we want to decrease $r_t$ (do action less), but clip at $1-\epsilon$ — preventing excessive decrease.
+                  <br>Taking the minimum ensures the objective is a <em>pessimistic lower bound</em> on the unclipped objective.
+                </div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num" style="background:var(--accent2);">5</div>
+              <div class="step-content">
+                <div class="step-label" style="color:var(--accent2);">Full PPO Objective</div>
+                <div class="step-math">
+$$L^{\text{PPO}}(\theta) = \mathbb{E}_t\!\left[L^{\text{CLIP}}_t(\theta) - c_1 L^{\text{VF}}_t(\theta) + c_2 H[\pi_\theta](s_t)\right]$$
+$$L^{\text{VF}}_t = \left(V_\phi(s_t) - V_t^{\text{target}}\right)^2$$
+                </div>
+                <div class="step-explain">The complete loss has three terms:
+                  <br><strong>1.</strong> $L^{\text{CLIP}}$: clipped policy surrogate (actor loss)
+                  <br><strong>2.</strong> $L^{\text{VF}}$: value function regression loss (critic loss)
+                  <br><strong>3.</strong> $H[\pi_\theta]$: entropy bonus — encourages exploration
+                  <br>$c_1, c_2$ are hyperparameters balancing the three objectives.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- PPO Clipping Visualization -->
+      <div class="viz-container">
+        <div class="viz-title">✂️ PPO Clipping Mechanism — Interactive</div>
+        <div class="viz-controls">
+          <span class="viz-slider-label">ε = </span>
+          <input type="range" id="eps-slider" min="0.05" max="0.4" step="0.01" value="0.2" oninput="drawPPOClip(); document.getElementById('eps-label').textContent=this.value">
+          <span class="viz-slider-label" id="eps-label">0.2</span>
+          <button class="viz-btn" onclick="setPPOAdv(1)">A > 0 (Good action)</button>
+          <button class="viz-btn" onclick="setPPOAdv(-1)">A < 0 (Bad action)</button>
+        </div>
+        <canvas id="ppo-canvas" height="220"></canvas>
+        <p style="font-size:0.72rem;color:var(--text3);margin-top:0.6rem;font-family:var(--mono);">
+          Blue = unclipped r·A. Red dashed = clipped. Green = min(r·A, clip(r,1-ε,1+ε)·A). Shaded region = clipped zone.
+        </p>
+      </div>
+
+      <div class="math-block result">
+        <div class="math-label result">Why Clipping Stabilizes Training</div>
+        <p style="font-size:0.9rem;margin:0;">The clipping removes the incentive to move $r_t$ outside $[1-\epsilon, 1+\epsilon]$ — the gradient is zero in the clipped region. This is a soft constraint that achieves similar effects to TRPO's KL constraint, but is implementable with standard first-order optimizers (Adam). No Hessian computation required.</p>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 10: STOCHASTIC APPROX -->
+    <section id="stochastic" class="fade-in">
+      <span class="section-number">§ 10</span>
+      <h2>Stochastic Approximation View</h2>
+      <div class="section-divider"></div>
+
+      <p>Policy gradient updates are instances of <strong>stochastic gradient ascent</strong>, where the true gradient $\nabla_\theta J(\theta)$ is replaced by a noisy estimate from sampled trajectories.</p>
+
+      <div class="math-block">
+        <div class="math-label">Stochastic Gradient Ascent</div>
+        $$\theta_{k+1} = \theta_k + \alpha_k\, \hat{g}_k$$
+        $$\hat{g}_k = \frac{1}{N}\sum_{n=1}^N \sum_t \nabla_\theta\log\pi_{\theta_k}(a_t^n|s_t^n)\cdot\hat{A}_t^n$$
+      </div>
+
+      <p>Convergence requires (Robbins-Monro conditions):</p>
+      <div class="math-block">
+        $$\sum_{k=1}^\infty \alpha_k = \infty \quad\text{and}\quad \sum_{k=1}^\infty \alpha_k^2 < \infty$$
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">📊</span>
+        <div class="callout-body"><strong>Variance-Bias in gradient estimation:</strong> Using $N$ trajectories reduces gradient variance by $1/N$. Using critic-based advantage reduces variance further. GAE($\lambda$) provides a smooth interpolation with $\lambda$ controlling the bias-variance tradeoff.</div>
+      </div>
+
+      <p>In practice, <strong>mini-batch updates</strong> with multiple epochs over collected data (as in PPO) improve sample efficiency, but introduce off-policy corrections (handled by the importance ratio $r_t(\theta)$).</p>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 11: DEEP PG -->
+    <section id="deep-pg" class="fade-in">
+      <span class="section-number">§ 11</span>
+      <h2>Deep Policy Gradient Methods</h2>
+      <div class="section-divider"></div>
+
+      <p>Deep neural networks as function approximators bring both power and challenges to policy gradient methods:</p>
+
+      <h3>Key Design Choices</h3>
+
+      <table class="compare">
+        <tr><th>Component</th><th>Design</th><th>Consideration</th></tr>
+        <tr><td>Network architecture</td><td>Shared / separate actor-critic networks</td><td>Shared → gradient interference; separate → more parameters</td></tr>
+        <tr><td>Normalization</td><td>Observation normalization, reward scaling</td><td>Critical for training stability</td></tr>
+        <tr><td>Gradient clipping</td><td>$\|\nabla\| \leq g_{\max}$</td><td>Prevents gradient explosions</td></tr>
+        <tr><td>Entropy regularization</td><td>$+\beta H[\pi_\theta]$</td><td>Maintains exploration; prevents premature convergence</td></tr>
+        <tr><td>Value function loss</td><td>Huber loss or clipped MSE</td><td>Robust to outlier returns</td></tr>
+      </table>
+
+      <h3>Practical Algorithm (PPO Implementation)</h3>
+
+      <div class="algorithm-box">
+        <div class="algo-header">🤖 Deep PPO Training Loop</div>
+        <div class="algo-body">
+          <div><span class="kw">for</span> iteration = 1, 2, ... <span class="kw">do</span></div>
+          <div class="indent1"><span class="cm">// Data collection phase</span></div>
+          <div class="indent1"><span class="kw">for</span> actor = 1, ..., N_actors <span class="kw">in parallel do</span></div>
+          <div class="indent2">Run $\pi_{\theta_\text{old}}$ for T timesteps</div>
+          <div class="indent2">Store $(s_t, a_t, r_t, s_{t+1}, \log\pi_{\theta_\text{old}}(a_t|s_t))$</div>
+          <div class="indent1"><span class="kw">end for</span></div>
+          <div class="indent1"><span class="cm">// Compute advantages using GAE-λ</span></div>
+          <div class="indent1">$\hat{A}_t \leftarrow \text{GAE}(\lambda, \gamma, \{r_t\}, \{V_\phi(s_t)\})$</div>
+          <div class="indent1"><span class="cm">// Optimization phase — K epochs over collected data</span></div>
+          <div class="indent1"><span class="kw">for</span> epoch = 1, ..., K <span class="kw">do</span></div>
+          <div class="indent2"><span class="kw">for</span> minibatch $\mathcal{B}$ <span class="kw">do</span></div>
+          <div class="indent3"><span class="hl">Compute $L^{\text{PPO}}(\theta)$ on $\mathcal{B}$; update $\theta, \phi$ via Adam</span></div>
+          <div class="indent2"><span class="kw">end for</span></div>
+          <div class="indent1"><span class="kw">end for</span></div>
+          <div class="indent1">$\theta_\text{old} \leftarrow \theta$</div>
+          <div><span class="kw">end for</span></div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 12: RLHF -->
+    <section id="rlhf" class="fade-in">
+      <span class="section-number">§ 12</span>
+      <h2>RLHF — Connection to Policy Gradients</h2>
+      <div class="section-divider"></div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">What is RLHF?</div>
+        <p style="margin:0;font-size:0.95rem;">Reinforcement Learning from Human Feedback is a training paradigm that uses human preference data to construct a reward function, then uses that reward function to fine-tune a language model using reinforcement learning — specifically, policy gradient methods like PPO.</p>
+      </div>
+
+      <h3>The RLHF Pipeline</h3>
+
+      <div class="pipeline">
+        <div class="pipe-stage">
+          <div class="pipe-icon">📚</div>
+          <div class="pipe-name">Pretraining</div>
+          <div class="pipe-desc">Train LM on large corpus via supervised learning. Produces a capable but unaligned base model.</div>
+        </div>
+        <div class="pipe-stage">
+          <div class="pipe-icon">👤</div>
+          <div class="pipe-name">SFT</div>
+          <div class="pipe-desc">Supervised Fine-Tuning on human-written demonstrations. Seeds the policy in the right region.</div>
+        </div>
+        <div class="pipe-stage">
+          <div class="pipe-icon">🏆</div>
+          <div class="pipe-name">Reward Model</div>
+          <div class="pipe-desc">Train reward model $r_\phi$ on human preference comparisons. Learns to predict human judgments.</div>
+        </div>
+        <div class="pipe-stage">
+          <div class="pipe-icon">🎯</div>
+          <div class="pipe-name">RL Fine-Tuning</div>
+          <div class="pipe-desc">Optimize LM policy via PPO using $r_\phi$ as reward. Maximize reward while staying close to SFT.</div>
+        </div>
+      </div>
+
+      <h3>Reward Model Training</h3>
+      <p>Given pairs of completions $(y_w, y_l)$ for prompt $x$ where humans prefer $y_w$ over $y_l$, the reward model is trained with the <strong>Bradley-Terry preference model</strong>:</p>
+
+      <div class="math-block">
+        <div class="math-label">Reward Model Loss (Bradley-Terry)</div>
+        $$\mathcal{L}_\text{RM}(\phi) = -\mathbb{E}_{(x,y_w,y_l)\sim\mathcal{D}}\!\left[\log\sigma\!\left(r_\phi(x,y_w) - r_\phi(x,y_l)\right)\right]$$
+      </div>
+
+      <div class="intuition-box">
+        <div class="intuition-label">Intuition</div>
+        <p style="margin:0;font-size:0.95rem;">The reward model learns: "given two responses, which does a human prefer?" It's trained like a ranking problem. The trained $r_\phi$ then acts as a proxy for human judgment during RL fine-tuning.</p>
+      </div>
+
+      <h3>Role of Policy Gradient in RLHF</h3>
+      <p>The RL fine-tuning phase is exactly policy gradient optimization: the LM is the policy $\pi_\theta$, the input prompt is the state, the generated token sequence is the action, and the reward model provides the scalar reward signal.</p>
+
+      <div class="math-block theorem">
+        <div class="math-label theorem">RLHF PPO Objective</div>
+        $$\max_{\pi_\theta}\, \mathbb{E}_{x\sim\mathcal{D},\, y\sim\pi_\theta(\cdot|x)}\!\left[r_\phi(x,y) - \beta\, D_\text{KL}\!\left(\pi_\theta(\cdot|x)\,\|\,\pi_\text{SFT}(\cdot|x)\right)\right]$$
+      </div>
+
+      <div class="callout key">
+        <span class="callout-icon">🔑</span>
+        <div class="callout-body"><strong>KL Regularization:</strong> The KL penalty $\beta\cdot D_\text{KL}(\pi_\theta\|\pi_\text{SFT})$ prevents the policy from straying too far from the SFT policy. Without it, the LM would "reward hack" — finding degenerate outputs that score high on $r_\phi$ but are incoherent. This is TRPO's trust region idea, applied to language!</div>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 13: RLHF FOR LLMs -->
+    <section id="llms" class="fade-in">
+      <span class="section-number">§ 13</span>
+      <h2>RLHF for LLMs — Critical Details</h2>
+      <div class="section-divider"></div>
+
+      <h3>The Language Model as a Policy</h3>
+      <div class="math-block">
+        <div class="math-label">Token-Level Formulation</div>
+        $$\pi_\theta(y|x) = \prod_{t=1}^{|y|} \pi_\theta(y_t\,|\,x, y_1,\ldots,y_{t-1})$$
+        <p style="font-size:0.82rem;color:var(--text3);margin-top:0.6rem;">Each autoregressive generation step is an action. The state is the full context $(x, y_1,\ldots,y_{t-1})$. The vocabulary is the action space (often 50k+ tokens!).</p>
+      </div>
+
+      <h3>KL Regularization in Practice</h3>
+      <p>The per-token KL penalty in the reward signal used during PPO training:</p>
+
+      <div class="math-block">
+        <div class="math-label">KL-Augmented Reward (per token)</div>
+        $$\tilde{r}(x,y) = r_\phi(x,y) - \beta\sum_{t=1}^{|y|}\log\frac{\pi_\theta(y_t|x,y_{<t})}{\pi_\text{SFT}(y_t|x,y_{<t})}$$
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body"><strong>InstructGPT (OpenAI 2022)</strong> was the first large-scale demonstration of this pipeline for GPT-3. Later: Claude, Llama-2-Chat, and virtually all modern aligned LLMs use variants of this approach.</div>
+      </div>
+
+      <h3>Reward Hacking & Overoptimization</h3>
+      <p>A key challenge in RLHF: the reward model is imperfect. Optimizing against it too aggressively (high $\beta^{-1}$) leads to <strong>reward hacking</strong> — the policy finds exploits that score highly on $r_\phi$ but are actually poor by human standards.</p>
+
+      <div class="viz-container">
+        <div class="viz-title">📉 Reward vs. KL Trade-off — RLHF Frontier</div>
+        <canvas id="rlhf-canvas" height="200"></canvas>
+        <p style="font-size:0.72rem;color:var(--text3);margin-top:0.6rem;font-family:var(--mono);">
+          The Pareto frontier of human preference vs. KL divergence from SFT. β controls the operating point. Too small β → reward hacking.
+        </p>
+      </div>
+
+      <h3>Modern Alternatives to PPO-based RLHF</h3>
+
+      <table class="compare">
+        <tr><th>Method</th><th>Key Idea</th><th>Advantage over PPO</th></tr>
+        <tr><td>DPO (Direct Preference Optimization)</td><td>Analytically solve the RL objective; optimize directly on preference data</td><td>No separate RM or RL loop needed</td></tr>
+        <tr><td>GRPO</td><td>Group Relative Policy Optimization; used in DeepSeek-R1</td><td>Eliminates separate value network</td></tr>
+        <tr><td>RLOO</td><td>Leave-one-out baseline for variance reduction</td><td>Lower variance than vanilla REINFORCE</td></tr>
+        <tr><td>ReMax</td><td>Use greedy decoding as baseline</td><td>Simple, effective baseline</td></tr>
+      </table>
+
+      <div class="callout key">
+        <span class="callout-icon">🔬</span>
+        <div class="callout-body"><strong>DPO insight:</strong> The optimal policy under the RLHF KL-regularized objective can be written in closed form: $\pi^*(y|x) \propto \pi_\text{SFT}(y|x)\exp(r(x,y)/\beta)$. DPO exploits this to bypass RL entirely, directly learning $\pi^*$ from preference pairs via a classification loss.</div>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 14: MODERN -->
+    <section id="modern" class="fade-in">
+      <span class="section-number">§ 14</span>
+      <h2>Modern Perspective</h2>
+      <div class="section-divider"></div>
+
+      <h3>Reasoning Models & Process Reward</h3>
+      <p>The latest frontier (OpenAI o1, DeepSeek-R1): instead of outcome rewards on final answers, use <strong>process reward models</strong> (PRM) that score individual reasoning steps. This enables RL over chain-of-thought, training models to think longer before answering.</p>
+
+      <div class="math-block">
+        <div class="math-label">Process Reward Objective</div>
+        $$\max_{\pi_\theta} \mathbb{E}\!\left[\sum_{k=1}^K r_\phi(x, s_1, \ldots, s_k) - \beta D_\text{KL}(\pi_\theta\|\pi_\text{ref})\right]$$
+        <p style="font-size:0.82rem;color:var(--text3);margin-top:0.5rem;">$s_k$ = reasoning step $k$. Process reward gives dense feedback at each step, reducing credit assignment difficulty.</p>
+      </div>
+
+      <h3>Constitutional AI & Self-Improvement</h3>
+      <p>Anthropic's Constitutional AI (CAI) augments RLHF with AI-generated feedback: a critic model evaluates responses against constitutional principles, generating AI preference data that supplements human labels.</p>
+
+      <h3>Key Open Research Questions</h3>
+      <div class="summary-grid" style="margin-top:1rem;">
+        <div class="summary-card">
+          <div class="sc-tag">Reward</div>
+          <div class="sc-title">Reward Model Generalization</div>
+          <div class="sc-text">When does the reward model accurately reflect human preferences out-of-distribution?</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Optimization</div>
+          <div class="sc-title">Safe Exploration in RLHF</div>
+          <div class="sc-text">How to explore (generate novel outputs) without producing harmful content during training?</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Theory</div>
+          <div class="sc-title">Credit Assignment</div>
+          <div class="sc-text">Which tokens in a long response are responsible for the quality signal?</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Scaling</div>
+          <div class="sc-title">Scalable Oversight</div>
+          <div class="sc-text">How to supervise superhuman AI systems whose outputs humans can't fully evaluate?</div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 15: SUMMARY -->
+    <section id="summary" class="fade-in">
+      <span class="section-number">§ 15</span>
+      <h2>Summary</h2>
+      <div class="section-divider"></div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="sc-tag">Foundation</div>
+          <div class="sc-title">PG Theorem</div>
+          <div class="sc-text">$\nabla J = \mathbb{E}[\nabla\log\pi \cdot G]$. Log-derivative trick enables gradient estimation via sampling.</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Algorithm</div>
+          <div class="sc-title">REINFORCE</div>
+          <div class="sc-text">Monte Carlo policy gradient. Correct but high variance. Requires complete episodes.</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Variance</div>
+          <div class="sc-title">Baselines & Advantage</div>
+          <div class="sc-text">Subtract $V(s)$ baseline. Advantage $A = Q - V$ measures relative action quality.</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Method</div>
+          <div class="sc-title">Actor–Critic</div>
+          <div class="sc-text">Policy + value function. Actor updates via PG; critic via TD learning.</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Advanced</div>
+          <div class="sc-title">TRPO / PPO</div>
+          <div class="sc-text">Trust region methods. PPO clips importance ratio to prevent large updates.</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-tag">Application</div>
+          <div class="sc-title">RLHF</div>
+          <div class="sc-text">LM is the policy. RM provides reward. KL penalty prevents reward hacking.</div>
+        </div>
+      </div>
+
+      <div class="math-block result" style="margin-top:2rem;">
+        <div class="math-label result">The Fundamental Chain</div>
+        $$\underbrace{\nabla_\theta\log\pi_\theta}_{\text{score fn.}} \times \underbrace{A_t}_{\text{advantage}} \xrightarrow{\text{TRPO trust region}} \underbrace{\frac{\pi_\theta}{\pi_\text{old}}A_t}_{\text{importance weighted}} \xrightarrow{\text{clip}} \underbrace{L^{\text{CLIP}}}_{\text{PPO}} \xrightarrow{\text{+ RM}} \underbrace{L^{\text{RLHF}}}_{\text{LLM alignment}}$$
+      </div>
+    </section>
+
+    <hr class="section-hr">
+
+    <!-- SECTION 16: TIMELINE -->
+    <section id="timeline" class="fade-in">
+      <span class="section-number">§ 16</span>
+      <h2>Historical Timeline</h2>
+      <div class="section-divider"></div>
+
       <div class="timeline">
         <div class="tl-item">
-          <div class="tl-dot"></div>
           <div class="tl-year">1992</div>
-          <div class="tl-title">REINFORCE — Williams</div>
-          <div class="tl-desc">Seminal Monte Carlo policy gradient algorithm. Introduced the log-derivative trick and score function gradient estimator.</div>
+          <div class="tl-dot" style="background:#C4501A;box-shadow:0 0 0 2px #C4501A;"></div>
+          <div class="tl-content">
+            <div class="tl-event">REINFORCE (Williams, 1992)</div>
+            <div class="tl-desc">First practical policy gradient algorithm. Monte Carlo gradient estimator via log-derivative trick.</div>
+          </div>
         </div>
         <div class="tl-item">
-          <div class="tl-dot" style="background:var(--accent2);box-shadow:0 0 10px rgba(124,58,237,0.5);"></div>
-          <div class="tl-year">2000</div>
-          <div class="tl-title">Policy Gradient Theorem — Sutton et al.</div>
-          <div class="tl-desc">Formal proof that ∇J(θ) = 𝔼[∇ log π · Q<sup>π</sup>] without requiring knowledge of the state distribution gradient.</div>
+          <div class="tl-year">1999</div>
+          <div class="tl-dot" style="background:#8C3A0A;box-shadow:0 0 0 2px #8C3A0A;"></div>
+          <div class="tl-content">
+            <div class="tl-event">Policy Gradient Theorem (Sutton et al.)</div>
+            <div class="tl-desc">Formal statement of the PG theorem with function approximation. Theoretical foundation for actor-critic.</div>
+          </div>
         </div>
         <div class="tl-item">
-          <div class="tl-dot" style="background:var(--accent3);box-shadow:0 0 10px rgba(245,158,11,0.5);"></div>
+          <div class="tl-year">2001</div>
+          <div class="tl-dot" style="background:#1A6FC4;box-shadow:0 0 0 2px #1A6FC4;"></div>
+          <div class="tl-content">
+            <div class="tl-event">Natural Policy Gradient (Kakade, 2001)</div>
+            <div class="tl-desc">Fisher-information-based gradient. Invariant to policy parameterization. Foundation for TRPO.</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2013</div>
+          <div class="tl-dot" style="background:#0A4A8C;box-shadow:0 0 0 2px #0A4A8C;"></div>
+          <div class="tl-content">
+            <div class="tl-event">DQN (Mnih et al., DeepMind)</div>
+            <div class="tl-desc">Deep Q-networks on Atari. Proved deep RL could work at scale. Sparked modern RL renaissance.</div>
+          </div>
+        </div>
+        <div class="tl-item">
           <div class="tl-year">2015</div>
-          <div class="tl-title">TRPO — Schulman et al.</div>
-          <div class="tl-desc">Trust region constraint via KL divergence. Guaranteed monotonic improvement. Foundation for PPO.</div>
+          <div class="tl-dot" style="background:#1A6FC4;box-shadow:0 0 0 2px #1A6FC4;"></div>
+          <div class="tl-content">
+            <div class="tl-event">TRPO (Schulman et al., 2015)</div>
+            <div class="tl-desc">Trust Region Policy Optimization. KL-constrained policy updates. Guaranteed monotonic improvement.</div>
+          </div>
         </div>
         <div class="tl-item">
-          <div class="tl-dot" style="background:var(--accent4);box-shadow:0 0 10px rgba(16,185,129,0.5);"></div>
           <div class="tl-year">2016</div>
-          <div class="tl-title">GAE — Schulman et al.</div>
-          <div class="tl-desc">Generalized Advantage Estimation. The λ-weighted TD residual average now standard in every PG implementation.</div>
+          <div class="tl-dot" style="background:#1A9C4A;box-shadow:0 0 0 2px #1A9C4A;"></div>
+          <div class="tl-content">
+            <div class="tl-event">A3C & GAE (Mnih et al.; Schulman et al.)</div>
+            <div class="tl-desc">Asynchronous advantage actor-critic. Generalized advantage estimation. Standard baseline methods.</div>
+          </div>
         </div>
         <div class="tl-item">
-          <div class="tl-dot"></div>
           <div class="tl-year">2017</div>
-          <div class="tl-title">PPO — Schulman et al.</div>
-          <div class="tl-desc">Proximal Policy Optimization. Clipped surrogate objective approximates TRPO with first-order methods. Industry standard.</div>
+          <div class="tl-dot" style="background:#1A9C4A;box-shadow:0 0 0 2px #1A9C4A;"></div>
+          <div class="tl-content">
+            <div class="tl-event">PPO (Schulman et al., OpenAI, 2017)</div>
+            <div class="tl-desc">Proximal Policy Optimization. Clipped surrogate objective. Simple, effective, widely adopted.</div>
+          </div>
         </div>
         <div class="tl-item">
-          <div class="tl-dot" style="background:var(--accent2);"></div>
           <div class="tl-year">2022</div>
-          <div class="tl-title">InstructGPT / RLHF — OpenAI</div>
-          <div class="tl-desc">PPO used at scale to align language models with human preferences via learned reward models. Birth of modern RLHF.</div>
+          <div class="tl-dot" style="background:#9C1A8C;box-shadow:0 0 0 2px #9C1A8C;"></div>
+          <div class="tl-content">
+            <div class="tl-event">InstructGPT / ChatGPT (OpenAI, 2022)</div>
+            <div class="tl-desc">First large-scale RLHF for LLMs. PPO + reward model from human preferences. ChatGPT launched Dec 2022.</div>
+          </div>
         </div>
         <div class="tl-item">
-          <div class="tl-dot" style="background:var(--accent3);"></div>
-          <div class="tl-year">2024</div>
-          <div class="tl-title">GRPO / DeepSeek-R1 — DeepSeek</div>
-          <div class="tl-desc">Critic-free policy optimization via group-normalized rewards. Achieves frontier reasoning via pure RL without reward model.</div>
+          <div class="tl-year">2023</div>
+          <div class="tl-dot" style="background:#9C1A8C;box-shadow:0 0 0 2px #9C1A8C;"></div>
+          <div class="tl-content">
+            <div class="tl-event">DPO (Rafailov et al., 2023)</div>
+            <div class="tl-desc">Direct Preference Optimization. Closed-form solution to RLHF objective. Bypasses explicit RL training.</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2025</div>
+          <div class="tl-dot" style="background:#C41A6A;box-shadow:0 0 0 2px #C41A6A;"></div>
+          <div class="tl-content">
+            <div class="tl-event">DeepSeek-R1 & GRPO (2025)</div>
+            <div class="tl-desc">RL for reasoning at scale. GRPO eliminates value network. Process reward models for step-level supervision.</div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<div class="divider"></div>
-
-<!-- SECTION 6: RLHF -->
-<section id="rlhf" style="background: linear-gradient(180deg, transparent, rgba(124,58,237,0.04) 50%, transparent);">
-  <div class="section-inner">
-    <div class="section-tag reveal">06 — RLHF</div>
-    <h2 class="section-title reveal">Reinforcement Learning<br>from <span class="grad-text">Human Feedback</span></h2>
-    <p class="section-desc reveal">RLHF uses policy gradient methods — specifically PPO — to align LLMs with human preferences. A reward model trained on human comparisons replaces the hand-crafted reward signal.</p>
-
-    <div class="pipeline reveal" style="flex-wrap:wrap;gap:1rem;">
-      <div class="pipe-node" style="border-color:rgba(0,229,255,0.3);min-width:150px;">
-        <div class="pipe-icon">📚</div>
-        <div class="pipe-label">Phase 1</div>
-        <div class="pipe-desc">Supervised Fine-Tuning (SFT) on demonstrations</div>
-      </div>
-      <div class="pipe-arrow">→</div>
-      <div class="pipe-node" style="border-color:rgba(245,158,11,0.3);min-width:150px;">
-        <div class="pipe-icon">🧑‍⚖️</div>
-        <div class="pipe-label">Phase 2</div>
-        <div class="pipe-desc">Reward Model Training on human comparisons</div>
-      </div>
-      <div class="pipe-arrow">→</div>
-      <div class="pipe-node" style="border-color:rgba(124,58,237,0.3);min-width:150px;">
-        <div class="pipe-icon">🔄</div>
-        <div class="pipe-label">Phase 3</div>
-        <div class="pipe-desc">PPO fine-tuning using reward model signal</div>
-      </div>
+    <div style="margin-top:4rem;padding-top:2rem;border-top:1px solid var(--border);font-family:var(--sans);font-size:0.72rem;color:var(--text3);text-align:center;">
+      Research Reference · Policy Gradients & RLHF · Built for PhD-level study<br>
+      <span style="margin-top:0.3rem;display:block;">Derivations: Williams 1992, Sutton et al. 1999, Schulman et al. 2015 & 2017, Christiano et al. 2017, Rafailov et al. 2023</span>
     </div>
 
-    <div class="rlhf-flow reveal">
-      <div class="rlhf-step">
-        <div class="rlhf-num n1">1</div>
-        <div class="rlhf-body">
-          <h3>Supervised Fine-Tuning (SFT)</h3>
-          <p>Train the base LLM on high-quality human-written demonstrations using standard cross-entropy loss. Produces π<sub>SFT</sub> — a capable instruction-following model, but not yet aligned. This is the initialization point for both the RL actor and the reference policy.</p>
-        </div>
-      </div>
-      <div class="rlhf-step">
-        <div class="rlhf-num n2">2</div>
-        <div class="rlhf-body">
-          <h3>Reward Model (RM) Training</h3>
-          <p>For a given prompt x, sample multiple completions {y<sub>1</sub>, …, y<sub>k</sub>}. Human annotators rank them. Fit a scalar reward model r<sub>φ</sub>(x,y) by minimizing the Bradley-Terry pairwise ranking loss:</p>
-          <div class="math-block" style="margin:1rem 0;">
-            <span class="label">Reward Model Loss</span>
-            <div class="eq">ℒ<sub>RM</sub>(φ) = −𝔼<sub>(x,y<sub>w</sub>,y<sub>l</sub>)</sub>[ log σ(r<sub>φ</sub>(x,y<sub>w</sub>) − r<sub>φ</sub>(x,y<sub>l</sub>)) ]</div>
-            <div class="comment">// y<sub>w</sub>: preferred, y<sub>l</sub>: rejected. σ: sigmoid. Trains RM to assign higher scalar to preferred outputs.</div>
-          </div>
-          <p>The RM is typically initialized from the SFT model with a linear scalar head replacing the LM head.</p>
-        </div>
-      </div>
-      <div class="rlhf-step">
-        <div class="rlhf-num n3">3</div>
-        <div class="rlhf-body">
-          <h3>PPO Fine-Tuning with KL Regularization</h3>
-          <p>The actor (π<sub>θ</sub>, initialized from SFT) generates completions. The reward model scores them. A frozen reference policy π<sub>ref</sub> (= π<sub>SFT</sub>) provides KL regularization to prevent reward hacking and catastrophic forgetting:</p>
-          <div class="math-block" style="margin:1rem 0;">
-            <span class="label">RLHF Reward with KL Penalty</span>
-            <div class="eq">R(x,y) = r<sub>φ</sub>(x,y) − β · KL[π<sub>θ</sub>(·|x) ‖ π<sub>ref</sub>(·|x)]</div>
-            <div class="eq">= r<sub>φ</sub>(x,y) − β · Σ<sub>t</sub> log(π<sub>θ</sub>(y<sub>t</sub>|x,y<sub><t</sub>) / π<sub>ref</sub>(y<sub>t</sub>|x,y<sub><t</sub>))</div>
-            <div class="comment">// β typically 0.01–0.1. KL term penalizes drift from SFT — prevents reward hacking.</div>
-          </div>
-          <p>PPO then maximizes 𝔼<sub>x~D, y~π<sub>θ</sub></sub>[R(x,y)] using GAE advantages and clipped surrogate objective. Value function is a separate copy of the LM initialized from SFT or RM.</p>
-        </div>
-      </div>
-      <div class="rlhf-step">
-        <div class="rlhf-num n4">4</div>
-        <div class="rlhf-body">
-          <h3>Reward Hacking & Over-Optimization</h3>
-          <p>As PPO optimizes against r<sub>φ</sub>, the policy can find out-of-distribution completions that fool the reward model without being genuinely good. The KL penalty, entropy regularization, and periodic reward model updates (RLHF loops) mitigate this. The gold reward typically follows a concave relationship with the RM score — there is an optimal stopping point.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- DPO Card -->
-    <div class="reveal">
-      <h3 style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin:2rem 0 1rem;">Alternative: Direct Preference Optimization (DPO)</h3>
-      <div class="card-grid">
-        <div class="card card-accent2">
-          <h3>DPO — No RL Loop</h3>
-          <p>DPO shows that the optimal RLHF policy has a closed form. The reward model can be implicitly reparameterized in terms of policy ratios, eliminating the RL loop entirely and training directly on preferences with a simple classification loss.</p>
-        </div>
-        <div class="card card-accent3">
-          <h3>DPO Loss</h3>
-          <p>ℒ<sub>DPO</sub>(θ) = −𝔼[ log σ( β log(π<sub>θ</sub>(y<sub>w</sub>|x)/π<sub>ref</sub>(y<sub>w</sub>|x)) − β log(π<sub>θ</sub>(y<sub>l</sub>|x)/π<sub>ref</sub>(y<sub>l</sub>|x)) ) ]</p>
-        </div>
-        <div class="card card-accent4">
-          <h3>DPO vs PPO</h3>
-          <p>DPO: simpler, stable, no RM training. PPO: more flexible, supports online data collection, better with process reward models and verifiable tasks. Current trend leans PPO for reasoning.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- SECTION 7: LLM POST-TRAINING -->
-<section id="llm">
-  <div class="section-inner">
-    <div class="section-tag reveal">07 — LLM Post-Training</div>
-    <h2 class="section-title reveal">RL in <span class="grad-text">LLM Post-Training</span></h2>
-    <p class="section-desc reveal">Modern frontier LLMs like GPT-4, Claude, Gemini, and DeepSeek-R1 all use RL extensively during post-training. Here's the complete picture — what gets trained, what reward signal is used, and how policy gradient methods fit in.</p>
-
-    <div class="card-grid reveal">
-      <div class="card card-accent">
-        <div class="card-icon">🎓</div>
-        <h3>Phase 1: Pre-training</h3>
-        <p>Next-token prediction on massive corpora. No RL. Produces a powerful but unaligned base model. The starting point for all post-training.</p>
-      </div>
-      <div class="card card-accent2">
-        <div class="card-icon">📝</div>
-        <h3>Phase 2: SFT</h3>
-        <p>Supervised fine-tuning on instruction–response pairs. Teaches the model the format and style of helpful responses. Initializes π<sub>SFT</sub> = π<sub>ref</sub>.</p>
-      </div>
-      <div class="card card-accent3">
-        <div class="card-icon">🏆</div>
-        <h3>Phase 3: RM Training</h3>
-        <p>Train reward model on human preference comparisons (or AI feedback — RLAIF). Produces a scalar oracle for the RL phase.</p>
-      </div>
-      <div class="card card-accent4">
-        <div class="card-icon">🔄</div>
-        <h3>Phase 4: RL (PPO/GRPO)</h3>
-        <p>Policy gradient optimization of π<sub>θ</sub> against reward model signal + KL penalty. Produces the final aligned, helpful, harmless model.</p>
-      </div>
-    </div>
-
-    <div class="reveal" style="margin-top:3rem;">
-      <h3 style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin-bottom:1.5rem;">The RL Loop in LLM Training — Mechanics</h3>
-      <div class="accordion">
-        <div class="acc-item">
-          <div class="acc-header">
-            <div class="acc-title"><span class="acc-num" style="color:var(--accent);">→</span>Rollout Generation</div>
-            <div class="acc-arrow"></div>
-          </div>
-          <div class="acc-body">
-            <div class="acc-body-inner">
-              The actor π<sub>θ</sub> autoregressively samples completions y = (y<sub>1</sub>,…,y<sub>T</sub>) for prompts x sampled from the dataset. In token-level RL, each token generation is an <span class="highlight">action</span>, the partial sequence is the <span class="highlight2">state</span>, and the reward is typically <span class="highlight3">sparse at the end of sequence</span> (EOS). Generating long sequences with PPO is expensive — this is why efficient rollout engines (vLLM, TensorRT-LLM) matter.
-            </div>
-          </div>
-        </div>
-        <div class="acc-item">
-          <div class="acc-header">
-            <div class="acc-title"><span class="acc-num" style="color:var(--accent2);">→</span>Token-Level MDP Formulation</div>
-            <div class="acc-arrow"></div>
-          </div>
-          <div class="acc-body">
-            <div class="acc-body-inner">
-              State s<sub>t</sub> = (x, y<sub>1:t-1</sub>): the context + partial generation. Action a<sub>t</sub> = y<sub>t</sub> ∈ vocabulary (|V| ~ 32K-128K). Transition: deterministic (next token appended). Reward: r<sub>T</sub> = r<sub>φ</sub>(x,y) at EOS, else 0 (plus per-token KL penalty: −β log π<sub>θ</sub>/π<sub>ref</sub>). Horizon T can be 256–32K tokens — very long, requiring careful discount factor (γ ≈ 1).
-            </div>
-          </div>
-        </div>
-        <div class="acc-item">
-          <div class="acc-header">
-            <div class="acc-title"><span class="acc-num" style="color:var(--accent3);">→</span>Value Function Challenges in LLMs</div>
-            <div class="acc-arrow"></div>
-          </div>
-          <div class="acc-body">
-            <div class="acc-body-inner">
-              The critic V<sub>w</sub>(s<sub>t</sub>) must be a <span class="highlight">full LLM</span> that reads the partial sequence and predicts expected return. This doubles memory requirements. The value network is typically warm-started from the RM or SFT model. <span class="highlight2">GRPO</span> bypasses this entirely by using group-normalized rewards. <span class="highlight3">Process Reward Models (PRMs)</span> provide denser supervision at intermediate steps (e.g., math chain-of-thought).
-            </div>
-          </div>
-        </div>
-        <div class="acc-item">
-          <div class="acc-header">
-            <div class="acc-title"><span class="acc-num" style="color:var(--accent4);">→</span>Process Reward Models (PRMs)</div>
-            <div class="acc-arrow"></div>
-          </div>
-          <div class="acc-body">
-            <div class="acc-body-inner">
-              For reasoning tasks (math, code), outcome-only rewards are very sparse. PRMs assign reward to <span class="highlight">each reasoning step</span>. This provides denser gradient signal and enables MCTS-based search at test time. DeepSeek uses process reward models for R1. OpenAI's PRM800K dataset trains step-level verifiers for math. PRMs can be combined with Monte Carlo Tree Search for best-of-N selection.
-            </div>
-          </div>
-        </div>
-        <div class="acc-item">
-          <div class="acc-header">
-            <div class="acc-title"><span class="acc-num" style="color:var(--accent);">→</span>RLAIF — RL from AI Feedback</div>
-            <div class="acc-arrow"></div>
-          </div>
-          <div class="acc-body">
-            <div class="acc-body-inner">
-              Instead of human annotators, a more powerful AI (teacher LLM) provides the preference labels. Constitutional AI (Anthropic) generates critiques and revisions, then trains an RM on AI comparisons. <span class="highlight">Scalable supervision</span>: reduces human annotation cost while preserving the RLHF framework. The policy gradient mechanism is unchanged — only the reward signal source shifts.
-            </div>
-          </div>
-        </div>
-        <div class="acc-item">
-          <div class="acc-header">
-            <div class="acc-title"><span class="acc-num" style="color:var(--accent2);">→</span>Iterative / Online RLHF</div>
-            <div class="acc-arrow"></div>
-          </div>
-          <div class="acc-body">
-            <div class="acc-body-inner">
-              The reward model can be periodically retrained on data from the current π<sub>θ</sub> to prevent distribution shift and reward hacking. <span class="highlight">Online DPO</span> and <span class="highlight2">Self-Play Fine-Tuning (SPIN)</span> generate rejected responses from the current policy. <span class="highlight3">Rejection Sampling Fine-Tuning (RFT)</span> generates multiple completions, keeps those passing a verifier, and trains on them — a form of best-of-N filtered SFT, bridging RLHF and supervised training.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Systems view -->
-    <div class="reveal" style="margin-top:3rem;">
-      <h3 style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin-bottom:1rem;">Systems View: Engineering PPO for LLMs</h3>
-      <div class="card-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
-        <div class="card card-accent">
-          <h3>4 Model Problem</h3>
-          <p>PPO-RLHF requires simultaneous forward passes for: (1) actor π<sub>θ</sub>, (2) reference π<sub>ref</sub>, (3) critic V<sub>w</sub>, (4) reward model r<sub>φ</sub>. 4× memory of SFT. Solved with LoRA, offloading, or sharing weights.</p>
-        </div>
-        <div class="card card-accent2">
-          <h3>KL Budget</h3>
-          <p>KL divergence from SFT must be monitored. Too much → catastrophic forgetting and reward hacking. Too little → insufficient alignment. Target KL ~5–10 nats typical. Adaptive β controllers exist.</p>
-        </div>
-        <div class="card card-accent3">
-          <h3>Sequence-Level vs Token-Level</h3>
-          <p>InstructGPT uses sequence-level reward + per-token KL. Process reward models assign per-step rewards. Token-level advantages require careful credit assignment — actions (tokens) deep in sequence receive very small gradient signal.</p>
-        </div>
-        <div class="card card-accent4">
-          <h3>Distributed Training</h3>
-          <p>Rollouts are generated with optimized inference (vLLM). Gradient updates use FSDP / Megatron. Separate rollout and training clusters communicate via a data buffer. Ray + DeepSpeed common stack.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Final comparison -->
-    <div class="reveal" style="margin-top:3rem;">
-      <h3 style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin-bottom:1.5rem;">Alignment Techniques at a Glance</h3>
-      <div style="overflow-x:auto;">
-      <table class="compare-table">
-        <thead>
-          <tr><th>Method</th><th>RM Required?</th><th>Online?</th><th>PG Used?</th><th>Key Advantage</th><th>Who Uses It</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>PPO-RLHF</td><td><span class="badge badge-yellow">Yes</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-green">PPO</span></td><td>Most flexible, best with sparse rewards</td><td>GPT-4, Claude, Gemini</td></tr>
-          <tr><td>DPO</td><td><span class="badge badge-green">No</span></td><td><span class="badge badge-red">Offline</span></td><td><span class="badge badge-red">None (implicit)</span></td><td>Simple, stable, no RL loop</td><td>Mistral, Zephyr, Llama</td></tr>
-          <tr><td>GRPO</td><td><span class="badge badge-yellow">Verifier</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-green">GRPO</span></td><td>No critic; great for math/code</td><td>DeepSeek-R1, Qwen</td></tr>
-          <tr><td>RLAIF / CAI</td><td><span class="badge badge-yellow">AI RM</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-green">PPO</span></td><td>Scalable: replaces human annotators</td><td>Claude (Anthropic)</td></tr>
-          <tr><td>RFT</td><td><span class="badge badge-yellow">Verifier</span></td><td><span class="badge badge-green">Semi</span></td><td><span class="badge badge-red">None (SFT)</span></td><td>Simple, effective for reasoning</td><td>DeepSeek-Math, Qwen-Math</td></tr>
-          <tr><td>Online DPO</td><td><span class="badge badge-green">No</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-red">None</span></td><td>DPO benefits with online data</td><td>Research, Llama variants</td></tr>
-        </tbody>
-      </table>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<!-- FOOTER -->
-<footer>
-  <div style="margin-bottom:0.5rem; font-size:1rem; font-family:'Syne',sans-serif;">Policy Gradient Methods & RLHF</div>
-  <div style="margin-top:0.75rem; color:#334155;"> © 2026 Soumyadeep Roy </div>
- </footer>
-
-</div><!-- end wrapper -->
+  </main>
+</div>
 
 <script>
-// ─── CURSOR ───────────────────────────────────────────
-const cursor = document.getElementById('cursor');
-const trail = document.getElementById('cursor-trail');
-let mx = 0, my = 0, tx = 0, ty = 0;
-document.addEventListener('mousemove', e => {
-  mx = e.clientX; my = e.clientY;
-  cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
-});
-setInterval(() => {
-  tx += (mx - tx) * 0.12; ty += (my - ty) * 0.12;
-  trail.style.left = tx + 'px'; trail.style.top = ty + 'px';
-}, 16);
-
-// ─── CARD MOUSE GLOW ──────────────────────────────────
-document.querySelectorAll('.card').forEach(card => {
-  card.addEventListener('mousemove', e => {
-    const r = card.getBoundingClientRect();
-    card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
-    card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
-  });
+// ======================== PROGRESS BAR ========================
+window.addEventListener('scroll', () => {
+  const el = document.documentElement;
+  const prog = el.scrollTop / (el.scrollHeight - el.clientHeight) * 100;
+  document.getElementById('progress-bar').style.width = prog + '%';
 });
 
-// ─── STARS ────────────────────────────────────────────
-const canvas = document.getElementById('stars-canvas');
-const ctx = canvas.getContext('2d');
-let stars = [], W, H;
-function initStars() {
-  W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight;
-  stars = Array.from({length: 200}, () => ({
-    x: Math.random() * W, y: Math.random() * H,
-    r: Math.random() * 1.2 + 0.2,
-    o: Math.random() * 0.6 + 0.1,
-    speed: Math.random() * 0.3 + 0.05
-  }));
+// ======================== MODE TOGGLE ========================
+function setMode(mode, btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.body.className = '';
+  if (mode === 'math') document.body.classList.add('math-mode');
+  if (mode === 'intuition') document.body.classList.add('intuition-mode');
 }
-function animateStars() {
-  ctx.clearRect(0, 0, W, H);
-  stars.forEach(s => {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(200,220,255,${s.o})`;
-    ctx.fill();
-    s.y += s.speed;
-    if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
-  });
-  requestAnimationFrame(animateStars);
-}
-window.addEventListener('resize', initStars);
-initStars(); animateStars();
 
-// ─── ACCORDION ────────────────────────────────────────
-document.querySelectorAll('.acc-header').forEach(header => {
-  header.addEventListener('click', () => {
-    const item = header.parentElement;
-    const body = item.querySelector('.acc-body');
-    const isOpen = item.classList.contains('open');
-    document.querySelectorAll('.acc-item').forEach(i => {
-      i.classList.remove('open');
-      i.querySelector('.acc-body').style.maxHeight = '0';
-    });
-    if (!isOpen) {
-      item.classList.add('open');
-      body.style.maxHeight = body.scrollHeight + 40 + 'px';
+// ======================== DERIVATION TOGGLE ========================
+function toggleDerivation(id) {
+  const body = document.getElementById(id);
+  const chevron = document.getElementById('chevron-' + id);
+  body.classList.toggle('open');
+  chevron.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+// ======================== TOC ACTIVE ========================
+const sections = document.querySelectorAll('section[id]');
+const tocLinks = document.querySelectorAll('.toc-list a');
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      tocLinks.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
     }
   });
-});
-// Open first accordion
-const firstAcc = document.querySelector('.acc-item.open .acc-body');
-if (firstAcc) firstAcc.style.maxHeight = '500px';
+}, { threshold: 0.3, rootMargin: '-80px 0px -50% 0px' });
 
-// ─── TABS ─────────────────────────────────────────────
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tabId = btn.dataset.tab;
-    const parent = btn.closest('.tabs');
-    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    parent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    const content = document.getElementById('tab-' + tabId);
-    if (content) content.classList.add('active');
-  });
-});
+sections.forEach(s => obs.observe(s));
 
-// ─── REVEAL ON SCROLL ─────────────────────────────────
-const observer = new IntersectionObserver(entries => {
-  entries.forEach((entry, i) => {
-    if (entry.isIntersecting) {
-      setTimeout(() => entry.target.classList.add('visible'), 80);
-      observer.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.08 });
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+// ======================== FADE IN ========================
+const fadeEls = document.querySelectorAll('.fade-in');
+const fadeObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+fadeEls.forEach(el => fadeObs.observe(el));
 
-// ─── RANGE SLIDERS ────────────────────────────────────
-function updateSliderFill(input) {
-  const min = +input.min, max = +input.max, val = +input.value;
-  const pct = ((val - min) / (max - min) * 100).toFixed(1);
-  input.style.setProperty('--pct', pct + '%');
+// ======================== REWARD LABEL ========================
+function updateRewardLabel(v) {
+  document.getElementById('reward-label').textContent = v > 0 ? '+' + v : v;
 }
-document.querySelectorAll('input[type=range]').forEach(input => {
-  updateSliderFill(input);
-  input.addEventListener('input', () => updateSliderFill(input));
-});
 
-// ─── GAE CANVAS ───────────────────────────────────────
-function updateGAE() {
-  const lamSlider = document.getElementById('lam-slider');
-  const gamSlider = document.getElementById('gam-slider');
-  const lam = lamSlider.value / 100;
-  const gam = gamSlider.value / 100;
-  document.getElementById('lam-val').textContent = lam.toFixed(2);
-  document.getElementById('gam-val').textContent = gam.toFixed(2);
+// ======================== POLICY VIZ ========================
+const actionLabels = ['L', 'C-L', 'C', 'C-R', 'R'];
+let policyAnim = null;
+let policyT = 0;
 
-  const canvas = document.getElementById('variance-canvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth, H = 220;
-  canvas.width = W; canvas.height = H;
-  ctx.clearRect(0, 0, W, H);
-
-  // Draw background
-  ctx.fillStyle = 'rgba(9,13,26,0.95)';
-  ctx.fillRect(0, 0, W, H);
-
-  const steps = 80;
-  const coeff = (t) => Math.pow(gam * lam, t);
-  const total = Array.from({length: steps}, (_, t) => coeff(t)).reduce((a, b) => a + b, 0);
-
-  // Find effective horizon (cumulative > 99% of total)
-  let cum = 0, eff = steps;
-  for (let t = 0; t < steps; t++) {
-    cum += coeff(t) / total;
-    if (cum >= 0.99) { eff = t + 1; break; }
+function gaussianDist(x, mu, sigma) {
+  const vals = [];
+  let sum = 0;
+  for (let i = 0; i < x.length; i++) {
+    const v = Math.exp(-0.5 * ((x[i] - mu) / sigma) ** 2);
+    vals.push(v); sum += v;
   }
-  document.getElementById('eff-horizon').textContent = eff + ' steps';
+  return vals.map(v => v / sum);
+}
+
+let origPolicy = null;
+let targetPolicy = null;
+
+function resetPolicyViz() {
+  if (policyAnim) { cancelAnimationFrame(policyAnim); policyAnim = null; }
+  policyT = 0;
+  origPolicy = [0.1, 0.2, 0.4, 0.2, 0.1];
+  targetPolicy = null;
+  drawPolicy(origPolicy, null);
+}
+
+function runPolicyViz() {
+  if (policyAnim) { cancelAnimationFrame(policyAnim); policyT = 0; }
+  const reward = parseFloat(document.getElementById('reward-signal').value);
+  const chosenAction = 2; // center action
+  origPolicy = [0.1, 0.2, 0.4, 0.2, 0.1];
+
+  // Compute updated policy: increase prob at chosen action if reward > 0
+  const updated = origPolicy.map((p, i) => {
+    const grad = (i === chosenAction) ? (1 - p) : -p;
+    return Math.max(0.02, p + 0.18 * reward * grad);
+  });
+  const sum = updated.reduce((a, b) => a + b, 0);
+  targetPolicy = updated.map(v => v / sum);
+
+  policyT = 0;
+  function animate() {
+    policyT = Math.min(policyT + 0.025, 1);
+    const ease = 1 - Math.pow(1 - policyT, 3);
+    const current = origPolicy.map((p, i) => p + (targetPolicy[i] - p) * ease);
+    drawPolicy(origPolicy, current);
+    if (policyT < 1) policyAnim = requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function drawPolicy(orig, updated) {
+  const canvas = document.getElementById('policy-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = parseInt(canvas.getAttribute('height'));
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const N = 5;
+  const pad = 40, barW = (W - pad * 2) / N, maxH = H - 60;
+
+  ctx.clearRect(0, 0, W, H);
 
   // Grid
-  ctx.strokeStyle = 'rgba(100,116,139,0.15)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = H * 0.1 + (H * 0.8) * (i / 4);
-    ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 20, y); ctx.stroke();
+  ctx.strokeStyle = '#E0DDD5'; ctx.lineWidth = 1;
+  for (let y = 0; y <= 1; y += 0.25) {
+    const yy = H - 30 - y * maxH;
+    ctx.beginPath(); ctx.moveTo(pad, yy); ctx.lineTo(W - pad, yy); ctx.stroke();
+    ctx.fillStyle = '#7A7672'; ctx.font = '10px JetBrains Mono, monospace';
+    ctx.textAlign = 'right'; ctx.fillText(y.toFixed(2), pad - 6, yy + 4);
   }
 
-  // Bars
-  const barW = (W - 60) / steps;
-  for (let t = 0; t < steps; t++) {
-    const w = coeff(t);
-    const norm = w / coeff(0);
-    const barH = Math.max(2, norm * H * 0.75);
-    const x = 40 + t * barW;
-    const y = H * 0.87 - barH;
-    const hue = 185 + t * 1.5;
-    const alpha = 0.7 - t * 0.007;
-    ctx.fillStyle = `hsla(${hue}, 90%, 65%, ${Math.max(0.1, alpha)})`;
-    ctx.fillRect(x, y, barW - 1, barH);
+  for (let i = 0; i < N; i++) {
+    const x = pad + i * barW + barW * 0.1;
+    const bw = barW * 0.35;
+    const cx = pad + i * barW + barW / 2;
+
+    // Original bar (blue)
+    const oh = orig[i] * maxH;
+    ctx.fillStyle = 'rgba(26,111,196,0.25)';
+    ctx.strokeStyle = 'rgba(26,111,196,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(x, H - 30 - oh, bw, oh);
+    ctx.strokeRect(x, H - 30 - oh, bw, oh);
+
+    // Updated bar (orange) if exists
+    if (updated) {
+      const uh = updated[i] * maxH;
+      ctx.fillStyle = 'rgba(196,80,26,0.3)';
+      ctx.strokeStyle = 'rgba(196,80,26,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(x + bw + 4, H - 30 - uh, bw, uh);
+      ctx.strokeRect(x + bw + 4, H - 30 - uh, bw, uh);
+    }
+
+    // Label
+    ctx.fillStyle = '#4A4844'; ctx.font = '11px Syne, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(actionLabels[i], cx, H - 10);
   }
 
-  // Effective horizon line
-  const effX = 40 + eff * barW;
-  ctx.strokeStyle = 'rgba(245,158,11,0.8)';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([4, 4]);
-  ctx.beginPath(); ctx.moveTo(effX, H * 0.05); ctx.lineTo(effX, H * 0.88); ctx.stroke();
+  // Legend
+  ctx.fillStyle = 'rgba(26,111,196,0.7)'; ctx.fillRect(pad, 8, 12, 12);
+  ctx.fillStyle = '#4A4844'; ctx.font = '10px Syne, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('π_old', pad + 16, 19);
+  if (updated) {
+    ctx.fillStyle = 'rgba(196,80,26,0.7)'; ctx.fillRect(pad + 65, 8, 12, 12);
+    ctx.fillStyle = '#4A4844'; ctx.fillText('π_new', pad + 81, 19);
+  }
+}
+
+// ======================== ACTOR-CRITIC VIZ ========================
+function drawActorCritic() {
+  const canvas = document.getElementById('ac-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = 200;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  ctx.clearRect(0, 0, W, H);
+
+  const boxes = [
+    { x: 20, y: 80, w: 110, h: 50, label: 'Environment', sub: 's_t, r_t', color: '#1A9C4A' },
+    { x: W/2 - 70, y: 20, w: 140, h: 50, label: 'Actor π_θ(a|s)', sub: 'Policy Network', color: '#C4501A' },
+    { x: W/2 - 70, y: 130, w: 140, h: 50, label: 'Critic V_ϕ(s)', sub: 'Value Network', color: '#1A6FC4' },
+    { x: W - 130, y: 80, w: 110, h: 50, label: 'Advantage Â_t', sub: 'G_t − V_ϕ(s_t)', color: '#7A1A9C' },
+  ];
+
+  // Draw arrows
+  const arrowColor = '#BCBAB6';
+  function arrow(x1, y1, x2, y2) {
+    ctx.strokeStyle = arrowColor; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.setLineDash([]);
+    // arrowhead
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.fillStyle = arrowColor;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 8 * Math.cos(angle - 0.4), y2 - 8 * Math.sin(angle - 0.4));
+    ctx.lineTo(x2 - 8 * Math.cos(angle + 0.4), y2 - 8 * Math.sin(angle + 0.4));
+    ctx.closePath(); ctx.fill();
+  }
+
+  // env → actor (state)
+  arrow(130, 95, W/2 - 70, 45);
+  // actor → env (action)
+  arrow(W/2 - 70, 60, 130, 110);
+  // env → critic (state)
+  arrow(130, 110, W/2 - 70, 155);
+  // actor + critic → advantage
+  arrow(W/2 + 70, 45, W - 130, 95);
+  arrow(W/2 + 70, 155, W - 130, 110);
+
+  // Labels on arrows
+  ctx.fillStyle = '#7A7672'; ctx.font = '9px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+  ctx.fillText('s_t', W/2 - 100, 30);
+  ctx.fillText('a_t', W/2 - 100, 100);
+  ctx.fillText('r_t', W/2 - 100, 145);
+
+  // Boxes
+  boxes.forEach(b => {
+    ctx.fillStyle = b.color + '18';
+    ctx.strokeStyle = b.color + 'AA';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, b.x, b.y, b.w, b.h, 8);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = b.color;
+    ctx.font = '700 11px Syne, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.label, b.x + b.w / 2, b.y + 22);
+    ctx.fillStyle = '#7A7672';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillText(b.sub, b.x + b.w / 2, b.y + 38);
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ======================== PPO CLIP VIZ ========================
+let ppoAdvSign = 1;
+function setPPOAdv(sign) { ppoAdvSign = sign; drawPPOClip(); }
+
+function drawPPOClip() {
+  const canvas = document.getElementById('ppo-canvas');
+  if (!canvas) return;
+  const eps = parseFloat(document.getElementById('eps-slider').value);
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = 220;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { l: 50, r: 20, t: 20, b: 40 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+  const rMin = 0.2, rMax = 1.8;
+  const A = ppoAdvSign;
+  const yMin = -1.5, yMax = 1.5;
+
+  function toX(r) { return pad.l + (r - rMin) / (rMax - rMin) * cW; }
+  function toY(v) { return pad.t + (1 - (v - yMin) / (yMax - yMin)) * cH; }
+
+  // Grid
+  ctx.strokeStyle = '#E0DDD5'; ctx.lineWidth = 1; ctx.setLineDash([]);
+  [0, 0.5, 1].forEach(v => {
+    ctx.beginPath(); ctx.moveTo(pad.l, toY(v * A)); ctx.lineTo(W - pad.r, toY(v * A)); ctx.stroke();
+    [0.5, 1, 1.5].forEach(r => {
+      ctx.beginPath(); ctx.moveTo(toX(r), pad.t); ctx.lineTo(toX(r), H - pad.b); ctx.stroke();
+    });
+  });
+
+  // Trust region shading
+  ctx.fillStyle = 'rgba(196,80,26,0.06)';
+  ctx.fillRect(toX(1 - eps), pad.t, toX(1 + eps) - toX(1 - eps), cH);
+
+  // Unclipped r*A (blue)
+  ctx.strokeStyle = '#1A6FC4'; ctx.lineWidth = 2; ctx.setLineDash([]);
+  ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const r = rMin + (rMax - rMin) * i / 200;
+    const y = r * A;
+    if (i === 0) ctx.moveTo(toX(r), toY(Math.max(yMin, Math.min(yMax, y))));
+    else ctx.lineTo(toX(r), toY(Math.max(yMin, Math.min(yMax, y))));
+  }
+  ctx.stroke();
+
+  // Clipped r*A (red dashed)
+  ctx.strokeStyle = '#CC2222'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const r = rMin + (rMax - rMin) * i / 200;
+    const rc = Math.max(1 - eps, Math.min(1 + eps, r));
+    const y = rc * A;
+    if (i === 0) ctx.moveTo(toX(r), toY(Math.max(yMin, Math.min(yMax, y))));
+    else ctx.lineTo(toX(r), toY(Math.max(yMin, Math.min(yMax, y))));
+  }
+  ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(245,158,11,0.9)';
-  ctx.font = '11px Space Mono, monospace';
-  ctx.fillText('99% mass', effX + 5, H * 0.1);
+
+  // Min (green)
+  ctx.strokeStyle = '#1A7C3A'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const r = rMin + (rMax - rMin) * i / 200;
+    const rA = r * A;
+    const clippedA = Math.max(1 - eps, Math.min(1 + eps, r)) * A;
+    const y = Math.min(rA, clippedA);
+    if (i === 0) ctx.moveTo(toX(r), toY(Math.max(yMin, Math.min(yMax, y))));
+    else ctx.lineTo(toX(r), toY(Math.max(yMin, Math.min(yMax, y))));
+  }
+  ctx.stroke();
+
+  // Axes
+  ctx.strokeStyle = '#BCBAB6'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, toY(0)); ctx.lineTo(W - pad.r, toY(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(toX(1), pad.t); ctx.lineTo(toX(1), H - pad.b); ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#4A4844'; ctx.font = '10px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+  [0.5, 1, 1.5].forEach(r => ctx.fillText('r=' + r, toX(r), H - pad.b + 14));
+  ctx.fillText('r_t(θ)', W / 2, H - 4);
+
+  ctx.textAlign = 'right';
+  ctx.fillText('L', pad.l - 6, toY(A) + 4);
+  ctx.fillText('0', pad.l - 6, toY(0) + 4);
+
+  // Clip boundaries
+  ctx.strokeStyle = '#C4501A'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(toX(1 - eps), pad.t); ctx.lineTo(toX(1 - eps), H - pad.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(toX(1 + eps), pad.t); ctx.lineTo(toX(1 + eps), H - pad.b); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#C4501A'; ctx.font = '9px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+  ctx.fillText('1-ε', toX(1 - eps), pad.t + 10);
+  ctx.fillText('1+ε', toX(1 + eps), pad.t + 10);
+
+  // Legend
+  const ly = pad.t + 4;
+  [[' r·A (unclipped)', '#1A6FC4', false], ['clip(r)·A', '#CC2222', true], ['min (PPO)', '#1A7C3A', false]].forEach((item, i) => {
+    const lx = pad.l + 10 + i * 110;
+    ctx.strokeStyle = item[1]; ctx.lineWidth = item[2] ? 1.5 : 2;
+    if (item[2]) ctx.setLineDash([5, 3]); else ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(lx, ly + 6); ctx.lineTo(lx + 18, ly + 6); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#4A4844'; ctx.font = '9px Syne, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(item[0], lx + 22, ly + 10);
+  });
+}
+
+// ======================== RLHF TRADEOFF VIZ ========================
+function drawRLHF() {
+  const canvas = document.getElementById('rlhf-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = 200;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { l: 55, r: 30, t: 20, b: 45 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+  // Pareto frontier
+  const pts = [];
+  for (let kl = 0; kl <= 3; kl += 0.05) {
+    const reward = 1.2 * (1 - Math.exp(-1.5 * kl)) - 0.3 * Math.max(0, kl - 1.5) ** 2;
+    pts.push({ kl, reward });
+  }
+  const klMax = 3, rewMax = 1.1, rewMin = -0.3;
+
+  function toX(kl) { return pad.l + kl / klMax * cW; }
+  function toY(r) { return pad.t + (1 - (r - rewMin) / (rewMax - rewMin)) * cH; }
+
+  // Axes
+  ctx.strokeStyle = '#E0DDD5'; ctx.lineWidth = 1;
+  [0, 0.5, 1].forEach(r => {
+    ctx.beginPath(); ctx.moveTo(pad.l, toY(r)); ctx.lineTo(W - pad.r, toY(r)); ctx.stroke();
+    ctx.fillStyle = '#7A7672'; ctx.font = '9px JetBrains Mono, monospace'; ctx.textAlign = 'right';
+    ctx.fillText(r.toFixed(1), pad.l - 6, toY(r) + 3);
+  });
+
+  // Frontier curve
+  const grad = ctx.createLinearGradient(pad.l, 0, W - pad.r, 0);
+  grad.addColorStop(0, '#1A9C4A');
+  grad.addColorStop(0.5, '#C4501A');
+  grad.addColorStop(1, '#CC2222');
+  ctx.strokeStyle = grad; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const x = toX(p.kl), y = toY(p.reward);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Optimal zone
+  const optIdx = pts.findIndex(p => p.kl > 0.8);
+  ctx.fillStyle = '#1A9C4A'; ctx.beginPath();
+  ctx.arc(toX(pts[optIdx].kl), toY(pts[optIdx].reward), 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1A9C4A'; ctx.font = '9px Syne, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('Optimal β', toX(pts[optIdx].kl) + 8, toY(pts[optIdx].reward) - 4);
+
+  // Reward hack zone
+  ctx.fillStyle = '#CC2222'; ctx.beginPath();
+  ctx.arc(toX(2.5), toY(pts.find(p => p.kl >= 2.5).reward), 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#CC2222'; ctx.font = '9px Syne, sans-serif';
+  ctx.fillText('Reward hack', toX(2.5) + 8, toY(pts.find(p => p.kl >= 2.5).reward) + 4);
 
   // Axis labels
-  ctx.fillStyle = '#64748b';
-  ctx.font = '10px Space Mono, monospace';
-  ctx.fillText('0', 35, H * 0.9);
-  ctx.fillText(steps, W - 25, H * 0.9);
-  ctx.fillText('t (step)', W / 2 - 20, H - 5);
-  ctx.save(); ctx.translate(14, H/2); ctx.rotate(-Math.PI/2);
-  ctx.fillText('(γλ)ᵗ weight', -30, 0); ctx.restore();
+  ctx.fillStyle = '#4A4844'; ctx.font = '10px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+  ctx.fillText('KL Divergence from SFT →', W / 2, H - 6);
+  ctx.save(); ctx.translate(12, H / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Human Preference Score', 0, 0); ctx.restore();
 }
 
-document.getElementById('lam-slider').addEventListener('input', updateGAE);
-document.getElementById('gam-slider').addEventListener('input', updateGAE);
-setTimeout(updateGAE, 200);
+// ======================== INIT ========================
+window.addEventListener('load', () => {
+  resetPolicyViz();
+  drawActorCritic();
+  drawPPOClip();
+  drawRLHF();
+  // MathJax rerender after load
+  if (window.MathJax) MathJax.typesetPromise();
+});
 
-// ─── NAV ACTIVE STATE ─────────────────────────────────
-const sections = document.querySelectorAll('section[id]');
-const navLinks = document.querySelectorAll('.nav-links a');
-const ioNav = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      navLinks.forEach(a => a.style.color = '');
-      const link = document.querySelector(`.nav-links a[href="#${entry.target.id}"]`);
-      if (link) link.style.color = 'var(--accent)';
-    }
-  });
-}, { threshold: 0.4 });
-sections.forEach(s => ioNav.observe(s));
-</script>
-             
- <script>
-const canvas = document.getElementById("stars-canvas");
-const ctx = canvas.getContext("2d");
-
-let stars = [];
-const numStars = 150;
-
-// Resize canvas
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener("resize", resize);
-
-// Create stars
-for (let i = 0; i < numStars; i++) {
-  stars.push({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    radius: Math.random() * 1.2,
-    speed: Math.random() * 0.3
-  });
-}
-
-// Animate
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
- const colors = ["#ffffff", "#a5f3fc", "#c4b5fd"];
-ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
-  stars.forEach(star => {
-    star.y += star.speed;
-
-    if (star.y > canvas.height) {
-      star.y = 0;
-      star.x = Math.random() * canvas.width;
-    }
-
-    ctx.beginPath();
-    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  requestAnimationFrame(animate);
-}
-
-animate();
+window.addEventListener('resize', () => {
+  drawPolicy(origPolicy || [0.1, 0.2, 0.4, 0.2, 0.1], targetPolicy);
+  drawActorCritic();
+  drawPPOClip();
+  drawRLHF();
+});
 </script>
 </body>
 </html>
