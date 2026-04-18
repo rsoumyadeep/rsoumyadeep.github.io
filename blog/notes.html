@@ -46,9 +46,45 @@ a:hover {
     font-size: 14px;
 }
 
-/* LIST */
-ul {
+/* ===== NOTES CARDS ===== */
+
+.notes-section {
+    margin-bottom: 20px;
+}
+
+.note-card {
+    background: #ffffff;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.25s;
+}
+
+.note-card:hover {
+    transform: translateY(-3px);
+}
+
+/* COLLAPSIBLE CONTENT */
+.note-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    padding-left: 15px;
+}
+
+.note-content ul {
+    margin: 10px 0;
     padding-left: 20px;
+}
+
+.note-content li {
+    margin-bottom: 8px;
+}
+
+.note-content.open {
+    max-height: 500px;
 }
 
 /* DARK MODE */
@@ -57,40 +93,6 @@ body.dark {
     color: #e0e0e0;
 }
 
-    /* ===== NOTES CARDS ===== */
-
-.notes-section {
-    margin-bottom: 25px;
-}
-
-.note-card {
-    background: #ffffff;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    transition: 0.25s;
-}
-
-.note-card:hover {
-    transform: translateY(-3px);
-}
-
-/* SECTION TITLES */
-.note-card h2 {
-    margin-top: 0;
-    font-size: 20px;
-}
-
-/* LIST */
-.note-card ul {
-    padding-left: 20px;
-}
-
-.note-card li {
-    margin-bottom: 8px;
-}
-
-/* DARK MODE */
 body.dark .note-card {
     background: #1e1e1e;
 }
@@ -107,8 +109,11 @@ body.dark .note-card {
 
 <!-- RL -->
 <div class="notes-section">
-    <div class="note-card">
-        <h2>📘 Reinforcement Learning</h2>
+    <div class="note-card" onclick="toggleSection('rl')">
+        📘 Reinforcement Learning
+    </div>
+
+    <div id="rl" class="note-content">
         <ul>
             <li><a href="bellman.html">Understanding the Bellman Equation</a></li>
             <li><a href="DP_methods_RL.html">Dynamic Programming (VI & PI)</a></li>
@@ -124,8 +129,11 @@ body.dark .note-card {
 
 <!-- LLM -->
 <div class="notes-section">
-    <div class="note-card">
-        <h2>🤖 LLM & Transformers</h2>
+    <div class="note-card" onclick="toggleSection('llm')">
+        🤖 LLM & Transformers
+    </div>
+
+    <div id="llm" class="note-content">
         <ul>
             <li><a href="transformer_animated.html">Interactive Transformer Simulator</a></li>
         </ul>
@@ -134,20 +142,23 @@ body.dark .note-card {
 
 <!-- GENERATIVE -->
 <div class="notes-section">
-    <div class="note-card">
-        <h2>🎨 Generative Models</h2>
+    <div class="note-card" onclick="toggleSection('gen')">
+        🎨 Generative Models
+    </div>
+
+    <div id="gen" class="note-content">
         <ul>
             <li><a href="diffusion_simulator.html">Diffusion Model Simulator</a></li>
         </ul>
     </div>
 </div>
-    
-   
- </body>
+
 <script>
 function toggleSection(id) {
     const section = document.getElementById(id);
     section.classList.toggle("open");
 }
 </script>
+
+</body>
 </html>
