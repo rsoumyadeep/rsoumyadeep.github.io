@@ -1,451 +1,1703 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bellman Equation in Reinforcement Learning</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- MathJax for beautiful KaTeX-style rendering -->
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&amp;family=Space+Grotesk:wght@500&amp;display=swap');
-        
-        :root {
-            --tw-color-bg: #f8fafc;
-        }
-        
-        body {
-            background: linear-gradient(to bottom, #f8fafc, #e2e8f0);
-        }
-        
-        .math-container {
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-        
-        .section-header {
-            position: relative;
-        }
-        
-        .section-header::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 64px;
-            height: 3px;
-            background: linear-gradient(to right, #0ea5e9, #22d3ee);
-            border-radius: 9999px;
-        }
-        
-        .equation {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05);
-        }
-        
-        .katex {
-            font-size: 1.15em !important;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Value Functions, Bellman Equations & HJB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async id="MathJax-script"></script>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], tags: 'ams' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<style>
+:root {
+  --bg: #fafaf8;
+  --bg2: #f4f3ef;
+  --bg3: #eeecea;
+  --ink: #1a1917;
+  --ink2: #3d3b37;
+  --ink3: #6b6860;
+  --accent: #c0392b;
+  --accent2: #e74c3c;
+  --gold: #b7860b;
+  --gold2: #d4a017;
+  --teal: #1a6b6b;
+  --teal2: #2a9d8f;
+  --border: #dddbd6;
+  --card: #ffffff;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  background: var(--bg);
+  color: var(--ink2);
+  line-height: 1.8;
+}
+
+/* Progress Bar */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  z-index: 9999; width: 0%; transition: width 0.1s;
+}
+
+/* Navbar */
+#navbar {
+  position: fixed; top: 3px; left: 0; right: 0;
+  background: rgba(250,250,248,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 1000; padding: 0 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px;
+}
+
+.nav-brand {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600; font-size: 0.9rem;
+  color: var(--ink); letter-spacing: 0.02em;
+}
+
+.nav-links {
+  display: flex; gap: 0; list-style: none;
+}
+
+.nav-links a {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem; font-weight: 500;
+  color: var(--ink3); text-decoration: none;
+  padding: 0.4rem 0.75rem; border-radius: 4px;
+  transition: all 0.2s; letter-spacing: 0.01em;
+}
+
+.nav-links a:hover, .nav-links a.active {
+  color: var(--accent); background: rgba(192,57,43,0.06);
+}
+
+/* Layout */
+.page-wrapper {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-top: 59px;
+  min-height: 100vh;
+}
+
+/* Sidebar TOC */
+#toc {
+  position: sticky; top: 59px;
+  height: calc(100vh - 59px);
+  overflow-y: auto;
+  padding: 2rem 1.5rem;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+}
+
+#toc h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.7rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink3); margin-bottom: 1rem;
+}
+
+.toc-list { list-style: none; }
+
+.toc-list li a {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem; font-weight: 400;
+  color: var(--ink3); text-decoration: none;
+  padding: 0.3rem 0.6rem;
+  border-left: 2px solid transparent;
+  transition: all 0.2s; line-height: 1.4;
+  border-radius: 0 4px 4px 0;
+}
+
+.toc-list li a:hover { color: var(--accent); border-left-color: var(--accent); background: rgba(192,57,43,0.04); }
+.toc-list li a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; background: rgba(192,57,43,0.06); }
+
+.toc-list .toc-sub a { font-size: 0.72rem; padding-left: 1.2rem; color: var(--ink3); }
+
+/* Main Content */
+main {
+  padding: 3rem 4rem 6rem 4rem;
+  max-width: 900px;
+}
+
+/* Hero */
+.hero {
+  padding: 3rem 0 4rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4rem;
+}
+
+.hero-tag {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 1.2rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+
+.hero-tag::before {
+  content: ''; width: 2rem; height: 1px; background: var(--accent);
+}
+
+.hero h1 {
+  font-family: 'Lora', serif;
+  font-size: 2.8rem; font-weight: 700;
+  line-height: 1.2; color: var(--ink);
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.hero-desc {
+  font-size: 1.1rem; color: var(--ink3);
+  max-width: 640px; line-height: 1.7;
+  font-style: italic;
+}
+
+.hero-meta {
+  margin-top: 2rem;
+  display: flex; gap: 2rem; flex-wrap: wrap;
+}
+
+.hero-meta-item {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem; color: var(--ink3);
+  display: flex; align-items: center; gap: 0.4rem;
+}
+
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* Sections */
+section {
+  margin-bottom: 5rem;
+  scroll-margin-top: 80px;
+}
+
+h2 {
+  font-family: 'Lora', serif;
+  font-size: 1.9rem; font-weight: 700;
+  color: var(--ink); margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+  position: relative;
+}
+
+h2::after {
+  content: ''; display: block;
+  width: 3rem; height: 2px;
+  background: var(--accent);
+  margin-top: 0.5rem; margin-bottom: 1.5rem;
+}
+
+h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem; font-weight: 600;
+  color: var(--ink); margin: 2rem 0 0.8rem;
+  letter-spacing: -0.01em;
+}
+
+h4 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem; font-weight: 600;
+  color: var(--ink2); margin: 1.5rem 0 0.5rem;
+  letter-spacing: 0.01em;
+}
+
+p { margin-bottom: 1.2rem; font-size: 1rem; }
+
+/* Toggle Buttons */
+.toggle-group {
+  display: flex; gap: 0.5rem;
+  margin: 1.5rem 0; flex-wrap: wrap;
+}
+
+.toggle-btn {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem; font-weight: 500;
+  padding: 0.4rem 1rem; border-radius: 100px;
+  border: 1.5px solid var(--border);
+  background: var(--card); color: var(--ink3);
+  cursor: pointer; transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+
+.toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.toggle-btn.active {
+  background: var(--accent); border-color: var(--accent);
+  color: white;
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.8rem;
+  margin: 1.5rem 0;
+  box-shadow: var(--shadow);
+}
+
+.card-gold {
+  border-left: 3px solid var(--gold);
+  background: linear-gradient(135deg, #fffdf5 0%, #ffffff 100%);
+}
+
+.card-teal {
+  border-left: 3px solid var(--teal);
+  background: linear-gradient(135deg, #f5fffe 0%, #ffffff 100%);
+}
+
+.card-red {
+  border-left: 3px solid var(--accent);
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+}
+
+.card-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+
+.card-gold .card-title { color: var(--gold); }
+.card-teal .card-title { color: var(--teal); }
+.card-red .card-title { color: var(--accent); }
+
+/* Equation Box */
+.eq-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.5rem 2rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  position: relative;
+}
+
+.eq-box-label {
+  position: absolute; top: -0.6rem; right: 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem; color: var(--ink3);
+  background: var(--bg2);
+  padding: 0 0.4rem; letter-spacing: 0.05em;
+}
+
+/* Collapsible */
+.collapsible-header {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer;
+  padding: 0.8rem 1.2rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem; font-weight: 500;
+  color: var(--ink2);
+  transition: all 0.2s;
+  margin: 1rem 0 0;
+  user-select: none;
+}
+
+.collapsible-header:hover { background: var(--bg3); }
+
+.collapsible-arrow {
+  transition: transform 0.3s;
+  font-size: 0.8rem; color: var(--ink3);
+}
+
+.collapsible-body {
+  display: none;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: var(--card);
+  margin-bottom: 1rem;
+}
+
+.collapsible-body.open { display: block; }
+.collapsible-header.open .collapsible-arrow { transform: rotate(180deg); }
+
+/* Tooltip */
+.tooltip-word {
+  border-bottom: 1.5px dashed var(--accent);
+  cursor: help; color: var(--accent);
+  position: relative;
+}
+
+.tooltip-word .tooltip-text {
+  visibility: hidden; opacity: 0;
+  width: 260px; background: var(--ink);
+  color: #f0ede8; font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem; line-height: 1.5;
+  padding: 0.7rem 0.9rem;
+  border-radius: 6px;
+  position: absolute; bottom: 130%; left: 50%;
+  transform: translateX(-50%);
+  z-index: 100; pointer-events: none;
+  transition: opacity 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.tooltip-word:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+/* Animation Canvas */
+#bellman-canvas-wrapper {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+  box-shadow: var(--shadow);
+}
+
+canvas#bellman-canvas {
+  display: block; width: 100%;
+}
+
+.anim-controls {
+  display: flex; gap: 0.75rem; align-items: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  flex-wrap: wrap;
+}
+
+.anim-btn {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem; font-weight: 500;
+  padding: 0.4rem 1.1rem;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 100px; cursor: pointer;
+  color: var(--ink2); transition: all 0.2s;
+}
+
+.anim-btn:hover { border-color: var(--accent); color: var(--accent); }
+.anim-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+.anim-btn.primary:hover { background: var(--accent2); }
+
+.anim-info {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem; color: var(--ink3);
+  margin-left: auto;
+}
+
+/* Table */
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 1.5rem 0; font-size: 0.9rem;
+}
+
+th {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600; font-size: 0.78rem;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink3); padding: 0.7rem 1rem;
+  background: var(--bg2);
+  border-bottom: 2px solid var(--border);
+  text-align: left;
+}
+
+td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink2); vertical-align: top;
+}
+
+tr:hover td { background: var(--bg2); }
+
+/* Timeline */
+#timeline {
+  position: relative;
+  padding-left: 2rem;
+  margin: 2rem 0;
+}
+
+#timeline::before {
+  content: '';
+  position: absolute; left: 0.6rem; top: 0; bottom: 0;
+  width: 1px; background: var(--border);
+}
+
+.timeline-item {
+  position: relative;
+  padding: 1.2rem 0 1.2rem 2rem;
+  cursor: pointer;
+}
+
+.timeline-dot {
+  position: absolute; left: -1.45rem; top: 1.4rem;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--border);
+  transition: all 0.2s;
+  z-index: 1;
+}
+
+.timeline-item:hover .timeline-dot,
+.timeline-item.active .timeline-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(192,57,43,0.15);
+}
+
+.timeline-year {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem; font-weight: 500;
+  color: var(--accent); margin-bottom: 0.3rem;
+  letter-spacing: 0.05em;
+}
+
+.timeline-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600; font-size: 0.95rem;
+  color: var(--ink); margin-bottom: 0.2rem;
+}
+
+.timeline-detail {
+  font-size: 0.88rem; color: var(--ink3);
+  display: none; line-height: 1.6;
+  padding-top: 0.5rem;
+}
+
+.timeline-item.active .timeline-detail { display: block; }
+
+/* Intuition/Math panels */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Notation box */
+.notation-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem 1.5rem;
+  font-size: 0.92rem;
+  margin: 1rem 0;
+}
+
+.notation-sym {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent); font-size: 0.88rem;
+  white-space: nowrap;
+  padding-top: 0.1rem;
+}
+
+/* Value Iteration visual */
+#vi-canvas-wrapper {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden; margin: 1.5rem 0;
+}
+
+canvas#vi-canvas { display: block; width: 100%; }
+
+/* Callout */
+.callout {
+  display: flex; gap: 1rem;
+  padding: 1.2rem 1.5rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  border: 1px solid;
+}
+
+.callout-warn {
+  background: #fffbf0; border-color: #f0c040;
+}
+
+.callout-info {
+  background: #f0f8ff; border-color: #a0c8e8;
+}
+
+.callout-icon {
+  font-size: 1.2rem; flex-shrink: 0; margin-top: 0.1rem;
+}
+
+.callout p { margin: 0; font-size: 0.93rem; }
+
+/* Derivation steps */
+.deriv-step {
+  display: flex; gap: 1.5rem;
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.deriv-step:last-child { border-bottom: none; }
+
+.step-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem; color: var(--accent);
+  background: rgba(192,57,43,0.1);
+  width: 2rem; height: 2rem;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-weight: 500;
+  margin-top: 0.2rem;
+}
+
+.step-content h4 { margin-top: 0; }
+
+/* Summary badges */
+.badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem; font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  margin-right: 0.4rem; margin-bottom: 0.3rem;
+}
+
+.badge-red { background: rgba(192,57,43,0.1); color: var(--accent); }
+.badge-gold { background: rgba(183,134,11,0.1); color: var(--gold); }
+.badge-teal { background: rgba(26,107,107,0.1); color: var(--teal); }
+
+/* Mode indicator */
+.mode-indicator {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem; font-weight: 500;
+  color: var(--ink3); margin-bottom: 1rem;
+}
+
+.mode-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Key takeaways */
+.takeaway-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem; margin: 1.5rem 0;
+}
+
+.takeaway-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2rem;
+  font-size: 0.9rem; line-height: 1.6;
+}
+
+.takeaway-item strong {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  color: var(--ink); margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .page-wrapper { grid-template-columns: 1fr; }
+  #toc { display: none; }
+  main { padding: 2rem 1.5rem 4rem; }
+  .hero h1 { font-size: 2rem; }
+  .takeaway-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+}
+</style>
 </head>
-<body class="text-slate-900 font-sans">
-    <!-- Navbar -->
-    <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between">
-            <div class="flex items-center gap-x-3">
-                <div class="w-9 h-9 bg-gradient-to-br from-sky-400 to-cyan-400 rounded-2xl flex items-center justify-center text-white text-xl font-bold">RL</div>
-                <h1 class="text-2xl font-semibold tracking-tight" style="font-family: 'Space Grotesk', sans-serif;">Bellman Equation</h1>
-                <span class="text-sm font-medium bg-slate-100 text-slate-600 px-3 py-1 rounded-3xl">Reinforcement Learning</span>
-            </div>
-            <div class="flex items-center gap-x-8 text-sm font-medium">
-                <a href="#intuition" class="hover:text-sky-600 transition-colors">Intuition</a>
-                <a href="#derivation" class="hover:text-sky-600 transition-colors">Derivation</a>
-                <a href="#usage" class="hover:text-sky-600 transition-colors">Usage in RL</a>
-                <a href="#hjb" class="hover:text-sky-600 transition-colors">HJB Connection</a>
-                <a href="#summary" class="hover:text-sky-600 transition-colors">Summary</a>
-            </div>
-            <div class="text-xs px-4 py-2 bg-slate-900 text-white rounded-3xl flex items-center gap-x-1.5">
-                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                Interactive Guide
-            </div>
-        </div>
-    </nav>
+<body>
 
-    <div class="max-w-6xl mx-auto px-8 py-12">
-        
-        <!-- Hero -->
-        <div class="text-center mb-16">
-            <div class="inline-flex items-center gap-x-2 bg-white text-slate-700 text-sm font-medium px-6 py-3 rounded-3xl shadow-sm mb-6">
-                <span>From intuition to optimal control</span>
-                <span class="text-sky-500">•</span>
-                <span class="text-cyan-500">Bellman Equation</span>
-            </div>
-            <h1 class="text-6xl font-bold tracking-tighter mb-4" style="font-family: 'Space Grotesk', sans-serif;">
-                The Bellman Equation:<br>Recursive Magic in RL
-            </h1>
-            <p class="text-xl text-slate-600 max-w-2xl mx-auto">
-                The single equation that makes reinforcement learning possible. 
-                Understand the intuition, see the math, and discover why it powers every modern RL algorithm.
-            </p>
-            <div class="flex justify-center gap-x-4 mt-8">
-                <a href="#intuition" 
-                   class="bg-sky-600 hover:bg-sky-700 text-white px-8 py-4 rounded-3xl font-semibold flex items-center gap-x-2 transition-all active:scale-95">
-                    Start with Intuition
-                    <span class="text-xl">↓</span>
-                </a>
-                <a href="#hjb" 
-                   class="border border-slate-300 hover:border-slate-400 bg-white px-8 py-4 rounded-3xl font-semibold flex items-center gap-x-2 transition-all">
-                    Jump to HJB Connection
-                </a>
-            </div>
-        </div>
+<div id="progress-bar"></div>
 
-        <!-- Intuition Section -->
-        <section id="intuition" class="mb-20 scroll-mt-20">
-            <div class="flex items-baseline gap-x-4 mb-8">
-                <span class="text-5xl font-bold text-sky-200">01</span>
-                <div>
-                    <h2 class="section-header text-4xl font-semibold">Intuition: Why recursion beats brute force</h2>
-                    <p class="text-slate-500 mt-1">The core idea that turned optimal decision-making into an efficient algorithm</p>
-                </div>
-            </div>
-            
-            <div class="grid md:grid-cols-2 gap-10">
-                <div class="bg-white rounded-3xl shadow-sm p-8">
-                    <h3 class="text-2xl font-semibold mb-6">The problem RL solves</h3>
-                    <p class="text-slate-600 leading-relaxed mb-6">
-                        An agent lives in an environment. At every step it chooses an action, receives a reward, and moves to a new state. 
-                        Its goal? Maximize the <strong>total discounted future reward</strong> over its entire lifetime.
-                    </p>
-                    <div class="flex items-center gap-x-8 text-sm">
-                        <div class="flex-1">
-                            <div class="text-emerald-600 font-medium mb-1">Good future = high value</div>
-                            <div class="h-2 bg-emerald-100 rounded-full">
-                                <div class="h-2 w-4/5 bg-emerald-500 rounded-full"></div>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-amber-600 font-medium mb-1">Bad future = low value</div>
-                            <div class="h-2 bg-amber-100 rounded-full">
-                                <div class="h-2 w-1/3 bg-amber-500 rounded-full"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="mt-8 text-slate-500 text-sm">
-                        Calculating the total reward for every possible sequence of actions is impossible — the number of paths explodes exponentially.
-                    </p>
-                </div>
-                
-                <div class="bg-white rounded-3xl shadow-sm p-8">
-                    <h3 class="text-2xl font-semibold mb-6">Bellman’s brilliant insight</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        Instead of looking at the entire future, just ask:
-                    </p>
-                    <div class="my-8 p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center text-xl italic">
-                        “What is the best I can get right now <span class="font-semibold">plus</span> the best I can expect from tomorrow?”
-                    </div>
-                    <p class="text-slate-600">
-                        This recursive decomposition is exactly what the <strong>Bellman Equation</strong> formalizes. It turns an infinite-horizon problem into a simple one-step lookahead.
-                    </p>
-                    <div class="mt-6 flex items-center text-sky-600 text-sm font-medium">
-                        <div class="flex-1 h-px bg-gradient-to-r from-transparent to-sky-300"></div>
-                        <span class="mx-4">Recursive optimality = dynamic programming</span>
-                        <div class="flex-1 h-px bg-gradient-to-l from-transparent to-sky-300"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-12 bg-gradient-to-r from-white to-slate-50 border border-slate-100 rounded-3xl p-8 text-center">
-                <p class="text-lg max-w-xl mx-auto">
-                    <span class="font-semibold">Intuition in one sentence:</span><br>
-                    The optimal value of being in a state today is the immediate reward plus the discounted optimal value of wherever you go tomorrow.
-                </p>
-            </div>
-        </section>
+<nav id="navbar">
+  <div class="nav-brand">Bellman &amp; HJB</div>
+  <ul class="nav-links">
+    <li><a href="#motivation">Motivation</a></li>
+    <li><a href="#value-functions">Value Functions</a></li>
+    <li><a href="#bellman-eq">Bellman Eq.</a></li>
+    <li><a href="#bellman-opt">Optimality</a></li>
+    <li><a href="#animation">Animation</a></li>
+    <li><a href="#dynamic-prog">DP</a></li>
+    <li><a href="#hjb">HJB</a></li>
+    <li><a href="#derivation">Derivation</a></li>
+    <li><a href="#comparison">Comparison</a></li>
+    <li><a href="#summary">Summary</a></li>
+  </ul>
+</nav>
 
-        <!-- Derivation Section -->
-        <section id="derivation" class="mb-20 scroll-mt-20">
-            <div class="flex items-baseline gap-x-4 mb-8">
-                <span class="text-5xl font-bold text-sky-200">02</span>
-                <div>
-                    <h2 class="section-header text-4xl font-semibold">Derivation: From definition to equation</h2>
-                    <p class="text-slate-500 mt-1">Step-by-step from return to Bellman optimality</p>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-3xl shadow-sm p-10">
-                <h3 class="text-2xl font-semibold mb-6">1. The return (total future reward)</h3>
-                <div class="equation math-container mb-8">
-                    \[
-                    G_t = r_{t+1} + \gamma r_{t+2} + \gamma^2 r_{t+3} + \cdots = \sum_{k=0}^{\infty} \gamma^k r_{t+k+1}
-                    \]
-                </div>
-                <p class="text-slate-600 mb-8">
-                    <span class="font-medium">γ ∈ (0,1)</span> is the discount factor. It makes far-future rewards less important.
-                </p>
-                
-                <h3 class="text-2xl font-semibold mb-6">2. State-value function under a policy π</h3>
-                <div class="equation math-container mb-8">
-                    \[
-                    V^\pi(s) \triangleq \mathbb{E}_\pi \left[ G_t \mid s_t = s \right]
-                    \]
-                </div>
-                <p class="text-slate-600 mb-8">
-                    This is the expected return if we start in state <span class="font-semibold">s</span> and always follow policy π.
-                </p>
-                
-                <h3 class="text-2xl font-semibold mb-6">3. One-step unrolling (Bellman Expectation Equation)</h3>
-                <p class="text-slate-600 mb-4">Split the return into immediate reward + discounted future return:</p>
-                <div class="equation math-container mb-8">
-                    \[
-                    V^\pi(s) = \mathbb{E}_\pi \left[ r_{t+1} + \gamma G_{t+1} \mid s_t = s \right]
-                    \]
-                </div>
-                <p class="text-slate-600 mb-8">
-                    Taking the expectation over the next state and reward (using the transition probabilities of the MDP), we get the <strong>Bellman Expectation Equation</strong>:
-                </p>
-                <div class="equation math-container mb-8">
-                    \[
-                    V^\pi(s) = \sum_{a} \pi(a|s) \sum_{s',r} p(s',r \mid s,a) \left[ r + \gamma V^\pi(s') \right]
-                    \]
-                </div>
-                
-                <div class="border-l-4 border-sky-400 pl-6 py-2 mb-10 text-slate-600">
-                    This is a <strong>fixed-point equation</strong>. The value of today depends only on the values of tomorrow.
-                </div>
-                
-                <h3 class="text-2xl font-semibold mb-6">4. Optimal policy → Bellman Optimality Equation</h3>
-                <p class="text-slate-600 mb-4">The best possible value function V* satisfies:</p>
-                <div class="equation math-container">
-                    \[
-                    V^*(s) = \max_a \sum_{s',r} p(s',r \mid s,a) \left[ r + \gamma V^*(s') \right]
-                    \]
-                </div>
-                <p class="text-xs text-slate-500 mt-4 text-center">or in compact expectation form</p>
-                <div class="equation math-container mt-2">
-                    \[
-                    V^*(s) = \max_a \mathbb{E} \left[ r + \gamma V^*(s') \mid s, a \right]
-                    \]
-                </div>
-                
-                <div class="mt-10 grid grid-cols-2 gap-6">
-                    <div class="bg-slate-50 rounded-2xl p-6">
-                        <strong>Q-function version (most used in practice):</strong><br>
-                        <div class="equation math-container text-base mt-4">
-                            \[
-                            Q^*(s,a) = \mathbb{E} \left[ r + \gamma \max_{a'} Q^*(s',a') \mid s,a \right]
-                            \]
-                        </div>
-                    </div>
-                    <div class="bg-slate-50 rounded-2xl p-6 text-slate-600 text-sm flex items-center">
-                        The optimal policy is simply <span class="font-mono bg-white px-2 py-1 rounded-lg mx-1">\(\pi^*(s) = \arg\max_a Q^*(s,a)\)</span>
-                    </div>
-                </div>
-            </div>
-        </section>
+<div class="page-wrapper">
 
-        <!-- Usage in RL Section -->
-        <section id="usage" class="mb-20 scroll-mt-20">
-            <div class="flex items-baseline gap-x-4 mb-8">
-                <span class="text-5xl font-bold text-sky-200">03</span>
-                <div>
-                    <h2 class="section-header text-4xl font-semibold">Where &amp; how it is used in RL</h2>
-                    <p class="text-slate-500 mt-1">From classic algorithms to deep RL — the Bellman equation is everywhere</p>
-                </div>
-            </div>
-            
-            <div class="grid md:grid-cols-3 gap-6">
-                <!-- Card 1 -->
-                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-sky-600 text-sm font-medium mb-3">Dynamic Programming</div>
-                    <h4 class="font-semibold text-xl mb-2">Value Iteration</h4>
-                    <p class="text-slate-600 text-sm mb-6">
-                        Repeatedly apply the Bellman optimality backup until convergence:
-                    </p>
-                    <div class="font-mono text-xs bg-slate-100 p-4 rounded-2xl mb-6">
-                        V<sub>new</sub>(s) ← max<sub>a</sub> E [ r + γ V(s′) | s,a ]
-                    </div>
-                    <p class="text-xs text-slate-500">Converges to V* → extract optimal policy</p>
-                </div>
-                
-                <!-- Card 2 -->
-                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-sky-600 text-sm font-medium mb-3">Model-free methods</div>
-                    <h4 class="font-semibold text-xl mb-2">Q-Learning</h4>
-                    <p class="text-slate-600 text-sm mb-6">
-                        The famous TD update is a sampled version of the Bellman optimality equation:
-                    </p>
-                    <div class="equation math-container text-base mb-6">
-                        \[
-                        Q(s,a) \leftarrow Q(s,a) + \alpha \left[ r + \gamma \max_{a'} Q(s',a') - Q(s,a) \right]
-                        \]
-                    </div>
-                    <p class="text-xs text-slate-500">No model needed — learns directly from experience</p>
-                </div>
-                
-                <!-- Card 3 -->
-                <div class="bg-white rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-sky-600 text-sm font-medium mb-3">Deep RL &amp; Policy Gradients</div>
-                    <h4 class="font-semibold text-xl mb-2">Actor-Critic &amp; DQN</h4>
-                    <p class="text-slate-600 text-sm mb-6">
-                        Neural networks approximate V* or Q*. The loss function is usually the <strong>Bellman error</strong>:
-                    </p>
-                    <div class="equation math-container text-base">
-                        \[
-                        \mathcal{L}(\theta) = \mathbb{E} \left[ \left( r + \gamma \max Q_{\theta^-}(s',a') - Q_\theta(s,a) \right)^2 \right]
-                        \]
-                    </div>
-                    <p class="text-xs text-slate-500 mt-6">Target network stabilizes training</p>
-                </div>
-            </div>
-            
-            <div class="mt-12 text-center text-slate-500 text-sm max-w-md mx-auto">
-                Every major RL algorithm (SARSA, PPO, SAC, DDPG, TD3, …) is either directly solving or approximating the Bellman equation.
-            </div>
-        </section>
+  <aside id="toc">
+    <h3>Contents</h3>
+    <ul class="toc-list">
+      <li><a href="#motivation">1. Motivation</a></li>
+      <li><a href="#value-functions">2. Value Functions</a></li>
+      <li class="toc-sub"><a href="#state-value">State-Value V(s)</a></li>
+      <li class="toc-sub"><a href="#action-value">Action-Value Q(s,a)</a></li>
+      <li><a href="#bellman-eq">3. Bellman Equations</a></li>
+      <li class="toc-sub"><a href="#bellman-v">Bellman for V</a></li>
+      <li class="toc-sub"><a href="#bellman-q">Bellman for Q</a></li>
+      <li><a href="#bellman-opt">4. Optimality Equations</a></li>
+      <li><a href="#animation">5. Animation</a></li>
+      <li><a href="#dynamic-prog">6. Dynamic Programming</a></li>
+      <li class="toc-sub"><a href="#value-iter">Value Iteration</a></li>
+      <li class="toc-sub"><a href="#policy-iter">Policy Iteration</a></li>
+      <li><a href="#cont-time">7. Continuous Time</a></li>
+      <li><a href="#hjb">8. HJB Equation</a></li>
+      <li><a href="#derivation">9. Derivation</a></li>
+      <li><a href="#comparison">10. Comparison Table</a></li>
+      <li><a href="#summary-table">11. Summary Table</a></li>
+      <li><a href="#remarks">12. Remarks</a></li>
+      <li><a href="#timeline">13. Timeline</a></li>
+    </ul>
+  </aside>
 
-        <!-- HJB Connection Section -->
-        <section id="hjb" class="mb-20 scroll-mt-20">
-            <div class="flex items-baseline gap-x-4 mb-8">
-                <span class="text-5xl font-bold text-sky-200">04</span>
-                <div>
-                    <h2 class="section-header text-4xl font-semibold">Connection to the Hamilton-Jacobi-Bellman (HJB) Equation</h2>
-                    <p class="text-slate-500 mt-1">The continuous-state/action/time counterpart</p>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-3xl p-10">
-                <div class="flex flex-col md:flex-row gap-12">
-                    <div class="md:w-2/5">
-                        <div class="text-amber-600 uppercase text-xs tracking-widest mb-2">Correction</div>
-                        <h3 class="text-2xl font-semibold mb-3">It’s the <span class="text-amber-600">Hamilton-Jacobi-Bellman (HJB)</span> equation</h3>
-                        <p class="text-slate-600">
-                            It is the continuous version of the Bellman equation, and called as 
-                            <strong>Hamilton–Jacobi–Bellman</strong> (HJB) equation.
-                        </p>
-                        <p class="mt-4 text-sm text-slate-500">
-                            It arises in <strong>optimal control theory</strong> for continuous-time dynamical systems with continuous states and actions.
-                        </p>
-                    </div>
-                    
-                    <div class="flex-1">
-                        <h4 class="font-medium mb-4">How the discrete Bellman becomes the HJB (limit as Δt → 0)</h4>
-                        
-                        <div class="equation math-container mb-8">
-                            Discrete Bellman (small time step Δt):<br>
-                            \[
-                            V(s) = \max_u \Big[ r(s,u)\Delta t + (1 - \rho\Delta t) \mathbb{E}[V(s + f(s,u)\Delta t)] \Big]
-                            \]
-                        </div>
-                        
-                        <div class="flex justify-center my-6 text-3xl text-slate-300">↓ Taylor expansion + limit</div>
-                        
-                        <div class="equation math-container bg-gradient-to-r from-amber-50 to-white border border-amber-200 rounded-3xl p-8">
-                            <strong>HJB equation</strong> (infinite-horizon discounted case):
-                            \[
-                            \rho V(x) = \min_u \left[ l(x,u) + \nabla_x V(x)^\top f(x,u) \right]
-                            \]
-                            where:<br>
-                            • \( \rho \): discount rate<br>
-                            • \( l(x,u) \): instantaneous cost/reward<br>
-                            • \( f(x,u) \): continuous dynamics<br>
-                            • \( \nabla_x V(x) \): gradient of the value function
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-10 border-t border-slate-100 pt-8 text-sm text-slate-500 grid md:grid-cols-2 gap-8">
-                    <div>
-                        <strong>When to use HJB?</strong><br>
-                        Continuous-time control problems (robotics, autonomous driving, finance). Solved analytically only in low dimensions; otherwise approximated numerically.
-                    </div>
-                    <div>
-                        <strong>How RL connects to HJB</strong><br>
-                        Modern continuous-control RL algorithms (DDPG, SAC, TD3) are essentially learning neural-network approximations to the solution of the HJB equation — without ever writing the PDE explicitly.
-                    </div>
-                </div>
-                
-                <div class="mt-8 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl px-5 py-4 flex items-start gap-3">
-                    <span class="text-xl leading-none mt-px">💡</span>
-                    <div>
-                        The Bellman equation is the discrete-time version. The HJB equation is its continuous-time counterpart. 
-                        Deep RL bridges both worlds by using function approximators to solve the Bellman equation in high-dimensional continuous spaces.
-                    </div>
-                </div>
-            </div>
-        </section>
+  <main>
 
-        <!-- Summary -->
-        <section id="summary" class="bg-slate-900 text-white rounded-3xl px-12 py-12">
-            <div class="max-w-2xl mx-auto text-center">
-                <h2 class="text-4xl font-semibold mb-8">Key Takeaways</h2>
-                <div class="grid md:grid-cols-3 gap-8 text-left">
-                    <div class="border border-white/10 rounded-2xl p-6">
-                        <div class="text-sky-400 text-2xl mb-3">1</div>
-                        <p class="font-medium">Recursion is the key</p>
-                        <p class="text-slate-400 text-sm mt-2">Bellman equation decomposes infinite future into one-step lookahead.</p>
-                    </div>
-                    <div class="border border-white/10 rounded-2xl p-6">
-                        <div class="text-sky-400 text-2xl mb-3">2</div>
-                        <p class="font-medium">It’s the foundation</p>
-                        <p class="text-slate-400 text-sm mt-2">Value iteration, Q-learning, deep Q-networks, actor-critic — all rest on it.</p>
-                    </div>
-                    <div class="border border-white/10 rounded-2xl p-6">
-                        <div class="text-sky-400 text-2xl mb-3">3</div>
-                        <p class="font-medium">Continuous world = HJB</p>
-                        <p class="text-slate-400 text-sm mt-2">Hamilton-Jacobi-Bellman equation is the continuous-time generalization.</p>
-                    </div>
-                </div>
-               </div>
-        </section>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-tag">Bellman Equations & the Hamilton–Jacobi–Bellman Equation</div>
+      <p class="hero-desc">A rigorous &intuitive treatment — from discrete-time dynamic programming to the continuous-time HJB equation — for the graduate RL researcher.</p>
+      <div class="hero-meta">
+        <span class="hero-meta-item"><span class="dot"></span> Interactive derivations</span>
+        <span class="hero-meta-item"><span class="dot"></span> Animated Bellman backup</span>
+        <span class="hero-meta-item"><span class="dot"></span> Formal HJB limit proof</span>
+      </div>
     </div>
 
-    <!-- Footer -->
-    <footer>
-        <p style="margin-top:12px;font-size:11px;color:var(--muted)">
-  © <span id="year"></span> Soumyadeep Roy
-</p>
-    </footer>
+    <!-- 1. MOTIVATION -->
+    <section id="motivation">
+      <h2>1. Motivation & Intuition</h2>
 
-    <!-- Tailwind script initialization -->
-    <script>
-          document.getElementById("year").textContent = new Date().getFullYear();
-        document.addEventListener('DOMContentLoaded', () => {
-            return {
-                config(userConfig = {}) {
-                    return {
-                        configUser: userConfig,
-                        theme: {
-                            extend: {
-                                colors: {
-                                    'rl-primary': '#0ea5e9'
-                                }
-                            }
-                        }
-                    }
-                },
-                theme: {
-                    extend: {}
-                }
-            }
-        })
-        
-        // Make MathJax render immediately when loaded
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
-            },
-            svg: {
-                fontCache: 'global'
-            }
-        }
-        
-        console.log('%c✅ Bellman Equation HTML ready! Math renders automatically.', 'color:#0ea5e9; font-weight:600')
-    </script>
+      <div class="toggle-group">
+        <button class="toggle-btn active" onclick="setMode('motivation', 'intuition', this)">Show Intuition</button>
+        <button class="toggle-btn" onclick="setMode('motivation', 'math', this)">Show Math</button>
+      </div>
+
+      <div id="motivation-intuition" class="panel active">
+        <p>Imagine a chess player evaluating board positions. They don't compute the outcome of every possible game to the end — instead, they develop an intuition about how "good" each position is. This intuition is exactly the <span class="tooltip-word">value function<span class="tooltip-text">A mapping from states (and optionally actions) to expected cumulative reward. Encodes how desirable a situation is under a given policy.</span></span>.</p>
+
+        <div class="card card-gold">
+          <div class="card-title">💡 Core Insight</div>
+          <p style="margin:0">The central idea of dynamic programming is that <em>optimal sequential decisions can be decomposed into a current decision plus the optimal value of the future</em>. This is Bellman's principle of optimality.</p>
+        </div>
+
+        <p>The Bellman equation makes this recursive: the value of being in a state equals the immediate reward you collect plus (discounted) value of the next state. This recursion is the engine of almost all model-based RL algorithms.</p>
+
+        <p>The <span class="tooltip-word">Hamilton–Jacobi–Bellman equation<span class="tooltip-text">The continuous-time PDE analogue of the Bellman optimality equation. Characterizes the optimal value function as a solution to a partial differential equation involving the system dynamics.</span></span> is what Bellman's equation becomes when time is continuous and the state evolves according to a differential equation — the natural setting for control theory and physics-based problems.</p>
+      </div>
+
+      <div id="motivation-math" class="panel">
+        <p>We operate in a <strong>Markov Decision Process (MDP)</strong>: a tuple $(\mathcal{S}, \mathcal{A}, P, r, \gamma)$ where $\mathcal{S}$ is the state space, $\mathcal{A}$ the action space, $P(s'|s,a)$ the transition kernel, $r(s,a)$ the reward function, and $\gamma \in [0,1)$ the discount factor.</p>
+
+        <p>An agent follows a <strong>policy</strong> $\pi: \mathcal{S} \to \Delta(\mathcal{A})$ (stationary, possibly stochastic). The goal is to find $\pi^*$ that maximizes expected discounted return:</p>
+
+        <div class="eq-box">
+          <div class="eq-box-label">Objective</div>
+          $$\pi^* = \arg\max_\pi \; \mathbb{E}_\pi\!\left[\sum_{t=0}^{\infty} \gamma^t r(S_t, A_t) \;\Big|\; S_0 = s\right]$$
+        </div>
+
+        <p>The key insight is that this infinite-horizon problem has recursive structure — the basis for Bellman's work and subsequently the entire edifice of DP and RL.</p>
+      </div>
+    </section>
+
+    <!-- 2. VALUE FUNCTIONS -->
+    <section id="value-functions">
+      <h2>2. Value Functions</h2>
+
+      <div id="state-value">
+        <h3>2.1 State-Value Function $V^\pi(s)$</h3>
+
+        <div class="toggle-group">
+          <button class="toggle-btn active" onclick="setMode('vf', 'intuition', this)">Intuition</button>
+          <button class="toggle-btn" onclick="setMode('vf', 'math', this)">Math</button>
+        </div>
+
+        <div id="vf-intuition" class="panel active">
+          <p>$V^\pi(s)$ answers: <em>"If I'm in state $s$ and follow policy $\pi$ forever, how much total reward can I expect to accumulate?"</em></p>
+          <p>Think of it as the "price" of being in a state under a given behavioral strategy. Higher $V^\pi(s)$ = better state.</p>
+        </div>
+
+        <div id="vf-math" class="panel">
+          <div class="eq-box">
+            <div class="eq-box-label">State-Value Function</div>
+            $$V^\pi(s) \;=\; \mathbb{E}_\pi\!\left[\sum_{t=0}^{\infty} \gamma^t r(S_t, A_t) \;\Big|\; S_0 = s\right]$$
+          </div>
+          <p>The expectation is over the stochasticity in both the policy $\pi(\cdot|s)$ and the transition kernel $P(\cdot|s,a)$.</p>
+        </div>
+      </div>
+
+      <div id="action-value">
+        <h3>2.2 Action-Value (Q) Function $Q^\pi(s,a)$</h3>
+
+        <div class="toggle-group">
+          <button class="toggle-btn active" onclick="setMode('qf', 'intuition', this)">Intuition</button>
+          <button class="toggle-btn" onclick="setMode('qf', 'math', this)">Math</button>
+        </div>
+
+        <div id="qf-intuition" class="panel active">
+          <p>$Q^\pi(s,a)$ answers: <em>"If I'm in state $s$, take action $a$ right now (even if $\pi$ wouldn't normally suggest it), then follow $\pi$ forever after — how much reward do I get?"</em></p>
+          <p>The Q-function is more informative than V — it tells you the value of each action, enabling direct policy improvement.</p>
+        </div>
+
+        <div id="qf-math" class="panel">
+          <div class="eq-box">
+            <div class="eq-box-label">Action-Value Function</div>
+            $$Q^\pi(s,a) \;=\; \mathbb{E}_\pi\!\left[\sum_{t=0}^{\infty} \gamma^t r(S_t, A_t) \;\Big|\; S_0 = s, A_0 = a\right]$$
+          </div>
+        </div>
+
+        <div class="card card-teal" style="margin-top:1.5rem">
+          <div class="card-title">🔗 Relationship</div>
+          <p style="margin-bottom:0.5rem">The two functions are related by:</p>
+          $$V^\pi(s) = \sum_{a} \pi(a|s) \, Q^\pi(s,a) = \mathbb{E}_{a \sim \pi(\cdot|s)}[Q^\pi(s,a)]$$
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem">
+        <h3>2.3 Notation Summary</h3>
+        <div class="notation-grid">
+          <div class="notation-sym">$\mathcal{S}, \mathcal{A}$</div><div>State space, action space</div>
+          <div class="notation-sym">$P(s'|s,a)$</div><div>Transition probability kernel</div>
+          <div class="notation-sym">$r(s,a)$</div><div>Expected immediate reward</div>
+          <div class="notation-sym">$\gamma$</div><div>Discount factor ($0 \le \gamma < 1$)</div>
+          <div class="notation-sym">$\pi(a|s)$</div><div>Policy — probability of action $a$ in state $s$</div>
+          <div class="notation-sym">$V^\pi, Q^\pi$</div><div>State-value and action-value under policy $\pi$</div>
+          <div class="notation-sym">$V^*, Q^*$</div><div>Optimal state-value and action-value</div>
+          <div class="notation-sym">$\pi^*$</div><div>Optimal policy</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. BELLMAN EXPECTATION EQUATIONS -->
+    <section id="bellman-eq">
+      <h2>3. Bellman Expectation Equations</h2>
+
+      <p>The Bellman equations give recursive characterizations of value functions. They are the central structural property enabling computation of $V^\pi$ and $Q^\pi$.</p>
+
+      <div id="bellman-v">
+        <h3>3.1 Bellman Equation for $V^\pi$</h3>
+
+        <div class="toggle-group">
+          <button class="toggle-btn active" onclick="setMode('bv', 'intuition', this)">Intuition</button>
+          <button class="toggle-btn" onclick="setMode('bv', 'math', this)">Derivation</button>
+        </div>
+
+        <div id="bv-intuition" class="panel active">
+          <p>The value of a state is the immediate reward you expect to get (by averaging over actions and next states) <em>plus</em> the discounted value of wherever you end up next. The value decomposes into <em>now</em> and <em>everything after now</em>.</p>
+        </div>
+
+        <div id="bv-math" class="panel">
+          <p>Starting from the definition and splitting off the first term:</p>
+          <div class="eq-box">
+            $$V^\pi(s) = \sum_{a} \pi(a|s) \left[ r(s,a) + \gamma \sum_{s'} P(s'|s,a) \, V^\pi(s') \right]$$
+          </div>
+          <p>Equivalently in operator form: $V^\pi = \mathcal{T}^\pi V^\pi$ where the <span class="tooltip-word">Bellman operator<span class="tooltip-text">$\mathcal{T}^\pi$ maps any function $f: \mathcal{S} \to \mathbb{R}$ to $(\mathcal{T}^\pi f)(s) = \sum_a \pi(a|s)[r(s,a) + \gamma \sum_{s'} P(s'|s,a)f(s')]$. It is a $\gamma$-contraction in $\ell^\infty$, so repeated application converges to $V^\pi$.</span></span> $\mathcal{T}^\pi$ is a $\gamma$-contraction mapping whose unique fixed point is $V^\pi$.</p>
+        </div>
+
+        <div class="eq-box" style="background: var(--card)">
+          <div class="eq-box-label">Bellman Eq. for V</div>
+          $$\boxed{V^\pi(s) = \mathbb{E}_{a \sim \pi(\cdot|s)}\!\left[r(s,a) + \gamma \, \mathbb{E}_{s' \sim P(\cdot|s,a)}\!\left[V^\pi(s')\right]\right]}$$
+        </div>
+      </div>
+
+      <div id="bellman-q">
+        <h3>3.2 Bellman Equation for $Q^\pi$</h3>
+
+        <div class="eq-box" style="background: var(--card)">
+          <div class="eq-box-label">Bellman Eq. for Q</div>
+          $$\boxed{Q^\pi(s,a) = r(s,a) + \gamma \sum_{s'} P(s'|s,a) \sum_{a'} \pi(a'|s') \, Q^\pi(s',a')}$$
+        </div>
+
+        <p>The Q-function's Bellman equation shows: take action $a$, observe reward $r(s,a)$, land in $s'$, then follow $\pi$ (averaging over $\pi$'s choice of $a'$ in $s'$).</p>
+
+        <div class="card card-red">
+          <div class="card-title">⚡ Cross-equations</div>
+          <p style="margin:0">$V^\pi$ and $Q^\pi$ are interchangeable: $V^\pi(s) = \mathbb{E}_{a\sim\pi}[Q^\pi(s,a)]$ and $Q^\pi(s,a) = r(s,a) + \gamma \mathbb{E}_{s'}[V^\pi(s')]$. This symmetry drives policy gradient theorems.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. BELLMAN OPTIMALITY EQUATIONS -->
+    <section id="bellman-opt">
+      <h2>4. Bellman Optimality Equations</h2>
+
+      <div class="toggle-group">
+        <button class="toggle-btn active" onclick="setMode('bopt', 'intuition', this)">Intuition</button>
+        <button class="toggle-btn" onclick="setMode('bopt', 'math', this)">Math</button>
+      </div>
+
+      <div id="bopt-intuition" class="panel active">
+        <p>What if we don't commit to any fixed policy, but instead ask: what is the best possible value achievable from each state? The <span class="tooltip-word">optimal value function<span class="tooltip-text">$V^*(s) = \max_\pi V^\pi(s)$. The envelope over all policies. Similarly, $Q^*(s,a) = \max_\pi Q^\pi(s,a)$.</span></span> $V^*$ is the ceiling — no policy can do better.</p>
+
+        <p>The Bellman <em>optimality</em> equation says: at each state, you get to pick the best action, then nature picks the next state.</p>
+      </div>
+
+      <div id="bopt-math" class="panel">
+        <p>Define $V^*(s) = \max_\pi V^\pi(s)$ and $Q^*(s,a) = \max_\pi Q^\pi(s,a)$. By Bellman's principle of optimality:</p>
+      </div>
+
+      <div class="eq-box" style="background: var(--card)">
+        <div class="eq-box-label">Bellman Optimality — V</div>
+        $$\boxed{V^*(s) = \max_{a \in \mathcal{A}} \left[ r(s,a) + \gamma \sum_{s'} P(s'|s,a) \, V^*(s') \right]}$$
+      </div>
+
+      <div class="eq-box" style="background: var(--card)">
+        <div class="eq-box-label">Bellman Optimality — Q</div>
+        $$\boxed{Q^*(s,a) = r(s,a) + \gamma \sum_{s'} P(s'|s,a) \max_{a'} Q^*(s',a')}$$
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠️</div>
+        <p>Unlike the Bellman <em>expectation</em> equations (which are linear in $V^\pi$), the optimality equations are <strong>nonlinear</strong> due to the $\max$ operator. This nonlinearity is what makes them harder to solve analytically but is also why they uniquely characterize $V^*$.</p>
+      </div>
+
+      <p>The optimal policy is recovered greedily: $\pi^*(s) = \arg\max_a Q^*(s,a)$. The Bellman optimality operator $\mathcal{T}^*$ defined by $(\mathcal{T}^* V)(s) = \max_a[r(s,a) + \gamma \sum_{s'} P(s'|s,a)V(s')]$ is also a $\gamma$-contraction in $\ell^\infty(\mathcal{S})$.</p>
+    </section>
+
+    <!-- 5. ANIMATION -->
+    <section id="animation">
+      <h2>5. Bellman Backup — Animated</h2>
+
+      <p>The animation below illustrates the Bellman backup: how value propagates from successor states back to the current state through the recursive equation.</p>
+
+      <div id="bellman-canvas-wrapper">
+        <canvas id="bellman-canvas" height="360"></canvas>
+        <div class="anim-controls">
+          <button class="anim-btn primary" id="anim-play-btn" onclick="toggleAnim()">▶ Play</button>
+          <button class="anim-btn" onclick="resetAnim()">↺ Reset</button>
+          <select id="anim-mode" onchange="changeAnimMode()" style="font-family:'Outfit',sans-serif;font-size:0.78rem;padding:0.35rem 0.7rem;border:1.5px solid var(--border);border-radius:100px;background:var(--card);color:var(--ink2);cursor:pointer;">
+            <option value="backup">V-backup</option>
+            <option value="qbackup">Q-backup</option>
+            <option value="vi">Value Iteration</option>
+          </select>
+          <span class="anim-info" id="anim-step-label">Step 0 — Ready</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. DYNAMIC PROGRAMMING -->
+    <section id="dynamic-prog">
+      <h2>6. Bellman → Dynamic Programming</h2>
+
+      <p>The Bellman equations are not just structural — they <em>compute</em>. The fixed-point interpretation gives us two canonical algorithms.</p>
+
+      <div id="value-iter">
+        <h3>6.1 Value Iteration</h3>
+
+        <div class="toggle-group">
+          <button class="toggle-btn active" onclick="setMode('vi', 'intuition', this)">Intuition</button>
+          <button class="toggle-btn" onclick="setMode('vi', 'math', this)">Math</button>
+        </div>
+
+        <div id="vi-intuition" class="panel active">
+          <p>Start with any value function (e.g., all zeros). Repeatedly apply the Bellman optimality operator. Since $\mathcal{T}^*$ is a contraction, the sequence converges to $V^*$.</p>
+        </div>
+
+        <div id="vi-math" class="panel">
+          <p>Repeat until convergence ($\|V_{k+1} - V_k\|_\infty < \epsilon$):</p>
+          <div class="eq-box">
+            $$V_{k+1}(s) \leftarrow \max_{a} \left[ r(s,a) + \gamma \sum_{s'} P(s'|s,a) \, V_k(s') \right], \quad \forall s \in \mathcal{S}$$
+          </div>
+          <p>Convergence rate: after $k$ iterations, $\|V_k - V^*\|_\infty \le \gamma^k \|V_0 - V^*\|_\infty$. This is geometric.</p>
+        </div>
+      </div>
+
+      <div id="policy-iter">
+        <h3>6.2 Policy Iteration</h3>
+
+        <div class="toggle-group">
+          <button class="toggle-btn active" onclick="setMode('pi', 'intuition', this)">Intuition</button>
+          <button class="toggle-btn" onclick="setMode('pi', 'math', this)">Math</button>
+        </div>
+
+        <div id="pi-intuition" class="panel active">
+          <p>Start with any policy $\pi_0$. Alternate between: (1) <em>evaluating</em> the current policy exactly (solve the Bellman expectation equation), and (2) <em>improving</em> by acting greedily w.r.t. the computed values. Each step is guaranteed not to decrease performance, and the process terminates at $\pi^*$ in finite steps (for finite MDPs).</p>
+        </div>
+
+        <div id="pi-math" class="panel">
+          <p><strong>Policy Evaluation:</strong> Solve $(I - \gamma P^{\pi_k}) V^{\pi_k} = r^{\pi_k}$ — a linear system.</p>
+          <p><strong>Policy Improvement:</strong> $\pi_{k+1}(s) = \arg\max_a [r(s,a) + \gamma \sum_{s'} P(s'|s,a) V^{\pi_k}(s')]$.</p>
+          <p>Policy improvement theorem: $V^{\pi_{k+1}} \ge V^{\pi_k}$ pointwise. Since the policy space is finite, termination is guaranteed.</p>
+        </div>
+      </div>
+
+      <div class="card card-teal" style="margin-top:2rem">
+        <div class="card-title">🔭 Fixed-Point View</div>
+        <p>Both algorithms find fixed points of Bellman operators:</p>
+        <ul style="margin-left:1.2rem;line-height:2">
+          <li>$V^\pi$ is the unique fixed point of $\mathcal{T}^\pi$ (Bellman expectation operator)</li>
+          <li>$V^*$ is the unique fixed point of $\mathcal{T}^*$ (Bellman optimality operator)</li>
+          <li>Contraction mapping theorem (Banach) guarantees existence, uniqueness, and convergence</li>
+        </ul>
+      </div>
+
+      <h3>6.3 Generalized Policy Iteration</h3>
+      <p>Modern RL algorithms (Actor-Critic, PPO, SAC) can be viewed as approximate generalized policy iteration: they interleave partial evaluation (TD learning, Monte Carlo) with partial improvement (gradient-based policy updates). The Bellman equation remains the core recursive structure throughout.</p>
+    </section>
+
+    <!-- 7. CONTINUOUS TIME -->
+    <section id="cont-time">
+      <h2>7. Why Continuous-Time Control?</h2>
+
+      <div class="toggle-group">
+        <button class="toggle-btn active" onclick="setMode('ct', 'intuition', this)">Intuition</button>
+        <button class="toggle-btn" onclick="setMode('ct', 'math', this)">Math</button>
+      </div>
+
+      <div id="ct-intuition" class="panel active">
+        <p>The discrete MDP framework is elegant but has limitations in physical systems. Real robots, aircraft, financial markets, and biological systems evolve continuously — their state changes according to differential equations, not jump processes.</p>
+
+        <div class="card card-gold">
+          <div class="card-title">🌊 Why Continuous Time Matters</div>
+          <ul style="margin-left:1.2rem;line-height:2;margin-top:0">
+            <li>State dynamics are naturally modeled as SDEs: $dX_t = f(X_t, u_t)dt + \sigma(X_t)dW_t$</li>
+            <li>Discrete-time with small $\Delta t$ only approximates this; errors accumulate</li>
+            <li>Continuous-time gives exact, closed-form optimality conditions</li>
+            <li>PDE theory (viscosity solutions) handles non-smooth value functions rigorously</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="ct-math" class="panel">
+        <p>In continuous time, the state evolves as a controlled diffusion:</p>
+        <div class="eq-box">
+          $$dX_t = f(X_t, u_t) \, dt + \sigma(X_t) \, dW_t, \quad X_0 = x$$
+        </div>
+        <p>where $W_t$ is a standard Brownian motion, $u_t \in \mathcal{U}$ is the control (the analogue of action). The objective is:</p>
+        <div class="eq-box">
+          $$V^*(x) = \sup_{u(\cdot)} \mathbb{E}\!\left[\int_0^\infty e^{-\rho t} r(X_t, u_t) \, dt \;\Big|\; X_0 = x\right]$$
+        </div>
+        <p>where $\rho > 0$ is the continuous-time discount rate (the analogue of $-\ln\gamma$).</p>
+      </div>
+    </section>
+
+    <!-- 8. HJB EQUATION -->
+    <section id="hjb">
+      <h2>8. The Hamilton–Jacobi–Bellman Equation</h2>
+
+      <div class="toggle-group">
+        <button class="toggle-btn active" onclick="setMode('hjb', 'intuition', this)">Intuition</button>
+        <button class="toggle-btn" onclick="setMode('hjb', 'math', this)">Math</button>
+      </div>
+
+      <div id="hjb-intuition" class="panel active">
+        <p>The HJB equation is the PDE that the optimal value function $V^*$ must satisfy in continuous time. It says: at any state $x$, there is a "flow" that keeps $V^*$ consistent — the instantaneous reward plus the expected drift of value due to system dynamics must exactly balance the discount rate times $V^*$.</p>
+
+        <p>It is the continuous-time analogue of the Bellman optimality equation. While the Bellman equation is a system of equations (one per state), HJB is a <em>single PDE</em> governing the value function over the entire state space.</p>
+      </div>
+
+      <div id="hjb-math" class="panel">
+        <p>For the deterministic case ($\sigma = 0$), HJB is:</p>
+        <div class="eq-box">
+          $$\rho \, V^*(x) = \sup_{u \in \mathcal{U}} \left[ r(x,u) + \nabla_x V^*(x)^\top f(x,u) \right]$$
+        </div>
+        <p>For the stochastic case (controlled diffusion), the <strong>infinitesimal generator</strong> $\mathcal{L}^u$ acts on $V$:</p>
+        <div class="eq-box">
+          <div class="eq-box-label">HJB — Stochastic</div>
+          $$\rho \, V^*(x) = \sup_{u \in \mathcal{U}} \left[ r(x,u) + \mathcal{L}^u V^*(x) \right]$$
+          where $\mathcal{L}^u V = \nabla_x V \cdot f(x,u) + \tfrac{1}{2} \text{tr}\!\left(\sigma \sigma^\top \nabla^2_x V\right)$
+        </div>
+      </div>
+
+      <div class="eq-box" style="background: var(--card)">
+        <div class="eq-box-label">HJB Equation (General Form)</div>
+        $$\boxed{\rho \, V^*(x) = \sup_{u \in \mathcal{U}} \left[ r(x,u) + \nabla_x V^*(x)^\top f(x,u) + \tfrac{1}{2}\operatorname{tr}\!\left(\sigma(x)\sigma(x)^\top \nabla^2_x V^*(x)\right) \right]}$$
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">ℹ️</div>
+        <p><strong>Viscosity Solutions.</strong> $V^*$ need not be smooth (it may not be differentiable everywhere). The notion of <em>viscosity solutions</em> (Crandall–Lions) provides the correct framework for HJB when classical derivatives fail — the unique viscosity solution is $V^*$.</p>
+      </div>
+    </section>
+
+    <!-- 9. DERIVATION -->
+    <section id="derivation">
+      <h2>9. Derivation: Bellman → HJB</h2>
+
+      <p>This is the core of the connection. We derive the HJB equation as the continuous-time limit $\Delta t \to 0$ of the discrete-time Bellman optimality equation. We work with the deterministic case for clarity; the stochastic case adds an Itô correction term.</p>
+
+      <div class="collapsible-header" onclick="toggleCollapse(this)">
+        <span>🔎 Assumptions for the Derivation</span>
+        <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <ul style="margin-left:1.2rem;line-height:2">
+          <li>Deterministic dynamics: $\dot{x}(t) = f(x(t), u(t))$</li>
+          <li>$V^*$ is sufficiently smooth (at least $C^1$ in $x$ and $t$, $C^2$ for stochastic)</li>
+          <li>Discount rate: $\gamma_{\Delta t} = e^{-\rho \Delta t}$ for continuous-time equivalent</li>
+          <li>Reward accumulates as $\int_0^{\Delta t} e^{-\rho s} r(x(s), u(s)) ds \approx r(x,u)\Delta t + O(\Delta t^2)$</li>
+        </ul>
+      </div>
+
+      <div style="margin-top:1.5rem">
+        <div class="deriv-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Start: Discrete-Time Bellman Optimality</h4>
+            <p>With time step $\Delta t$, the Bellman optimality equation reads:</p>
+            <div class="eq-box">
+              $$V^*(x) = \max_{u} \left[ r(x,u)\Delta t + e^{-\rho \Delta t} V^*(x + f(x,u)\Delta t) \right]$$
+            </div>
+            <p>where we use $\gamma = e^{-\rho \Delta t}$ (so $\gamma \to 1$ as $\Delta t \to 0$, with $\rho$ fixed) and the next state is $x' = x + f(x,u)\Delta t + O(\Delta t^2)$ from Euler discretization.</p>
+          </div>
+        </div>
+
+        <div class="deriv-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Taylor Expand the Discount Factor</h4>
+            <p>Expand $e^{-\rho \Delta t}$ for small $\Delta t$:</p>
+            <div class="eq-box">
+              $$e^{-\rho \Delta t} = 1 - \rho \Delta t + O(\Delta t^2)$$
+            </div>
+          </div>
+        </div>
+
+        <div class="deriv-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Taylor Expand $V^*$ at Next State</h4>
+            <p>Expand $V^*(x + f(x,u)\Delta t)$ around $x$:</p>
+            <div class="eq-box">
+              $$V^*(x + f(x,u)\Delta t) = V^*(x) + \nabla_x V^*(x)^\top f(x,u) \Delta t + O(\Delta t^2)$$
+            </div>
+          </div>
+        </div>
+
+        <div class="deriv-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>Substitute Back</h4>
+            <p>Combine steps 2 and 3 in the Bellman equation:</p>
+            <div class="eq-box">
+              \begin{align*}
+              V^*(x) &= \max_u \Big[ r(x,u)\Delta t + (1 - \rho\Delta t + O(\Delta t^2)) \\
+              &\quad\quad\quad\quad \cdot (V^*(x) + \nabla_x V^*(x)^\top f(x,u)\Delta t + O(\Delta t^2)) \Big]
+              \end{align*}
+            </div>
+            <p>Expanding and collecting terms up to order $\Delta t$:</p>
+            <div class="eq-box">
+              $$V^*(x) = \max_u \Big[ r(x,u)\Delta t + V^*(x) - \rho V^*(x)\Delta t + \nabla_x V^*(x)^\top f(x,u)\Delta t \Big] + O(\Delta t^2)$$
+            </div>
+          </div>
+        </div>
+
+        <div class="deriv-step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <h4>Cancel $V^*(x)$ and Divide by $\Delta t$</h4>
+            <p>The $V^*(x)$ terms cancel on both sides:</p>
+            <div class="eq-box">
+              $$0 = \max_u \Big[ r(x,u)\Delta t - \rho V^*(x)\Delta t + \nabla_x V^*(x)^\top f(x,u)\Delta t \Big] + O(\Delta t^2)$$
+            </div>
+            <p>Divide through by $\Delta t$:</p>
+            <div class="eq-box">
+              $$0 = \max_u \left[ r(x,u) + \nabla_x V^*(x)^\top f(x,u) \right] - \rho V^*(x) + O(\Delta t)$$
+            </div>
+          </div>
+        </div>
+
+        <div class="deriv-step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <h4>Take the Limit $\Delta t \to 0$</h4>
+            <p>The $O(\Delta t)$ terms vanish, yielding the <strong>HJB equation</strong>:</p>
+            <div class="eq-box" style="background: var(--card)">
+              $$\boxed{\rho V^*(x) = \max_{u \in \mathcal{U}} \left[ r(x,u) + \nabla_x V^*(x)^\top f(x,u) \right]}$$
+            </div>
+            <p>This is the Hamilton–Jacobi–Bellman equation for the deterministic, infinite-horizon, discounted control problem. ∎</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="collapsible-header" onclick="toggleCollapse(this)">
+        <span>📐 Stochastic Extension (Itô's Lemma)</span>
+        <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <p>For stochastic dynamics $dX = f(X,u)dt + \sigma(X)dW$, the Taylor expansion of $V^*(X_{t+\Delta t})$ must include the second-order Itô term. By Itô's lemma:</p>
+        <div class="eq-box">
+          $$dV^* = \nabla_x V^* \cdot dX + \tfrac{1}{2} \text{tr}(\sigma\sigma^\top \nabla^2_x V^*) dt$$
+        </div>
+        <p>The $O(dW^2) = O(dt)$ term from the quadratic variation does <em>not</em> vanish — it contributes at the same order as the drift. This is why the stochastic HJB gains the diffusion (Laplacian) term $\frac{1}{2}\text{tr}(\sigma\sigma^\top \nabla^2_x V^*)$, making HJB a second-order PDE rather than first-order.</p>
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:1.5rem">
+        <div class="callout-icon">🎯</div>
+        <p><strong>Key Insight:</strong> The HJB equation is not just an approximation — it is the <em>exact</em> continuous-time optimality condition. Every $O(\Delta t^2)$ term vanished in the limit. The Bellman equation and HJB are the same object in different time representations.</p>
+      </div>
+    </section>
+
+    <!-- 10. COMPARISON -->
+    <section id="comparison">
+      <h2>10. Discrete vs. Continuous — Comparison</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Aspect</th>
+            <th>Bellman (Discrete)</th>
+            <th>HJB (Continuous)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Time</strong></td>
+            <td>Discrete: $t = 0, 1, 2, \ldots$</td>
+            <td>Continuous: $t \in [0, \infty)$</td>
+          </tr>
+          <tr>
+            <td><strong>State space</strong></td>
+            <td>Finite or countable $\mathcal{S}$</td>
+            <td>Continuous $\mathcal{X} \subseteq \mathbb{R}^n$</td>
+          </tr>
+          <tr>
+            <td><strong>Optimality condition</strong></td>
+            <td>System of equations (one per state)</td>
+            <td>PDE over $\mathcal{X}$</td>
+          </tr>
+          <tr>
+            <td><strong>Structure</strong></td>
+            <td>Nonlinear fixed-point equation</td>
+            <td>Nonlinear PDE (first/second order)</td>
+          </tr>
+          <tr>
+            <td><strong>Discount</strong></td>
+            <td>$\gamma \in (0,1)$</td>
+            <td>$\rho = -\ln\gamma / \Delta t > 0$</td>
+          </tr>
+          <tr>
+            <td><strong>Dynamics</strong></td>
+            <td>Transition kernel $P(s'|s,a)$</td>
+            <td>$dX = f(X,u)dt + \sigma dW$</td>
+          </tr>
+          <tr>
+            <td><strong>Gradient</strong></td>
+            <td>No spatial gradient (states are discrete)</td>
+            <td>$\nabla_x V^*$ — gradient of value function</td>
+          </tr>
+          <tr>
+            <td><strong>Stochastic term</strong></td>
+            <td>Expectation over $P(\cdot|s,a)$</td>
+            <td>$\frac{1}{2}\text{tr}(\sigma\sigma^\top \nabla^2_x V^*)$ (Itô)</td>
+          </tr>
+          <tr>
+            <td><strong>Solution notion</strong></td>
+            <td>Classical fixed point</td>
+            <td>Viscosity solution (if non-smooth)</td>
+          </tr>
+          <tr>
+            <td><strong>Algorithms</strong></td>
+            <td>Value iter., policy iter., Q-learning</td>
+            <td>Pontryagin MP, LQR, DDP, neural PDE solvers</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 11. SUMMARY TABLE -->
+    <section id="summary-table">
+      <h2>11. Summary Table</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Equation</th>
+            <th>Formula</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-teal">Bellman-V</span></td>
+            <td>$V^\pi(s) = \sum_a \pi(a|s)[r(s,a) + \gamma\sum_{s'}P(s'|s,a)V^\pi(s')]$</td>
+            <td>Linear system (expectation)</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-teal">Bellman-Q</span></td>
+            <td>$Q^\pi(s,a) = r(s,a) + \gamma\sum_{s'}P(s'|s,a)\sum_{a'}\pi(a'|s')Q^\pi(s',a')$</td>
+            <td>Linear system (expectation)</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Opt-V</span></td>
+            <td>$V^*(s) = \max_a[r(s,a) + \gamma\sum_{s'}P(s'|s,a)V^*(s')]$</td>
+            <td>Nonlinear (optimality)</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Opt-Q</span></td>
+            <td>$Q^*(s,a) = r(s,a) + \gamma\sum_{s'}P(s'|s,a)\max_{a'}Q^*(s',a')$</td>
+            <td>Nonlinear (optimality)</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-gold">HJB</span></td>
+            <td>$\rho V^*(x) = \sup_u[r(x,u) + \nabla_x V^* \cdot f(x,u) + \frac{1}{2}\text{tr}(\sigma\sigma^\top\nabla^2 V^*)]$</td>
+            <td>Nonlinear PDE</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="card card-red" style="margin-top:1.5rem">
+        <div class="card-title">🔑 Connecting Thread</div>
+        <p style="margin:0">All five equations express the <em>same</em> optimality principle — the value of a state equals the immediate reward plus (discounted, optimized) future value. The differences are purely representational: discrete vs. continuous time, stochastic expectation vs. differential generator, finite sum vs. PDE.</p>
+      </div>
+    </section>
+
+    <!-- 12. REMARKS -->
+    <section id="remarks">
+      <h2>12. Remarks & Memory Aids</h2>
+
+      <div class="takeaway-grid">
+        <div class="takeaway-item">
+          <strong>📌 Bellman = Recursion</strong>
+          The Bellman equation is at heart a recursion: value now = reward now + discounted value later. Everything else is a consequence.
+        </div>
+        <div class="takeaway-item">
+          <strong>📌 Expectation vs. Optimality</strong>
+          Bellman expectation evaluates a policy (linear). Bellman optimality finds the best policy (nonlinear due to max). Don't confuse them.
+        </div>
+        <div class="takeaway-item">
+          <strong>📌 HJB = Bellman in PDE form</strong>
+          If you understand the derivation (Section 9), you see HJB is just the $\Delta t \to 0$ limit of Bellman optimality. No magic — just calculus.
+        </div>
+        <div class="takeaway-item">
+          <strong>📌 V vs. Q</strong>
+          $Q$ is richer: it gives value per action, enabling greedy policy extraction without knowing $P$. This is why Q-learning works model-free.
+        </div>
+        <div class="takeaway-item">
+          <strong>📌 Contraction is key</strong>
+          Bellman operators are $\gamma$-contractions. This single fact guarantees existence, uniqueness, and convergence of DP algorithms.
+        </div>
+        <div class="takeaway-item">
+          <strong>📌 Stochastic HJB has 2nd order</strong>
+          Deterministic HJB is a 1st-order PDE (no $\nabla^2$). Stochastic dynamics (diffusions) add the Itô term, making it 2nd-order — much harder to solve analytically.
+        </div>
+      </div>
+
+      <h3>Common Confusions</h3>
+      <div class="collapsible-header" onclick="toggleCollapse(this)">
+        <span>❓ "Is $V^*$ always differentiable?"</span>
+        <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <p>No. $V^*$ can fail to be differentiable at boundaries of the optimal switching surface (e.g., in bang-bang control problems). The theory of <em>viscosity solutions</em> handles this: $V^*$ is always a viscosity solution to HJB even when classical derivatives don't exist.</p>
+      </div>
+
+      <div class="collapsible-header" onclick="toggleCollapse(this)">
+        <span>❓ "Why does $\gamma < 1$ matter so much?"</span>
+        <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <p>Mathematically, $\gamma < 1$ ensures the Bellman operator is a strict contraction, guaranteeing a unique fixed point. For $\gamma = 1$ (undiscounted), the problem may not have a well-defined finite value function without additional ergodicity conditions. The continuous-time analogue is $\rho > 0$.</p>
+      </div>
+
+      <div class="collapsible-header" onclick="toggleCollapse(this)">
+        <span>❓ "What is the Pontryagin Maximum Principle?"</span>
+        <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <p>PMP is an alternative set of necessary conditions for optimality in continuous-time control, formulated via Hamiltonian mechanics and costate variables. It is related to HJB: if $V^*$ is differentiable, the costate $\lambda(t) = \nabla_x V^*(x(t))$ satisfies the costate ODE from PMP. HJB is a global sufficient condition; PMP is local/necessary. For nonsmooth problems, PMP generalizes more cleanly.</p>
+      </div>
+    </section>
+
+    <!-- 13. TIMELINE -->
+    <section id="timeline">
+      <h2>13. Historical Timeline</h2>
+      <p>Click any event to expand its story.</p>
+
+      <div id="timeline">
+        <div class="timeline-item" onclick="toggleTimeline(this)">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1944–1957</div>
+          <div class="timeline-title">Richard Bellman & Dynamic Programming</div>
+          <div class="timeline-detail">Richard Bellman at RAND Corporation formulated dynamic programming (1953–1957), introducing the <em>principle of optimality</em> and the recursive decomposition of multi-stage decision problems. His 1957 book "Dynamic Programming" established the field. The name "curse of dimensionality" — also his — captures the exponential blowup in state space that remains a core challenge today.</div>
+        </div>
+
+        <div class="timeline-item" onclick="toggleTimeline(this)">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1958</div>
+          <div class="timeline-title">Hamilton–Jacobi Theory Extended</div>
+          <div class="timeline-detail">The Hamilton–Jacobi equation from classical mechanics (1830s, Hamilton and Jacobi) was extended by Bellman and others to optimal control. The "Bellman" contribution merged the HJ formalism with the principle of optimality, creating the HJB equation. For deterministic systems, HJB recovers the HJ equation of mechanics when $r = 0$ and terminal cost is a Hamiltonian.</div>
+        </div>
+
+        <div class="timeline-item" onclick="toggleTimeline(this)">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1956–1962</div>
+          <div class="timeline-title">Pontryagin Maximum Principle</div>
+          <div class="timeline-detail">L.S. Pontryagin and his group in Moscow developed the Maximum Principle (1956–1962), a set of necessary conditions for optimal control using Hamiltonian mechanics and adjoint (costate) variables. PMP and HJB are complementary: PMP gives trajectory-level conditions, HJB gives a global value function. The connection is $\lambda(t) = \nabla_x V^*(x(t))$.</div>
+        </div>
+
+        <div class="timeline-item" onclick="toggleTimeline(this)">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1966–1973</div>
+          <div class="timeline-title">LQR and Riccati Equations</div>
+          <div class="timeline-detail">Linear-Quadratic Regulator (LQR) — the canonical analytically-solvable control problem — has HJB reduce to the algebraic Riccati equation. This gives a closed-form optimal value function $V^*(x) = x^\top P x$ (quadratic) and linear optimal policy $u^* = -K x$. LQR remains the gold standard for understanding HJB structure and the foundation for iLQR and DDP.</div>
+        </div>
+
+        <div class="timeline-item" onclick="toggleTimeline(this)">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1983</div>
+          <div class="timeline-title">Viscosity Solutions (Crandall–Lions)</div>
+          <div class="timeline-detail">Michael Crandall and Pierre-Louis Lions introduced viscosity solutions for first-order nonlinear PDEs, providing the correct solution concept for HJB when $V^*$ is non-differentiable. This resolved long-standing theoretical questions about existence, uniqueness, and convergence. Lions received the Fields Medal in 1994 partly for this work.</div>
+        </div>
+
+        <div class="timeline-item" onclick="toggleTimeline(this)">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">1988–1992</div>
+          <div class="timeline-title">Q-Learning & Temporal Difference Learning</div>
+          <div class="timeline-detail">Watkins (1989) introduced Q-learning, the first model-free RL algorithm directly grounded in the Bellman optimality equation for Q-functions. Sutton & Barto's TD($\lambda$) (1988) connected Bellman expectations to bootstrapped value estimation. These algorithms enabled large-scale RL by sampling from the Bellman equation rather than solving it exactly.</div>
+        </div>
+
+        <div class="timeline-item" onclick="toggleTimeline(this)">
+          <div class="timeline-dot"></div>
+          <div class="timeline-year">2013–2024</div>
+          <div class="timeline-title">Deep RL and Neural HJB Solvers</div>
+          <div class="timeline-detail">Deep Q-Networks (Mnih et al., 2013), Policy Gradient methods, and deep Actor-Critic algorithms approximate Bellman operators via neural networks. Concurrently, physics-informed neural networks and deep Galerkin methods tackle high-dimensional HJB PDEs numerically. The circle closes: the theoretical framework from 1957 now powers systems that play Go and control robotic hands.</div>
+        </div>
+      </div>
+    </section>
+
+    <div style="border-top:1px solid var(--border);margin-top:4rem;padding-top:2rem;color:var(--ink3);font-family:'Outfit',sans-serif;font-size:0.78rem;line-height:1.8">
+      <p>References: Bellman (1957) <em>Dynamic Programming</em> · Sutton &amp; Barto (2018) <em>Reinforcement Learning</em> · Fleming &amp; Rishel (1975) <em>Deterministic and Stochastic Optimal Control</em> · Crandall, Ishii &amp; Lions (1992) <em>User's guide to viscosity solutions</em> · Bertsekas (2012) <em>Dynamic Programming and Optimal Control</em></p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ---- Progress bar ----
+window.addEventListener('scroll', () => {
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+  const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  const pct = (scrollTop / scrollHeight) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+});
+
+// ---- Active TOC ----
+const sections = document.querySelectorAll('section[id]');
+const tocLinks = document.querySelectorAll('.toc-list a');
+const navLinks = document.querySelectorAll('.nav-links a');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      tocLinks.forEach(a => { a.classList.toggle('active', a.getAttribute('href') === '#' + id); });
+      navLinks.forEach(a => { a.classList.toggle('active', a.getAttribute('href') === '#' + id); });
+    }
+  });
+}, { rootMargin: '-20% 0px -60% 0px' });
+
+sections.forEach(s => observer.observe(s));
+
+// ---- Toggle mode (intuition/math) ----
+function setMode(group, mode, btn) {
+  document.querySelectorAll(`[id^="${group}-"]`).forEach(p => {
+    p.classList.remove('active');
+    if (p.id === `${group}-${mode}`) p.classList.add('active');
+  });
+  btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (window.MathJax) MathJax.typesetPromise();
+}
+
+// ---- Collapsible ----
+function toggleCollapse(header) {
+  const body = header.nextElementSibling;
+  header.classList.toggle('open');
+  body.classList.toggle('open');
+  if (window.MathJax) MathJax.typesetPromise();
+}
+
+// ---- Timeline ----
+function toggleTimeline(item) {
+  const wasActive = item.classList.contains('active');
+  document.querySelectorAll('.timeline-item').forEach(i => i.classList.remove('active'));
+  if (!wasActive) item.classList.add('active');
+}
+
+// ---- Bellman Animation ----
+const canvas = document.getElementById('bellman-canvas');
+const ctx = canvas.getContext('2d');
+let animMode = 'backup';
+let animRunning = false;
+let animT = 0;
+let animId = null;
+
+function resizeCanvas() {
+  const wrapper = document.getElementById('bellman-canvas-wrapper');
+  canvas.width = wrapper.clientWidth;
+  canvas.height = 360;
+  drawFrame(animT);
+}
+
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 100);
+
+function changeAnimMode() {
+  animMode = document.getElementById('anim-mode').value;
+  resetAnim();
+}
+
+function toggleAnim() {
+  if (animRunning) {
+    animRunning = false;
+    cancelAnimationFrame(animId);
+    document.getElementById('anim-play-btn').textContent = '▶ Play';
+  } else {
+    animRunning = true;
+    document.getElementById('anim-play-btn').textContent = '⏸ Pause';
+    loop();
+  }
+}
+
+function resetAnim() {
+  animRunning = false;
+  cancelAnimationFrame(animId);
+  document.getElementById('anim-play-btn').textContent = '▶ Play';
+  animT = 0;
+  drawFrame(0);
+  document.getElementById('anim-step-label').textContent = 'Step 0 — Ready';
+}
+
+function loop() {
+  animT += 0.008;
+  if (animT > 1) animT = 0;
+  drawFrame(animT);
+  if (animRunning) animId = requestAnimationFrame(loop);
+}
+
+function drawFrame(t) {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  if (animMode === 'backup') drawVBackup(t, W, H);
+  else if (animMode === 'qbackup') drawQBackup(t, W, H);
+  else drawValueIter(t, W, H);
+}
+
+function circle(x, y, r, fill, stroke, lw = 2) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = fill; ctx.strokeStyle = stroke; ctx.lineWidth = lw;
+  ctx.fill(); ctx.stroke();
+}
+
+function arrow(x1, y1, x2, y2, color, alpha = 1, width = 2) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const len = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+  const ah = 10;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2 - Math.cos(angle)*ah*0.6, y2 - Math.sin(angle)*ah*0.6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - Math.cos(angle-0.4)*ah, y2 - Math.sin(angle-0.4)*ah);
+  ctx.lineTo(x2 - Math.cos(angle+0.4)*ah, y2 - Math.sin(angle+0.4)*ah);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function label(text, x, y, color = '#1a1917', size = 13, font = 'Outfit') {
+  ctx.fillStyle = color;
+  ctx.font = `${size}px '${font}', sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y);
+}
+
+function drawVBackup(t, W, H) {
+  const cx = W/2, cy = H/2;
+  // State node (current)
+  const sx = cx, sy = 80;
+  // Action node
+  const ax = cx, ay = 175;
+  // Next state nodes
+  const ns1x = cx - 120, ns1y = 290;
+  const ns2x = cx, ns2y = 290;
+  const ns3x = cx + 120, ns3y = 290;
+
+  // Glow on current state
+  const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 50);
+  glow.addColorStop(0, 'rgba(192,57,43,0.12)');
+  glow.addColorStop(1, 'rgba(192,57,43,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, 50, 0, Math.PI*2); ctx.fill();
+
+  // Animated particle along arrows
+  const phases = [0.25, 0.5, 0.75];
+  const nsX = [ns1x, ns2x, ns3x], nsY = [ns1y, ns2y, ns3y];
+
+  // Draw arrows (action -> next state)
+  nsX.forEach((nx, i) => {
+    const alpha = t < 0.4 ? 0.3 : Math.min(1, (t - 0.4) / 0.3);
+    arrow(ax, ay + 18, nx, nsY[i] - 22, '#1a6b6b', alpha);
+  });
+
+  // State → action arrow
+  arrow(sx, sy + 22, ax, ay - 22, '#c0392b', Math.min(1, t / 0.3));
+
+  // Animated reward flow upward
+  if (t > 0.6) {
+    const prog = (t - 0.6) / 0.4;
+    nsX.forEach((nx, i) => {
+      const py = nsY[i] - (nsY[i] - sy) * prog;
+      const px = nx + (sx - nx) * prog;
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI*2);
+      ctx.fillStyle = '#d4a017';
+      ctx.fill();
+    });
+  }
+
+  // Nodes
+  circle(sx, sy, 28, '#fff5f5', '#c0392b', 2.5);
+  label('s', sx, sy, '#c0392b', 14, 'JetBrains Mono');
+
+  circle(ax, ay, 20, '#f5fffe', '#1a6b6b', 2);
+  label('a', ax, ay, '#1a6b6b', 13, 'JetBrains Mono');
+
+  nsX.forEach((nx, i) => {
+    circle(nx, nsY[i], 22, '#fffff8', '#b7860b', 2);
+    label("s'", nx, nsY[i], '#b7860b', 12, 'JetBrains Mono');
+  });
+
+  // Probability labels
+  const probs = ['0.3', '0.5', '0.2'];
+  nsX.forEach((nx, i) => {
+    const mx = (ax + nx) / 2 + (i === 0 ? -18 : i === 2 ? 18 : 14);
+    const my = (ay + nsY[i]) / 2;
+    ctx.fillStyle = '#6b6860'; ctx.font = "11px 'Outfit',sans-serif";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('p=' + probs[i], mx, my);
+  });
+
+  // Labels
+  label('V*(s) = max_a [ r(s,a) + γ E[V*(s\')] ]', cx, H - 28, '#3d3b37', 12.5);
+
+  const stepMsg = t < 0.3 ? 'Choose action a' : t < 0.6 ? 'Transition to next states s\'' : 'Backup values to V*(s)';
+  document.getElementById('anim-step-label').textContent = stepMsg;
+}
+
+function drawQBackup(t, W, H) {
+  const cx = W/2, cy = H/2;
+  // State-action pair
+  const sax = cx, say = 90;
+  // Next states
+  const ns1x = cx - 100, ns1y = 240;
+  const ns2x = cx + 100, ns2y = 240;
+  // Next actions (for each ns)
+  const na = [[ns1x - 60, 330], [ns1x + 60, 330], [ns2x - 60, 330], [ns2x + 60, 330]];
+
+  const alpha1 = Math.min(1, t / 0.3);
+  arrow(sax, say + 30, ns1x, ns1y - 25, '#1a6b6b', alpha1);
+  arrow(sax, say + 30, ns2x, ns2y - 25, '#1a6b6b', alpha1);
+
+  if (t > 0.35) {
+    const alpha2 = Math.min(1, (t - 0.35) / 0.3);
+    na.slice(0, 2).forEach(([x, y]) => arrow(ns1x, ns1y + 22, x, y - 15, '#b7860b', alpha2));
+    na.slice(2).forEach(([x, y]) => arrow(ns2x, ns2y + 22, x, y - 15, '#b7860b', alpha2));
+  }
+
+  // Q(s,a) node
+  const gr = ctx.createRadialGradient(sax, say, 0, sax, say, 40);
+  gr.addColorStop(0, 'rgba(192,57,43,0.15)'); gr.addColorStop(1, 'rgba(192,57,43,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(sax, say, 40, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = '#fff5f5'; ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.roundRect(sax - 38, say - 22, 76, 44, 8); ctx.fill(); ctx.stroke();
+  label('Q*(s,a)', sax, say, '#c0392b', 12.5, 'JetBrains Mono');
+
+  [ns1x, ns2x].forEach((nx, i) => {
+    circle(nx, [ns1y, ns2y][i], 24, '#f5fffe', '#1a6b6b', 2);
+    label("s'" + (i+1), nx, [ns1y, ns2y][i], '#1a6b6b', 11, 'JetBrains Mono');
+  });
+
+  na.forEach(([x, y]) => {
+    circle(x, y, 14, '#fffff8', '#b7860b', 1.5);
+    label("a'", x, y, '#b7860b', 10, 'JetBrains Mono');
+  });
+
+  label('Q*(s,a) = r(s,a) + γ Σs\' P(s\'|s,a) max_a\' Q*(s\',a\')', cx, H - 28, '#3d3b37', 12);
+
+  const stepMsg = t < 0.35 ? 'Transition to next states' : 'Evaluate max over next actions';
+  document.getElementById('anim-step-label').textContent = stepMsg;
+}
+
+function drawValueIter(t, W, H) {
+  const states = 5;
+  const sw = W / (states + 1);
+  const stateX = Array.from({length: states}, (_, i) => sw * (i + 1));
+  const sy = H / 2;
+
+  // True values (fake)
+  const trueV = [0.2, 0.6, 1.0, 0.7, 0.4];
+  const iter = Math.floor(t * 8);
+  const alpha = (t * 8) % 1;
+
+  // V values at this iteration (converging)
+  const V = trueV.map((v, i) => {
+    const init = [0, 0, 0, 0, 0][i];
+    return init + (v - init) * Math.min(1, iter / 6 + alpha / 6);
+  });
+
+  // Background grid
+  ctx.strokeStyle = '#eeecea'; ctx.lineWidth = 1;
+  for (let v = 0; v <= 1; v += 0.25) {
+    const y = sy + 100 - v * 160;
+    ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 40, y); ctx.stroke();
+    ctx.fillStyle = '#6b6860'; ctx.font = "10px 'JetBrains Mono'";
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(v.toFixed(2), 35, y);
+  }
+
+  // Bars
+  stateX.forEach((x, i) => {
+    const barH = V[i] * 160;
+    const barY = sy + 100 - barH;
+    const grad = ctx.createLinearGradient(x - 20, barY, x + 20, barY + barH);
+    grad.addColorStop(0, 'rgba(192,57,43,0.7)');
+    grad.addColorStop(1, 'rgba(192,57,43,0.2)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x - 20, barY, 40, barH);
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - 20, barY, 40, barH);
+    label('s' + (i+1), x, sy + 120, '#3d3b37', 12);
+    label(V[i].toFixed(2), x, barY - 12, '#c0392b', 11, 'JetBrains Mono');
+  });
+
+  // True value line
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#b7860b'; ctx.lineWidth = 2;
+  stateX.forEach((x, i) => {
+    const y = sy + 100 - trueV[i] * 160;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+  label('V* (target)', stateX[stateX.length-1] + 50, sy + 100 - trueV[4]*160, '#b7860b', 11);
+
+  label(`Value Iteration — Sweep ${iter + 1}`, W/2, 30, '#3d3b37', 13);
+  document.getElementById('anim-step-label').textContent = `Iteration ${iter + 1}/8 — converging to V*`;
+}
+
+// Init
+setTimeout(() => {
+  resizeCanvas();
+  drawFrame(0);
+}, 200);
+</script>
 </body>
 </html>
