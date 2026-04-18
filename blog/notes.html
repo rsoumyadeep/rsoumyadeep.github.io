@@ -19,14 +19,17 @@ body {
 /* TITLE */
 h1 {
     font-size: 32px;
+    margin-bottom: 10px;
 }
 
+/* META INFO */
 .meta {
     font-size: 14px;
     color: #777;
     margin-bottom: 25px;
 }
 
+/* LINKS */
 a {
     color: #3498db;
     text-decoration: none;
@@ -36,23 +39,25 @@ a:hover {
     text-decoration: underline;
 }
 
+/* BACK BUTTON */
 .back {
     display: inline-block;
     margin-bottom: 20px;
     font-size: 14px;
 }
 
-/* ===== CARD ===== */
+/* ===== NOTES CARDS ===== */
+
+.notes-section {
+    margin-bottom: 20px;
+}
+
 .note-card {
     background: #ffffff;
     padding: 18px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     cursor: pointer;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     font-weight: 600;
     transition: 0.25s;
 }
@@ -61,12 +66,7 @@ a:hover {
     transform: translateY(-3px);
 }
 
-/* ARROW */
-.arrow {
-    transition: transform 0.3s ease;
-}
-
-/* CONTENT */
+/* COLLAPSIBLE CONTENT */
 .note-content {
     max-height: 0;
     overflow: hidden;
@@ -79,20 +79,12 @@ a:hover {
     padding-left: 20px;
 }
 
+.note-content li {
+    margin-bottom: 8px;
+}
+
 .note-content.open {
     max-height: 500px;
-}
-
-/* ROTATE ARROW */
-.note-card.active .arrow {
-    transform: rotate(180deg);
-}
-
-/* CURRENTLY STUDYING */
-.highlight {
-    background: #eef6ff;
-    padding: 4px 8px;
-    border-radius: 6px;
 }
 
 /* DARK MODE */
@@ -104,79 +96,67 @@ body.dark {
 body.dark .note-card {
     background: #1e1e1e;
 }
-
-body.dark .highlight {
-    background: #2a3b55;
-}
 </style>
 
 </head>
 
 <body>
 
-<a href="../index.html" class="back">← Back to Home</a>
+<a href="../index.html#blog" class="back">← Back to Home</a>
 
 <h1>Notes & Learning</h1>
 <p class="meta">Soumyadeep Roy</p>
 
 <!-- RL -->
-<div class="note-card" onclick="toggleSection(this, 'rl')">
-    📘 Reinforcement Learning
-    <span class="arrow">▼</span>
-</div>
+<div class="notes-section">
+    <div class="note-card" onclick="toggleSection('rl')">
+        📘 Reinforcement Learning
+    </div>
 
-<div id="rl" class="note-content">
-    <ul>
-        <li><a href="bellman.html" class="highlight">Understanding the Bellman Equation</a></li>
-        <li><a href="DP_methods_RL.html">Dynamic Programming</a></li>
-        <li><a href="model_free_RL.html">Monte Carlo & TD Learning</a></li>
-        <li><a href="function_approx_RL.html">Function Approximation</a></li>
-        <li><a href="offline-rl.html">Offline RL</a></li>
-    </ul>
+    <div id="rl" class="note-content">
+        <ul>
+            <li><a href="bellman.html">Understanding the Bellman Equation</a></li>
+            <li><a href="DP_methods_RL.html">Dynamic Programming (VI & PI)</a></li>
+            <li><a href="model_free_RL.html">Monte Carlo & TD Learning</a></li>
+            <li><a href="function_approx_RL.html">Function Approximation</a></li>
+            <li><a href="SA_for_RL.html">Stochastic Approximation</a></li>
+            <li><a href="policy_gradient_methods_RL.html">Policy Gradient & RLHF</a></li>
+            <li><a href="actor_critics_RL.html">Actor–Critic Methods</a></li>
+            <li><a href="offline-rl.html">Offline RL</a></li>
+        </ul>
+    </div>
 </div>
 
 <!-- LLM -->
-<div class="note-card" onclick="toggleSection(this, 'llm')">
-    🤖 LLM & Transformers
-    <span class="arrow">▼</span>
+<div class="notes-section">
+    <div class="note-card" onclick="toggleSection('llm')">
+        🤖 LLM & Transformers
+    </div>
+
+    <div id="llm" class="note-content">
+        <ul>
+            <li><a href="transformer_animated.html">Interactive Transformer Simulator</a></li>
+        </ul>
+    </div>
 </div>
 
-<div id="llm" class="note-content">
-    <ul>
-        <li><a href="transformer_animated.html">Transformer Simulator</a></li>
-    </ul>
-</div>
+<!-- GENERATIVE -->
+<div class="notes-section">
+    <div class="note-card" onclick="toggleSection('gen')">
+        🎨 Generative Models
+    </div>
 
-<!-- GEN -->
-<div class="note-card" onclick="toggleSection(this, 'gen')">
-    🎨 Generative Models
-    <span class="arrow">▼</span>
-</div>
-
-<div id="gen" class="note-content">
-    <ul>
-        <li><a href="diffusion_simulator.html">Diffusion Simulator</a></li>
-    </ul>
+    <div id="gen" class="note-content">
+        <ul>
+            <li><a href="diffusion_simulator.html">Diffusion Model Simulator</a></li>
+        </ul>
+    </div>
 </div>
 
 <script>
-function toggleSection(clickedCard, id) {
-    const allContents = document.querySelectorAll(".note-content");
-    const allCards = document.querySelectorAll(".note-card");
-
-    // Close all
-    allContents.forEach(c => {
-        if (c.id !== id) c.classList.remove("open");
-    });
-
-    allCards.forEach(card => {
-        if (card !== clickedCard) card.classList.remove("active");
-    });
-
-    // Toggle current
+function toggleSection(id) {
     const section = document.getElementById(id);
     section.classList.toggle("open");
-    clickedCard.classList.toggle("active");
 }
 </script>
 
