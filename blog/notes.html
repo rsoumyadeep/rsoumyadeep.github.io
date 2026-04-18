@@ -56,6 +56,44 @@ body.dark {
     background: #121212;
     color: #e0e0e0;
 }
+
+    /* ===== NOTES CARDS ===== */
+
+.notes-section {
+    margin-bottom: 25px;
+}
+
+.note-card {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    transition: 0.25s;
+}
+
+.note-card:hover {
+    transform: translateY(-3px);
+}
+
+/* SECTION TITLES */
+.note-card h2 {
+    margin-top: 0;
+    font-size: 20px;
+}
+
+/* LIST */
+.note-card ul {
+    padding-left: 20px;
+}
+
+.note-card li {
+    margin-bottom: 8px;
+}
+
+/* DARK MODE */
+body.dark .note-card {
+    background: #1e1e1e;
+}
 </style>
 
 </head>
@@ -106,4 +144,10 @@ body.dark {
     
    
  </body>
+<script>
+function toggleSection(id) {
+    const section = document.getElementById(id);
+    section.classList.toggle("open");
+}
+</script>
 </html>
