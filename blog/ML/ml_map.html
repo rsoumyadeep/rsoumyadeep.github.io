@@ -2,241 +2,1601 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ML Concept Map v2</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Concept Map </title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 <style>
-body {
-    margin: 0;
-    font-family: "Segoe UI", sans-serif;
-    background: #f4f7fb;
-    overflow: hidden;
-}
+  :root {
+    --bg: #f5f2eb;
+    --bg2: #ede9e0;
+    --bg3: #e4dfd3;
+    --ink: #1a1714;
+    --ink2: #4a443c;
+    --ink3: #7a7068;
+    --accent: #c0392b;
+    --accent2: #e67e22;
+    --accent3: #27ae60;
+    --accent4: #2980b9;
+    --accent5: #8e44ad;
+    --accent6: #16a085;
+    --gold: #d4a017;
+    --module1: #e8f4f0;
+    --module2: #f0e8f4;
+    --module3: #f4f0e8;
+    --module4: #e8f0f4;
+    --module5: #f4e8e8;
+    --module6: #e8f4e8;
+    --border: rgba(26,23,20,0.12);
+    --shadow: 0 2px 16px rgba(26,23,20,0.08);
+    --shadow-lg: 0 8px 40px rgba(26,23,20,0.12);
+    --radius: 12px;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'Lora', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
 
-#canvas {
-    width: 100vw;
-    height: 100vh;
-    cursor: grab;
-}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-.node {
-    position: absolute;
-    background: white;
-    padding: 10px 14px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    cursor: pointer;
-    transition: 0.25s;
-    font-size: 13px;
-}
+  html { scroll-behavior: smooth; }
 
-.node:hover {
-    transform: scale(1.05);
-}
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
 
-#panel {
+  /* PROGRESS BAR */
+  #progress-bar-container {
     position: fixed;
-    right: 0;
-    top: 0;
-    width: 320px;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--bg3);
+    z-index: 1000;
+  }
+  #progress-bar {
     height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--gold));
+    width: 0%;
+    transition: width 0.6s ease;
+  }
+  #progress-label {
+    position: fixed;
+    top: 8px;
+    right: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink3);
+    z-index: 1000;
+    background: var(--bg);
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  /* HEADER */
+  header {
+    padding: 80px 40px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .header-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 5vw, 58px);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+  header h1 span { color: var(--accent); }
+  header p.subtitle {
+    font-family: var(--font-body);
+    font-size: 17px;
+    color: var(--ink2);
+    max-width: 580px;
+    font-style: italic;
+  }
+
+  /* SEARCH */
+  .search-wrap {
+    margin-top: 28px;
+    position: relative;
+    max-width: 420px;
+  }
+  #search-input {
+    width: 100%;
+    padding: 12px 44px 12px 18px;
+    border: 2px solid var(--border);
+    border-radius: 40px;
     background: white;
-    box-shadow: -3px 0 12px rgba(0,0,0,0.1);
-    padding: 20px;
-    overflow-y: auto;
-}
-
-#panel h2 {
-    margin-top: 0;
-}
-
-.edge {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #search-input:focus { border-color: var(--accent); }
+  .search-icon {
     position: absolute;
-    height: 2px;
-    background: #bbb;
-    transform-origin: left center;
-}
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink3);
+    font-size: 16px;
+  }
+  #search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+  }
+  .search-result-item {
+    padding: 10px 18px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .search-result-item:hover { background: var(--bg2); }
+  .search-result-item .sri-module { font-family: var(--font-mono); font-size: 10px; color: var(--ink3); }
+  .search-result-item .sri-topic { font-size: 14px; color: var(--ink); }
 
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 0 40px;
+    max-width: 1200px;
+    margin: 0 auto 40px;
+    flex-wrap: wrap;
+  }
+  .nav-tab {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 18px;
+    border-radius: 40px;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    background: white;
+    color: var(--ink2);
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .nav-tab:hover, .nav-tab.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+
+  /* MAIN CONTENT */
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px 80px;
+  }
+
+  /* SECTION */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* MODULES */
+  .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+
+  .module-card {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .module-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+
+  .module-header {
+    padding: 20px 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    user-select: none;
+  }
+  .module-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink3);
+    min-width: 24px;
+  }
+  .module-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .module-title-wrap { flex: 1; }
+  .module-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .module-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink3);
+    margin-top: 2px;
+  }
+  .module-chevron {
+    color: var(--ink3);
+    transition: transform 0.3s;
+    font-size: 12px;
+  }
+  .module-card.open .module-chevron { transform: rotate(180deg); }
+
+  .module-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 16px 24px 20px;
+  }
+  .module-card.open .module-body { display: block; }
+
+  /* TOPICS */
+  .topic-item {
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .topic-header {
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13.5px;
+    color: var(--ink2);
+    transition: background 0.15s;
+  }
+  .topic-header:hover { background: var(--bg2); }
+  .topic-visited { color: var(--accent3) !important; }
+  .topic-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .topic-visited-dot { background: var(--accent3) !important; }
+  .topic-chevron { margin-left: auto; font-size: 10px; color: var(--ink3); transition: transform 0.3s; }
+  .topic-item.open .topic-chevron { transform: rotate(180deg); }
+
+  .topic-body {
+    display: none;
+    padding: 14px 16px 16px;
+    border-top: 1px solid var(--border);
+    background: white;
+  }
+  .topic-item.open .topic-body { display: block; }
+
+  .topic-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .topic-tab {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    background: var(--bg2);
+    color: var(--ink2);
+    transition: all 0.15s;
+  }
+  .topic-tab.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+
+  .topic-view { display: none; }
+  .topic-view.active { display: block; }
+
+  .intuition-text { font-size: 14px; line-height: 1.7; color: var(--ink2); }
+  .intuition-text strong { color: var(--ink); }
+
+  .math-block {
+    background: var(--bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin: 10px 0;
+    font-size: 13px;
+  }
+  .math-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .connections-wrap {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+  }
+  .connections-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+  }
+  .conn-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .conn-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--bg2);
+    color: var(--ink2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .conn-tag:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .conn-type { color: var(--ink3); margin-right: 4px; }
+
+  /* TIMELINE */
+  .timeline-intro {
+    margin-bottom: 36px;
+    padding: 28px 32px;
+    background: white;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .tl-flow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+  .tl-era {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: var(--bg2);
+    color: var(--ink2);
+    border: 1px solid var(--border);
+  }
+  .tl-arrow { color: var(--accent); font-size: 14px; }
+
+  .timeline-container {
+    position: relative;
+    padding: 10px 0 10px 60px;
+  }
+  .timeline-spine {
+    position: absolute;
+    left: 28px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2), var(--gold), var(--accent3), var(--accent4));
+    border-radius: 2px;
+  }
+
+  .tl-item {
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .tl-dot {
+    position: absolute;
+    left: -43px;
+    top: 14px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: white;
+    border: 2.5px solid var(--accent);
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+    z-index: 1;
+  }
+  .tl-dot:hover, .tl-item.open .tl-dot { transform: scale(1.4); }
+
+  .tl-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    padding: 12px 20px;
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    transition: background 0.15s, box-shadow 0.2s;
+  }
+  .tl-header:hover { background: var(--bg2); box-shadow: var(--shadow); }
+  .tl-item.open .tl-header { background: var(--ink); color: white; border-color: var(--ink); }
+  .tl-year {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 50px;
+  }
+  .tl-item.open .tl-year { color: var(--accent2); }
+  .tl-concept {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .tl-item.open .tl-concept { color: white; }
+  .tl-researcher {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink3);
+  }
+  .tl-item.open .tl-researcher { color: rgba(255,255,255,0.6); }
+
+  .tl-body {
+    display: none;
+    padding: 20px 24px;
+    background: white;
+    border: 1.5px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    margin-top: -4px;
+  }
+  .tl-item.open .tl-body { display: block; }
+
+  .tl-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .tl-cell {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .tl-cell-icon { font-size: 18px; margin-bottom: 6px; }
+  .tl-cell-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .tl-cell-text { font-size: 13px; color: var(--ink2); line-height: 1.6; }
+
+  .tl-modern {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #fff8e8, #fff);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--ink2);
+  }
+  .tl-modern-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  /* THEORY SECTION */
+  .theory-hero {
+    background: var(--ink);
+    color: white;
+    padding: 40px 40px;
+    border-radius: var(--radius);
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .theory-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(192,57,43,0.3), transparent);
+  }
+  .theory-hero h2 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  .theory-hero p { color: rgba(255,255,255,0.7); font-style: italic; max-width: 500px; }
+
+  .theory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .theory-card {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .theory-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+  .theory-card-header {
+    padding: 20px 24px 16px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .theory-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .theory-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .theory-subtitle { font-size: 12px; color: var(--ink3); font-style: italic; }
+  .theory-body {
+    display: none;
+    padding: 0 24px 20px;
+  }
+  .theory-card.open .theory-body { display: block; }
+  .theory-card.open .theory-card-header { background: var(--bg2); }
+
+  /* BACK TO TOP */
+  #back-top {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.2s;
+    z-index: 100;
+    border: none;
+  }
+  #back-top.visible { opacity: 1; }
+  #back-top:hover { transform: scale(1.1); }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ERA BADGES on timeline */
+  .era-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .era-stats { background: #e8f0f4; color: var(--accent4); }
+  .era-opt { background: #f0e8f4; color: var(--accent5); }
+  .era-deep { background: #e8f4e8; color: var(--accent3); }
+  .era-found { background: #f4f0e8; color: var(--gold); }
+
+  .katex { font-size: 0.95em; }
+  .katex-display { overflow-x: auto; overflow-y: hidden; }
+
+  @media (max-width: 768px) {
+    header, main, .nav-tabs { padding-left: 20px; padding-right: 20px; }
+    .modules-grid { grid-template-columns: 1fr; }
+    .tl-grid { grid-template-columns: 1fr; }
+    .theory-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
-
 <body>
 
-<div id="canvas"></div>
+<div id="progress-bar-container"><div id="progress-bar"></div></div>
+<div id="progress-label">0% explored</div>
 
-<div id="panel">
-    <h2>ML Concept Map</h2>
-    <p>Click a node to explore.</p>
+<header>
+  <div class="header-eyebrow">Graduate ML · Revision Hub · v2025</div>
+  <h1>Machine Learning<br><span>Concept Map</span> & Revision Hub</h1>
+  <p class="subtitle">From statistical foundations to modern deep learning — with theory, intuition, and mathematics.</p>
+  <div class="search-wrap">
+    <input type="text" id="search-input" placeholder="Search topics, methods, theorems…">
+    <span class="search-icon">⌕</span>
+    <div id="search-results"></div>
+  </div>
+</header>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="showSection('modules')">📚 Modules</div>
+  <div class="nav-tab" onclick="showSection('timeline')">🕰️ Timeline</div>
+  <div class="nav-tab" onclick="showSection('theory')">🧮 Theory</div>
 </div>
 
+<main>
+  <!-- MODULES SECTION -->
+  <div class="section active" id="section-modules">
+    <div class="section-title">Core Modules</div>
+    <div class="modules-grid" id="modules-grid"></div>
+  </div>
+
+  <!-- TIMELINE SECTION -->
+  <div class="section" id="section-timeline">
+    <div class="section-title">Historical Timeline of ML</div>
+    <div class="timeline-intro">
+      <div>
+        <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin-bottom:8px;">The Arc of Machine Learning</div>
+        <p style="font-size:13px;color:var(--ink2);">From Perceptrons to Foundation Models — explore how ideas built on each other over seven decades.</p>
+      </div>
+      <div class="tl-flow">
+        <div class="tl-era">Statistics</div>
+        <div class="tl-arrow">→</div>
+        <div class="tl-era">Optimization</div>
+        <div class="tl-arrow">→</div>
+        <div class="tl-era">Deep Learning</div>
+        <div class="tl-arrow">→</div>
+        <div class="tl-era">Foundation Models</div>
+      </div>
+    </div>
+    <div class="timeline-container">
+      <div class="timeline-spine"></div>
+      <div id="timeline-items"></div>
+    </div>
+  </div>
+
+  <!-- THEORY SECTION -->
+  <div class="section" id="section-theory">
+    <div class="theory-hero">
+      <h2>Theoretical Machine Learning</h2>
+      <p>Understanding why learning works — through the lens of statistics, combinatorics, and optimization.</p>
+    </div>
+    <div class="theory-grid" id="theory-grid"></div>
+  </div>
+</main>
+
+<button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
 <script>
+// ──────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────
 
-const canvas = document.getElementById("canvas");
-const panel = document.getElementById("panel");
-
-let scale = 1;
-let offsetX = 0;
-let offsetY = 0;
-
-const nodes = [
-    {id:"bayes", x:100, y:200, title:"Decision Theory", info:`
-<b>Intuition:</b> Best decision if distribution known.<br><br>
-<b>Formal:</b> Bayes optimal classifier minimizes expected risk.
-`},
-
-    {id:"density", x:300, y:200, title:"Density Estimation", info:`
-<b>Intuition:</b> Learn p(x), p(y|x).<br><br>
-<b>Formal:</b> ML, MAP, divergence minimization.
-`},
-
-    {id:"linear", x:500, y:200, title:"Linear Models", info:`
-<b>Intuition:</b> Learn function f(x)=wᵀx.<br><br>
-<b>Formal:</b> Least squares, logistic regression.
-`},
-
-    {id:"reg", x:700, y:200, title:"Generalization", info:`
-<b>Intuition:</b> Avoid overfitting.<br><br>
-<b>Formal:</b> Bias-variance, regularization.
-`},
-
-    {id:"svm", x:900, y:200, title:"SVM + Kernels", info:`
-<b>Intuition:</b> Maximize margin.<br><br>
-<b>Formal:</b> Dual, KKT, RKHS.
-`},
-
-    {id:"nn", x:1100, y:200, title:"Neural Networks", info:`
-<b>Intuition:</b> Learn nonlinear functions.<br><br>
-<b>Formal:</b> Backprop, gradient descent.
-`},
-
-    {id:"cnn", x:1100, y:350, title:"CNNs", info:`
-<b>Inductive bias:</b> Spatial structure.<br>
-Convolutions, pooling.
-`},
-
-    {id:"rnn", x:900, y:350, title:"RNNs", info:`
-<b>Temporal modeling</b><br>
-BPTT, LSTM, GRU.
-`},
-
-    {id:"transformer", x:700, y:350, title:"Transformers", info:`
-<b>Key idea:</b> Attention replaces recurrence.<br>
-Self-attention models dependencies.
-`},
-
-    {id:"ensemble", x:500, y:350, title:"Ensembles", info:`
-<b>Idea:</b> Combine weak learners.<br>
-Boosting, bagging.
-`},
-
-    {id:"unsup", x:300, y:350, title:"Unsupervised", info:`
-k-means, GMM, EM, PCA.
-`},
-
-    {id:"rl", x:500, y:500, title:"Reinforcement Learning", info:`
-<b>Bridge:</b> Sequential decision making.<br>
-MDP, policy optimization.
-`},
-
-    {id:"rlhf", x:700, y:500, title:"RLHF", info:`
-<b>Modern link:</b><br>
-Transformers + RL<br>
-Human feedback optimization.
-`}
+const MODULES = [
+  {
+    id: 1,
+    icon: '🎲',
+    color: '#e8f4f0',
+    iconBg: '#c5e8de',
+    label: 'Foundations',
+    title: 'Decision Theory & Foundations',
+    topics: [
+      {
+        name: 'Bayes Optimal Classifier',
+        intuition: `The Bayes classifier assigns each input <strong>x</strong> to the class with highest posterior probability. It is the <em>gold standard</em> — no classifier can do better in expectation. Think of it as an oracle that knows the true data distribution. In practice, we never have this oracle, so all of ML is about approximating it.`,
+        math: [
+          { label: 'Bayes Decision Rule', tex: 'h^*(x) = \\arg\\max_{c} P(Y=c \\mid X=x)' },
+          { label: 'By Bayes Theorem', tex: 'P(Y=c \\mid X=x) = \\frac{P(X=x \\mid Y=c)\\,P(Y=c)}{P(X=x)}' },
+          { label: 'Bayes Error (irreducible)', tex: 'R^* = 1 - \\mathbb{E}_x\\left[\\max_c P(Y=c \\mid X=x)\\right]' }
+        ],
+        connections: [{ type: 'Motivates', name: 'Density Estimation' }, { type: 'Upper-bounds error of', name: 'k-NN' }]
+      },
+      {
+        name: 'Maximum Likelihood Estimation',
+        intuition: `MLE asks: <strong>what parameter θ makes the observed data most probable?</strong> Imagine you rolled a biased die 100 times — MLE finds the bias that best explains your rolls. It's the foundation of almost all parametric model fitting.`,
+        math: [
+          { label: 'Objective', tex: '\\hat{\\theta}_{\\text{MLE}} = \\arg\\max_{\\theta} \\prod_{i=1}^n p(x_i;\\theta)' },
+          { label: 'Log-likelihood (numerically stable)', tex: '\\hat{\\theta}_{\\text{MLE}} = \\arg\\max_{\\theta} \\sum_{i=1}^n \\log p(x_i;\\theta)' },
+          { label: 'Consistency', tex: '\\hat{\\theta}_{\\text{MLE}} \\xrightarrow{p} \\theta^* \\text{ as } n \\to \\infty' }
+        ],
+        connections: [{ type: 'Extends to', name: 'MAP Estimation' }, { type: 'Basis of', name: 'Logistic Regression' }]
+      },
+      {
+        name: 'MAP Estimation',
+        intuition: `MAP = MLE + a prior belief about θ. If you believe θ should be small (e.g., a prior that penalizes large weights), MAP incorporates that. The prior acts as a <strong>regularizer</strong>.`,
+        math: [
+          { label: 'MAP Objective', tex: '\\hat{\\theta}_{\\text{MAP}} = \\arg\\max_\\theta \\log p(\\mathcal{D}\\mid\\theta) + \\log p(\\theta)' },
+          { label: 'Gaussian prior → L2 regularization', tex: 'p(\\theta) = \\mathcal{N}(0, \\sigma^2 I) \\implies -\\log p(\\theta) \\propto \\|\\theta\\|^2' }
+        ],
+        connections: [{ type: 'Equivalent to', name: 'L2 Regularization' }, { type: 'Generalizes', name: 'MLE' }]
+      }
+    ]
+  },
+  {
+    id: 2,
+    icon: '📊',
+    color: '#f0e8f4',
+    iconBg: '#ddc5e8',
+    label: 'Probabilistic Models',
+    title: 'Density Estimation & Probabilistic Modeling',
+    topics: [
+      {
+        name: 'Gaussian Mixture Models',
+        intuition: `A GMM models data as arising from <strong>K hidden subpopulations</strong>, each Gaussian. Think of customer segments — each cluster has its own mean and spread. We don't observe which segment a point belongs to — that's the latent variable.`,
+        math: [
+          { label: 'Model', tex: 'p(x) = \\sum_{k=1}^K \\pi_k \\,\\mathcal{N}(x; \\mu_k, \\Sigma_k)' },
+          { label: 'EM E-step (responsibilities)', tex: 'r_{ik} = \\frac{\\pi_k \\mathcal{N}(x_i;\\mu_k,\\Sigma_k)}{\\sum_j \\pi_j \\mathcal{N}(x_i;\\mu_j,\\Sigma_j)}' },
+          { label: 'EM M-step', tex: '\\mu_k = \\frac{\\sum_i r_{ik} x_i}{\\sum_i r_{ik}}' }
+        ],
+        connections: [{ type: 'Fit by', name: 'EM Algorithm' }, { type: 'Soft version of', name: 'K-Means' }]
+      },
+      {
+        name: 'EM Algorithm',
+        intuition: `EM alternates between <strong>filling in missing data</strong> (E-step) and <strong>maximizing likelihood</strong> (M-step). It's guaranteed to increase the log-likelihood at each step, converging to a local maximum. Think of it as coordinate ascent on a lower bound.`,
+        math: [
+          { label: 'ELBO (Evidence Lower BOund)', tex: '\\mathcal{L}(\\theta) = \\mathbb{E}_{q(z)}[\\log p(x,z;\\theta)] - \\mathbb{E}_{q(z)}[\\log q(z)]' },
+          { label: 'Jensen\'s Inequality basis', tex: '\\log p(x;\\theta) \\geq \\mathcal{L}(\\theta, q)' }
+        ],
+        connections: [{ type: 'Used in', name: 'GMM' }, { type: 'Generalizes to', name: 'Variational Inference' }]
+      },
+      {
+        name: 'Naive Bayes',
+        intuition: `Naive Bayes assumes features are <strong>conditionally independent</strong> given the class. Despite being "naive," it works remarkably well for text classification. The key insight: independence lets us factorize the joint into a product.`,
+        math: [
+          { label: 'Conditional independence', tex: 'p(x_1,\\ldots,x_d \\mid y) = \\prod_{j=1}^d p(x_j \\mid y)' },
+          { label: 'Prediction', tex: 'h(x) = \\arg\\max_y \\log p(y) + \\sum_j \\log p(x_j \\mid y)' }
+        ],
+        connections: [{ type: 'Special case of', name: 'Bayes Optimal Classifier' }, { type: 'Used in', name: 'Text Classification' }]
+      }
+    ]
+  },
+  {
+    id: 3,
+    icon: '📐',
+    color: '#f4f0e8',
+    iconBg: '#e8ddc5',
+    label: 'Linear Models',
+    title: 'Linear Models & Optimization',
+    topics: [
+      {
+        name: 'Linear Regression',
+        intuition: `Fit a hyperplane to minimize squared prediction error. The <strong>normal equations</strong> give a closed-form solution, but gradient descent scales better. The bias-variance tradeoff is most cleanly seen here.`,
+        math: [
+          { label: 'Objective', tex: '\\min_w \\|Xw - y\\|^2' },
+          { label: 'Normal Equations', tex: 'w^* = (X^\\top X)^{-1} X^\\top y' },
+          { label: 'Gradient', tex: '\\nabla_w L = 2X^\\top(Xw - y)' }
+        ],
+        connections: [{ type: 'Regularized by', name: 'Ridge/Lasso' }, { type: 'Extends to', name: 'Logistic Regression' }]
+      },
+      {
+        name: 'Logistic Regression',
+        intuition: `Apply a sigmoid to a linear function to get class probabilities. It's discriminative — it models <strong>P(Y|X) directly</strong> rather than the joint. The loss is cross-entropy, which arises naturally from MLE under a Bernoulli likelihood.`,
+        math: [
+          { label: 'Model', tex: 'p(y=1|x) = \\sigma(w^\\top x) = \\frac{1}{1+e^{-w^\\top x}}' },
+          { label: 'Cross-entropy loss (NLL)', tex: 'L(w) = -\\sum_i [y_i \\log \\hat{y}_i + (1-y_i)\\log(1-\\hat{y}_i)]' },
+          { label: 'Gradient', tex: '\\nabla_w L = X^\\top(\\hat{y} - y)' }
+        ],
+        connections: [{ type: 'Leads to', name: 'Neural Networks' }, { type: 'Special case of', name: 'GLMs' }]
+      },
+      {
+        name: 'Gradient Descent & Variants',
+        intuition: `Gradient descent moves parameters in the direction of <strong>steepest descent</strong> of the loss. SGD introduces noise that can escape local minima. Adam adapts learning rates per-parameter using first and second moment estimates.`,
+        math: [
+          { label: 'GD Update', tex: 'w_{t+1} = w_t - \\eta \\nabla_w L(w_t)' },
+          { label: 'Adam', tex: 'm_t = \\beta_1 m_{t-1} + (1-\\beta_1)g_t \\quad v_t = \\beta_2 v_{t-1} + (1-\\beta_2)g_t^2' },
+          { label: 'Adam Update', tex: 'w_{t+1} = w_t - \\frac{\\eta}{\\sqrt{\\hat{v}_t}+\\epsilon}\\hat{m}_t' }
+        ],
+        connections: [{ type: 'Powers training of', name: 'Neural Networks' }, { type: 'Related to', name: 'Convex Optimization' }]
+      }
+    ]
+  },
+  {
+    id: 4,
+    icon: '⚖️',
+    color: '#e8f0f4',
+    iconBg: '#c5d8e8',
+    label: 'Generalization',
+    title: 'Generalization & Regularization',
+    topics: [
+      {
+        name: 'Bias-Variance Tradeoff',
+        intuition: `Every model's error decomposes into <strong>bias</strong> (systematic error from wrong assumptions) + <strong>variance</strong> (sensitivity to training data) + irreducible noise. Simple models have high bias; complex models have high variance. The art is finding the sweet spot.`,
+        math: [
+          { label: 'Decomposition', tex: '\\mathbb{E}[(h(x)-y)^2] = \\text{Bias}^2 + \\text{Variance} + \\sigma^2' },
+          { label: 'Bias', tex: '\\text{Bias} = \\mathbb{E}[h(x)] - f(x)' },
+          { label: 'Variance', tex: '\\text{Var} = \\mathbb{E}[(h(x) - \\mathbb{E}[h(x)])^2]' }
+        ],
+        connections: [{ type: 'Managed by', name: 'Regularization' }, { type: 'Related to', name: 'VC Dimension' }]
+      },
+      {
+        name: 'L1 and L2 Regularization',
+        intuition: `<strong>L2 (Ridge)</strong>: penalizes large weights, shrinks everything uniformly — equivalent to Gaussian prior. <strong>L1 (Lasso)</strong>: promotes sparsity, sets irrelevant weights to exactly zero — equivalent to Laplace prior. L1 is the "sparse selector."`,
+        math: [
+          { label: 'Ridge', tex: 'L(w) + \\lambda \\|w\\|_2^2' },
+          { label: 'Lasso', tex: 'L(w) + \\lambda \\|w\\|_1' },
+          { label: 'Ridge closed-form', tex: 'w^* = (X^\\top X + \\lambda I)^{-1} X^\\top y' }
+        ],
+        connections: [{ type: 'Equivalent to', name: 'MAP Estimation' }, { type: 'Used in', name: 'Dropout (soft regularizer)' }]
+      },
+      {
+        name: 'Cross-Validation',
+        intuition: `Use the data itself to estimate test error. <strong>k-fold CV</strong> partitions data into k folds, trains on k-1, tests on 1, and averages. Leave-one-out (LOO) is the extreme case. CV is the empirical workhorse for model selection.`,
+        math: [
+          { label: 'k-fold CV estimate', tex: '\\hat{R}_{CV} = \\frac{1}{k}\\sum_{i=1}^k \\hat{R}_i' },
+          { label: 'LOO bias', tex: '\\mathbb{E}[\\hat{R}_{LOO}] \\approx R(h_{n-1})' }
+        ],
+        connections: [{ type: 'Used for', name: 'Hyperparameter Tuning' }, { type: 'Estimates', name: 'Generalization Error' }]
+      }
+    ]
+  },
+  {
+    id: 5,
+    icon: '🔲',
+    color: '#f4e8e8',
+    iconBg: '#e8c5c5',
+    label: 'Kernels',
+    title: 'Kernel Methods & SVM',
+    topics: [
+      {
+        name: 'Support Vector Machines',
+        intuition: `SVM finds the <strong>maximum-margin hyperplane</strong> — the one that is furthest from both classes. Only the <em>support vectors</em> (points nearest the margin) matter. SVMs are elegant: large margin ↔ good generalization.`,
+        math: [
+          { label: 'Primal (hard-margin)', tex: '\\min_{w,b} \\frac{1}{2}\\|w\\|^2 \\;\\text{s.t.}\\; y_i(w^\\top x_i + b) \\geq 1' },
+          { label: 'Dual', tex: '\\max_\\alpha \\sum_i \\alpha_i - \\frac{1}{2}\\sum_{i,j}\\alpha_i\\alpha_j y_i y_j x_i^\\top x_j' },
+          { label: 'KKT conditions', tex: '\\alpha_i [y_i(w^\\top x_i+b)-1] = 0' }
+        ],
+        connections: [{ type: 'Extended by', name: 'Kernel Trick' }, { type: 'Regularization via', name: 'C (soft-margin)' }]
+      },
+      {
+        name: 'Kernel Trick',
+        intuition: `Instead of explicitly mapping to a high-dimensional feature space, compute <strong>inner products in that space implicitly</strong> via a kernel function K(x,x'). This allows SVMs (and other linear methods) to learn non-linear boundaries without ever computing the feature map φ.`,
+        math: [
+          { label: 'Kernel as inner product', tex: 'K(x, x\') = \\langle \\phi(x), \\phi(x\') \\rangle' },
+          { label: 'RBF Kernel', tex: 'K(x,x\') = \\exp\\left(-\\frac{\\|x-x\'\\|^2}{2\\sigma^2}\\right)' },
+          { label: 'Mercer\'s theorem', tex: 'K \\text{ valid} \\iff K \\text{ is PSD}' }
+        ],
+        connections: [{ type: 'Enables', name: 'Kernel PCA' }, { type: 'Used in', name: 'Gaussian Processes' }]
+      }
+    ]
+  },
+  {
+    id: 6,
+    icon: '🧠',
+    color: '#e8f4e8',
+    iconBg: '#c5e8c8',
+    label: 'Neural Networks',
+    title: 'Neural Networks & Backpropagation',
+    topics: [
+      {
+        name: 'Universal Approximation Theorem',
+        intuition: `A single hidden-layer network with enough neurons can approximate <strong>any continuous function</strong> on a compact domain to arbitrary accuracy. This tells us networks are expressive — but not how to train them, or how many neurons are needed.`,
+        math: [
+          { label: 'UAT (Cybenko 1989)', tex: 'f(x) \\approx \\sum_{j=1}^N c_j \\sigma(w_j^\\top x + b_j)' },
+          { label: 'Depth helps', tex: '\\text{Depth-}d \\text{ network can require exponentially fewer nodes than depth-}1' }
+        ],
+        connections: [{ type: 'Motivates', name: 'Deep Learning' }, { type: 'Training via', name: 'Backpropagation' }]
+      },
+      {
+        name: 'Backpropagation',
+        intuition: `Backprop is just the <strong>chain rule applied systematically</strong> on a computation graph, propagating gradients backwards from loss to parameters. Think of it as reverse-mode automatic differentiation — efficient because each intermediate gradient is computed once.`,
+        math: [
+          { label: 'Chain rule', tex: '\\frac{\\partial L}{\\partial w} = \\frac{\\partial L}{\\partial z}\\cdot\\frac{\\partial z}{\\partial w}' },
+          { label: 'Backprop recursion', tex: '\\delta^{(l)} = \\left((W^{(l+1)})^\\top \\delta^{(l+1)}\\right) \\odot \\sigma\'(z^{(l)})' }
+        ],
+        connections: [{ type: 'Powers', name: 'All gradient-based deep learning' }, { type: 'Implemented as', name: 'Autograd (PyTorch, JAX)' }]
+      },
+      {
+        name: 'Batch Normalization',
+        intuition: `Normalize activations within each mini-batch to zero mean, unit variance, then learn scale/shift. BatchNorm reduces <strong>internal covariate shift</strong>, allows higher learning rates, and acts as a mild regularizer. It's one of the most impactful practical innovations.`,
+        math: [
+          { label: 'Normalize', tex: '\\hat{x}_i = \\frac{x_i - \\mu_B}{\\sqrt{\\sigma_B^2 + \\epsilon}}' },
+          { label: 'Scale and shift', tex: 'y_i = \\gamma \\hat{x}_i + \\beta' }
+        ],
+        connections: [{ type: 'Used in', name: 'ResNets, Transformers' }, { type: 'Alternative: ', name: 'Layer Norm (Transformers)' }]
+      }
+    ]
+  },
+  {
+    id: 7,
+    icon: '🖼️',
+    color: '#f0e8f4',
+    iconBg: '#ddc5e8',
+    label: 'Vision',
+    title: 'CNNs & Computer Vision',
+    topics: [
+      {
+        name: 'Convolutional Layers',
+        intuition: `Convolutions apply <strong>shared filters</strong> across spatial locations, exploiting translation invariance. Each filter detects a local pattern. Deep stacks detect increasingly abstract features: edges → textures → parts → objects.`,
+        math: [
+          { label: 'Convolution (2D)', tex: '(I * K)[i,j] = \\sum_{m,n} I[i+m,j+n]\\, K[m,n]' },
+          { label: 'Parameter sharing', tex: '\\text{params} = h_k \\times w_k \\times C_{in} \\times C_{out}' }
+        ],
+        connections: [{ type: 'Foundation of', name: 'ResNet, VGG, EfficientNet' }, { type: 'Extended to', name: 'Attention (ViT)' }]
+      },
+      {
+        name: 'ResNets & Skip Connections',
+        intuition: `Skip connections let the network learn <strong>residual functions</strong> F(x) = H(x) − x rather than H(x) directly. This solves the vanishing gradient problem and enables training of very deep networks (100+ layers). Identity shortcuts are "free" in parameters.`,
+        math: [
+          { label: 'Residual block', tex: 'y = F(x, \\{W_i\\}) + x' },
+          { label: 'Gradient flow', tex: '\\frac{\\partial L}{\\partial x} = \\frac{\\partial L}{\\partial y}\\left(\\frac{\\partial F}{\\partial x} + I\\right)' }
+        ],
+        connections: [{ type: 'Enables', name: 'Very deep networks' }, { type: 'Idea used in', name: 'Transformer residual stream' }]
+      }
+    ]
+  },
+  {
+    id: 8,
+    icon: '🔁',
+    color: '#e8f0f4',
+    iconBg: '#c5d8e8',
+    label: 'Sequences',
+    title: 'Sequence Models (RNN, LSTM, GRU)',
+    topics: [
+      {
+        name: 'Recurrent Neural Networks',
+        intuition: `RNNs maintain a <strong>hidden state</strong> that summarizes the history. At each step, the hidden state is updated using the new input and the previous state. The same weights are applied at every time step — parameter sharing across time.`,
+        math: [
+          { label: 'RNN update', tex: 'h_t = \\sigma(W_h h_{t-1} + W_x x_t + b)' },
+          { label: 'Output', tex: 'y_t = W_y h_t + b_y' },
+          { label: 'BPTT gradient', tex: '\\frac{\\partial L}{\\partial W} = \\sum_t \\frac{\\partial L_t}{\\partial W}' }
+        ],
+        connections: [{ type: 'Suffers from', name: 'Vanishing gradients' }, { type: 'Improved by', name: 'LSTM, GRU' }]
+      },
+      {
+        name: 'LSTM',
+        intuition: `LSTMs introduce a <strong>cell state</strong> (long-term memory) controlled by gates: forget, input, output. The forget gate decides what to erase; the input gate decides what to add; the output gate controls what to expose. This allows gradients to flow over long sequences.`,
+        math: [
+          { label: 'Gates', tex: 'f_t = \\sigma(W_f[h_{t-1},x_t]+b_f), \\quad i_t = \\sigma(W_i[h_{t-1},x_t]+b_i)' },
+          { label: 'Cell update', tex: 'c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c}_t' },
+          { label: 'Hidden state', tex: 'h_t = o_t \\odot \\tanh(c_t)' }
+        ],
+        connections: [{ type: 'Precedes', name: 'Attention Mechanism' }, { type: 'Used in', name: 'Seq2Seq models' }]
+      }
+    ]
+  },
+  {
+    id: 9,
+    icon: '🔭',
+    color: '#f4f0e8',
+    iconBg: '#e8ddc5',
+    label: 'Transformers',
+    title: 'Attention & Transformers',
+    topics: [
+      {
+        name: 'Self-Attention',
+        intuition: `Self-attention lets each position attend to all other positions, with learned <strong>query-key-value</strong> projections. Attention weight between positions i and j reflects how relevant j is to computing the representation at i. This replaces sequential processing with parallel computation.`,
+        math: [
+          { label: 'Scaled dot-product attention', tex: '\\text{Attn}(Q,K,V) = \\text{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d_k}}\\right)V' },
+          { label: 'Multi-head', tex: '\\text{MHA}(Q,K,V) = \\text{Concat}(\\text{head}_1,\\ldots,\\text{head}_h)W^O' }
+        ],
+        connections: [{ type: 'Foundation of', name: 'BERT, GPT, T5' }, { type: 'Replaced', name: 'RNN for sequences' }]
+      },
+      {
+        name: 'Transformer Architecture',
+        intuition: `The Transformer stacks <strong>self-attention + feedforward layers</strong> with residual connections and layer norm. Encoder processes input; decoder generates output autoregressively. Positional encodings inject sequence order information (since attention is permutation-equivariant).`,
+        math: [
+          { label: 'Positional encoding (sinusoidal)', tex: 'PE(pos, 2i) = \\sin(pos/10000^{2i/d})' },
+          { label: 'FFN sublayer', tex: '\\text{FFN}(x) = \\max(0, xW_1 + b_1)W_2 + b_2' }
+        ],
+        connections: [{ type: 'Powers', name: 'GPT-4, Gemini, Claude' }, { type: 'Scales as', name: 'O(n²) in sequence length' }]
+      }
+    ]
+  },
+  {
+    id: 10,
+    icon: '🌲',
+    color: '#e8f4e8',
+    iconBg: '#c5e8c8',
+    label: 'Ensembles',
+    title: 'Ensemble Methods',
+    topics: [
+      {
+        name: 'Random Forests',
+        intuition: `Combine many decision trees, each trained on a <strong>bootstrap sample</strong> with random feature subsets. Averaging reduces variance while keeping low bias. Out-of-bag (OOB) samples provide a free validation set.`,
+        math: [
+          { label: 'Ensemble prediction', tex: 'H(x) = \\frac{1}{T}\\sum_{t=1}^T h_t(x)' },
+          { label: 'Variance reduction', tex: '\\text{Var}\\left(\\bar{X}\\right) = \\frac{\\sigma^2}{T} + \\frac{T-1}{T}\\rho\\sigma^2' }
+        ],
+        connections: [{ type: 'Reduces variance via', name: 'Bagging' }, { type: 'Compared to', name: 'Gradient Boosting' }]
+      },
+      {
+        name: 'Gradient Boosting',
+        intuition: `Build trees <strong>sequentially</strong>, each fitting the residuals (negative gradient) of the previous ensemble. Boosting reduces bias rather than variance. XGBoost/LightGBM add second-order gradients and regularization.`,
+        math: [
+          { label: 'Additive model', tex: 'F_m(x) = F_{m-1}(x) + \\eta h_m(x)' },
+          { label: 'Pseudo-residuals', tex: 'r_{im} = -\\left[\\frac{\\partial L(y_i, F(x_i))}{\\partial F(x_i)}\\right]_{F=F_{m-1}}' }
+        ],
+        connections: [{ type: 'Used in', name: 'Kaggle competitions (XGBoost)' }, { type: 'Related to', name: 'Forward stagewise regression' }]
+      }
+    ]
+  },
+  {
+    id: 11,
+    icon: '🔵',
+    color: '#f4e8f0',
+    iconBg: '#e8c5d8',
+    label: 'Unsupervised',
+    title: 'Unsupervised Learning',
+    topics: [
+      {
+        name: 'PCA',
+        intuition: `PCA finds directions of <strong>maximum variance</strong> in data — the principal components are eigenvectors of the covariance matrix. Projecting onto the top k eigenvectors gives the best rank-k reconstruction in the Frobenius norm sense. It's lossy compression by geometry.`,
+        math: [
+          { label: 'Covariance matrix', tex: 'C = \\frac{1}{n}X^\\top X' },
+          { label: 'Eigen-decomposition', tex: 'C = V\\Lambda V^\\top' },
+          { label: 'Reconstruction error', tex: '\\min_V \\|X - XV_kV_k^\\top\\|_F^2 = \\sum_{j>k} \\lambda_j' }
+        ],
+        connections: [{ type: 'Non-linear version', name: 'Kernel PCA, Autoencoders' }, { type: 'Related to', name: 'SVD' }]
+      },
+      {
+        name: 'Variational Autoencoders',
+        intuition: `VAEs learn a <strong>latent space</strong> where you can sample and decode to generate new data. The encoder outputs a distribution q(z|x); the decoder reconstructs from z. The ELBO loss balances reconstruction quality and KL-divergence to a prior.`,
+        math: [
+          { label: 'ELBO', tex: '\\mathcal{L} = \\mathbb{E}_{q(z|x)}[\\log p(x|z)] - D_{KL}(q(z|x)\\|p(z))' },
+          { label: 'Reparameterization trick', tex: 'z = \\mu + \\sigma \\odot \\epsilon, \\quad \\epsilon \\sim \\mathcal{N}(0,I)' }
+        ],
+        connections: [{ type: 'Generative model like', name: 'GANs, Diffusion models' }, { type: 'Based on', name: 'EM Algorithm (ELBO)' }]
+      }
+    ]
+  }
 ];
 
-const edges = [
-    ["bayes","density"],
-    ["density","linear"],
-    ["linear","reg"],
-    ["reg","svm"],
-    ["svm","nn"],
-    ["nn","cnn"],
-    ["nn","rnn"],
-    ["rnn","transformer"],
-    ["transformer","rlhf"],
-    ["linear","ensemble"],
-    ["density","unsup"],
-    ["transformer","rl"],
-    ["rl","rlhf"]
+// ──────────────────────────────────────────────
+const TIMELINE = [
+  {
+    year: 1943, concept: 'McCulloch-Pitts Neuron', researchers: 'Warren McCulloch, Walter Pitts',
+    era: 'stats',
+    problem: 'How can logic be implemented in biological-inspired circuits?',
+    intuition: 'First mathematical model of a neuron: binary threshold unit. Showed that neural networks could compute logical functions.',
+    math: 'Output = 1 if ∑wᵢxᵢ ≥ θ, else 0. Linear threshold unit.',
+    modern: 'Direct ancestor of every modern neural unit. The sigmoid/ReLU generalizes the step function.'
+  },
+  {
+    year: 1957, concept: 'Perceptron', researchers: 'Frank Rosenblatt',
+    era: 'stats',
+    problem: 'Can a machine learn to classify patterns from examples?',
+    intuition: 'The Perceptron Learning Algorithm: update weights whenever a point is misclassified. Converges if data is linearly separable (Perceptron Convergence Theorem).',
+    math: 'w ← w + η·yᵢ·xᵢ when yᵢ(w·xᵢ) ≤ 0',
+    modern: 'The perceptron is a single-layer neural network. Modern SGD is a generalization of this update rule.'
+  },
+  {
+    year: 1967, concept: 'Nearest Neighbor Algorithm', researchers: 'Cover & Hart',
+    era: 'stats',
+    problem: 'Can we classify without explicit parametric assumptions?',
+    intuition: 'Assign test point the label of its closest training neighbor. No training at all — all computation at test time. Provably achieves at most 2× Bayes error with infinite data.',
+    math: 'h(x) = y_{i*}, i* = argminᵢ ||x - xᵢ||',
+    modern: 'k-NN is the baseline for non-parametric methods. Modern approximate nearest neighbor (FAISS) powers semantic search.'
+  },
+  {
+    year: 1970, concept: 'Automatic Differentiation (Backprop precursor)', researchers: 'Seppo Linnainmaa',
+    era: 'opt',
+    problem: 'How to efficiently compute derivatives of arbitrary programs?',
+    intuition: 'Reverse accumulation of the chain rule through a computation graph. Each intermediate result\'s derivative is computed once and reused.',
+    math: '∂L/∂wᵢ computed by reverse pass through computation graph',
+    modern: 'This is the core of PyTorch autograd, JAX, and TensorFlow — backpropagation is a special case.'
+  },
+  {
+    year: 1986, concept: 'Backpropagation', researchers: 'Rumelhart, Hinton, Williams',
+    era: 'opt',
+    problem: 'How to train multi-layer neural networks efficiently?',
+    intuition: 'Apply the chain rule systematically backward through a network to get exact gradients for all parameters. This made multi-layer networks trainable.',
+    math: 'δˡ = ((Wˡ⁺¹)ᵀ δˡ⁺¹) ⊙ σ\'(zˡ)',
+    modern: 'Still the foundational algorithm for training all deep networks. Modern frameworks implement it via automatic differentiation.'
+  },
+  {
+    year: 1995, concept: 'Support Vector Machines', researchers: 'Cortes & Vapnik',
+    era: 'opt',
+    problem: 'Can we build a classifier with principled generalization guarantees?',
+    intuition: 'Maximize the margin between classes. Only support vectors matter. Combined with kernel trick, handles non-linear boundaries implicitly.',
+    math: 'min ½||w||² s.t. yᵢ(wᵀxᵢ+b) ≥ 1',
+    modern: 'SVM theory grounded generalization in VC dimension / margin theory. Kernel methods still used in small-data regimes.'
+  },
+  {
+    year: 1997, concept: 'LSTM', researchers: 'Hochreiter & Schmidhuber',
+    era: 'opt',
+    problem: 'How to train RNNs on long sequences without vanishing gradients?',
+    intuition: 'Introduce a cell state with multiplicative gates (forget, input, output). Gradient can flow unchanged through the forget gate when it\'s near 1.',
+    math: 'cₜ = fₜ⊙cₜ₋₁ + iₜ⊙c̃ₜ, constant error carousel',
+    modern: 'LSTMs dominated sequence modeling until 2017. Still used in some streaming applications.'
+  },
+  {
+    year: 2001, concept: 'Random Forests', researchers: 'Leo Breiman',
+    era: 'opt',
+    problem: 'How to build robust, low-variance classifiers from many weak learners?',
+    intuition: 'Average many decision trees trained on bootstrap samples with random feature subsets. Decorrelates trees to reduce variance.',
+    math: 'Var(mean) = σ²/T + ((T-1)/T)·ρ·σ²',
+    modern: 'Random forests and XGBoost remain the go-to for tabular data in industry.'
+  },
+  {
+    year: 2006, concept: 'Deep Learning Revival', researchers: 'Hinton, Bengio, LeCun',
+    era: 'deep',
+    problem: 'How to train very deep networks that don\'t underperform shallow ones?',
+    intuition: 'Greedy layer-wise pretraining using RBMs/autoencoders to initialize weights, then fine-tuning with backprop. Showed depth helps.',
+    math: 'Pretraining: maximize ∑ log p(xᵢ; θ) layer by layer',
+    modern: 'Kicked off the deep learning revolution. Pre-training idea recurs in BERT, GPT, and foundation models.'
+  },
+  {
+    year: 2012, concept: 'AlexNet & Deep CNNs', researchers: 'Krizhevsky, Sutskever, Hinton',
+    era: 'deep',
+    problem: 'Can deep CNNs outperform handcrafted features on large-scale vision?',
+    intuition: 'Deep CNN trained on ImageNet with ReLU, dropout, and GPU acceleration reduced top-5 error from 26% to 15%. Proved deep learning at scale.',
+    math: 'ReLU: σ(x) = max(0,x) — faster training, no vanishing gradient',
+    modern: 'ResNet, EfficientNet, ViT all descend from this moment. GPU-accelerated deep learning became the standard.'
+  },
+  {
+    year: 2014, concept: 'GANs', researchers: 'Ian Goodfellow et al.',
+    era: 'deep',
+    problem: 'How to train a generative model that produces realistic samples?',
+    intuition: 'Train a generator G and discriminator D in a minimax game: G tries to fool D; D tries to distinguish real from fake. Nash equilibrium: G matches data distribution.',
+    math: 'min_G max_D 𝔼[log D(x)] + 𝔼[log(1-D(G(z)))]',
+    modern: 'GANs powered image synthesis (StyleGAN). The adversarial training idea appears in RLHF reward modeling.'
+  },
+  {
+    year: 2017, concept: 'Transformer (Attention Is All You Need)', researchers: 'Vaswani et al. (Google)',
+    era: 'found',
+    problem: 'Can we build a sequence model without recurrence, using only attention?',
+    intuition: 'Replace RNNs entirely with multi-head self-attention. Every position attends to every other position in parallel. Positional encodings inject order. Enables massive parallelism.',
+    math: 'Attn(Q,K,V) = softmax(QKᵀ/√dₖ)V',
+    modern: 'The Transformer is the backbone of all LLMs (GPT, BERT, T5, Claude, Gemini). The most impactful architecture in ML history.'
+  },
+  {
+    year: 2018, concept: 'BERT & GPT-1', researchers: 'Devlin et al. (Google) / Radford et al. (OpenAI)',
+    era: 'found',
+    problem: 'How to build general-purpose language representations?',
+    intuition: 'BERT: bidirectional masked language modeling. GPT: causal language modeling. Both show that pretraining on massive text then fine-tuning on tasks is extremely powerful.',
+    math: 'BERT: L = -∑ log P(xᵢ | x\\i) over masked tokens',
+    modern: 'Established the pretrain-finetune paradigm that underlies ChatGPT, Claude, and all modern LLMs.'
+  },
+  {
+    year: 2020, concept: 'Scaling Laws & GPT-3', researchers: 'Kaplan et al., Brown et al. (OpenAI)',
+    era: 'found',
+    problem: 'How does model performance scale with compute, data, and parameters?',
+    intuition: 'Loss decreases as a power law with compute/data/params. GPT-3 (175B params) showed emergent in-context learning — no gradient steps needed for new tasks.',
+    math: 'L(N) ∝ N^{-α}, L(D) ∝ D^{-β} (power law scaling)',
+    modern: 'Chinchilla scaling laws now guide training of all frontier models. In-context learning is now a fundamental capability.'
+  },
+  {
+    year: 2022, concept: 'RLHF & ChatGPT', researchers: 'Ouyang et al. (OpenAI)',
+    era: 'found',
+    problem: 'How to align a language model with human intent and preferences?',
+    intuition: 'Finetune with supervised demonstrations, then train a reward model on human preferences, then optimize with PPO. InstructGPT/ChatGPT showed dramatic improvement in helpfulness.',
+    math: 'PPO objective: L = 𝔼[min(rₜ(θ)Aₜ, clip(rₜ,1±ε)Aₜ)]',
+    modern: 'RLHF is now standard for all frontier models. Direct Preference Optimization (DPO) is a simpler alternative.'
+  }
 ];
 
-function createNode(n) {
-    const div = document.createElement("div");
-    div.className = "node";
-    div.style.left = n.x + "px";
-    div.style.top = n.y + "px";
-    div.innerText = n.title;
+// ──────────────────────────────────────────────
+const THEORY = [
+  {
+    icon: '📦',
+    iconBg: '#e8f4f0',
+    title: 'PAC Learning',
+    subtitle: 'Probably Approximately Correct',
+    body: `<p class="intuition-text">PAC learning asks: how many samples do we need so that with high probability (1−δ), our hypothesis has error at most ε?</p>
+    <div class="math-block"><div class="math-label">Sample Complexity</div><div class="katex-wrap">\\(m \\geq \\frac{1}{\\epsilon}\\left(\\ln|\\mathcal{H}| + \\ln\\frac{1}{\\delta}\\right)\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">Finite hypothesis class ℋ: log|ℋ| samples suffice. For infinite ℋ, we need VC dimension. PAC gives a <strong>distribution-free</strong> guarantee — works for any distribution.</p>`
+  },
+  {
+    icon: '📏',
+    iconBg: '#f0e8f4',
+    title: 'VC Dimension',
+    subtitle: 'Vapnik–Chervonenkis Theory',
+    body: `<p class="intuition-text">VC dimension measures the <strong>expressiveness</strong> of a hypothesis class — how many points it can shatter (label in all 2^n ways).</p>
+    <div class="math-block"><div class="math-label">Fundamental Theorem</div><div class="katex-wrap">\\(R(h) \\leq \\hat{R}(h) + O\\!\\left(\\sqrt{\\frac{d_{VC}\\log(n/d_{VC}) + \\log(1/\\delta)}{n}}\\right)\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">Examples: halfspaces in ℝᵈ have VC dim d+1; neural networks have VC dim O(|W| log|W|). Larger VC dim → more expressive but needs more data.</p>`
+  },
+  {
+    icon: '🎯',
+    iconBg: '#f4f0e8',
+    title: 'Rademacher Complexity',
+    subtitle: 'Data-dependent complexity measure',
+    body: `<p class="intuition-text">Rademacher complexity measures how well a function class can fit <strong>random noise labels</strong>. More flexible than VC dim: it's data-dependent and tighter.</p>
+    <div class="math-block"><div class="math-label">Empirical Rademacher Complexity</div><div class="katex-wrap">\\(\\hat{\\mathfrak{R}}_n(\\mathcal{F}) = \\mathbb{E}_\\sigma\\left[\\sup_{f\\in\\mathcal{F}} \\frac{1}{n}\\sum_{i=1}^n \\sigma_i f(x_i)\\right]\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">σᵢ ∈ {±1} are Rademacher variables. If ℱ can fit noise well, it's too complex. Rademacher bounds are typically tighter than VC bounds.</p>`
+  },
+  {
+    icon: '🌐',
+    iconBg: '#e8f0f4',
+    title: 'Uniform Convergence',
+    subtitle: 'Generalization from empirics',
+    body: `<p class="intuition-text">Uniform convergence says: with enough data, the empirical risk converges to true risk <strong>uniformly over all hypotheses</strong> simultaneously — not just for a fixed one.</p>
+    <div class="math-block"><div class="math-label">Uniform Law of Large Numbers</div><div class="katex-wrap">\\(P\\!\\left(\\sup_{h\\in\\mathcal{H}} |\\hat{R}(h) - R(h)| > \\epsilon\\right) \\leq 2|\\mathcal{H}|e^{-2n\\epsilon^2}\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">This is why finite hypothesis classes are safe: just divide δ by |ℋ|. For infinite ℋ we use covering numbers or Rademacher complexity.</p>`
+  },
+  {
+    icon: '⬇️',
+    iconBg: '#e8f4e8',
+    title: 'Convex Optimization',
+    subtitle: 'Convergence guarantees',
+    body: `<p class="intuition-text">For convex loss functions, gradient descent finds the <strong>global minimum</strong> (no local traps). Strong convexity gives linear convergence rates.</p>
+    <div class="math-block"><div class="math-label">GD Convergence (Convex, L-smooth)</div><div class="katex-wrap">\\(f(w_T) - f^* \\leq \\frac{L\\|w_0 - w^*\\|^2}{2T}\\)</div></div>
+    <div class="math-block"><div class="math-label">Strong Convexity (μ-SC)</div><div class="katex-wrap">\\(f(w_T) - f^* \\leq \\left(1-\\frac{\\mu}{L}\\right)^T (f(w_0)-f^*)\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">Condition number κ = L/μ controls convergence speed. Well-conditioned → fast convergence.</p>`
+  },
+  {
+    icon: '🔄',
+    iconBg: '#f4e8f0',
+    title: 'Online Learning & Regret',
+    subtitle: 'Learning without distributional assumptions',
+    body: `<p class="intuition-text">Online learning makes predictions one at a time, updating after each. <strong>Regret</strong> measures cumulative loss vs. the best fixed hypothesis in hindsight.</p>
+    <div class="math-block"><div class="math-label">Regret</div><div class="katex-wrap">\\(\\text{Regret}_T = \\sum_{t=1}^T \\ell_t(h_t) - \\min_{h\\in\\mathcal{H}}\\sum_{t=1}^T \\ell_t(h)\\)</div></div>
+    <div class="math-block"><div class="math-label">Hedge / EWA bound</div><div class="katex-wrap">\\(\\text{Regret}_T \\leq \\sqrt{\\frac{T\\ln|\\mathcal{H}|}{2}}\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">Sub-linear regret means we're competitive with hindsight. O(√T) is optimal for general convex losses. Links to RL through bandit feedback.</p>`
+  },
+  {
+    icon: '🔗',
+    iconBg: '#fff8e0',
+    title: 'Generalization Bounds',
+    subtitle: 'Connecting theory to practice',
+    body: `<p class="intuition-text">Generalization bounds say: the true risk is at most the training risk plus a complexity penalty. They explain <em>why</em> deep networks generalize despite overparameterization (via implicit regularization and margin theory).</p>
+    <div class="math-block"><div class="math-label">Basic Bound</div><div class="katex-wrap">\\(R(h) \\leq \\hat{R}(h) + \\underbrace{\\mathfrak{R}_n(\\mathcal{H}) + \\sqrt{\\frac{\\log(1/\\delta)}{2n}}}_{\\text{complexity + confidence term}}\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">Modern "double descent" phenomenon: over-parameterized networks can have low test error despite zero training error. PAC-Bayes and implicit bias offer explanations.</p>`
+  },
+  {
+    icon: '🎮',
+    iconBg: '#e8f0f4',
+    title: 'Link to Reinforcement Learning',
+    subtitle: 'Sequential decision making under uncertainty',
+    body: `<p class="intuition-text">RL extends supervised learning to <strong>sequential decisions</strong> with delayed, sparse rewards. The agent learns a policy π that maximizes cumulative discounted reward.</p>
+    <div class="math-block"><div class="math-label">Bellman Equation</div><div class="katex-wrap">\\(V^\\pi(s) = \\mathbb{E}_\\pi\\left[r_t + \\gamma V^\\pi(s_{t+1}) \\mid s_t = s\\right]\\)</div></div>
+    <div class="math-block"><div class="math-label">Policy Gradient (REINFORCE)</div><div class="katex-wrap">\\(\\nabla_\\theta J = \\mathbb{E}_\\pi\\left[\\nabla_\\theta \\log \\pi_\\theta(a|s) \\cdot G_t\\right]\\)</div></div>
+    <p class="intuition-text" style="margin-top:10px">Online learning regret analysis extends to RL. PAC-MDP theory bounds sample complexity of finding near-optimal policies.</p>`
+  }
+];
 
-    div.onclick = () => {
-        panel.innerHTML = `<h2>${n.title}</h2>${n.info}`;
-    };
+// ──────────────────────────────────────────────
+// PROGRESS TRACKING
+// ──────────────────────────────────────────────
+const visited = new Set();
+const totalItems = MODULES.reduce((s,m)=>s+m.topics.length,0) + TIMELINE.length + THEORY.length;
 
-    canvas.appendChild(div);
-    n.el = div;
+function markVisited(id) {
+  visited.add(id);
+  const pct = Math.round((visited.size / totalItems) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = pct + '% explored';
 }
 
-function createEdge(a, b) {
-    const line = document.createElement("div");
-    line.className = "edge";
-
-    const x1 = a.x, y1 = a.y;
-    const x2 = b.x, y2 = b.y;
-
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-
-    const length = Math.sqrt(dx*dx + dy*dy);
-    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-    line.style.width = length + "px";
-    line.style.left = x1 + "px";
-    line.style.top = y1 + "px";
-    line.style.transform = `rotate(${angle}deg)`;
-
-    canvas.appendChild(line);
+// ──────────────────────────────────────────────
+// RENDER MODULES
+// ──────────────────────────────────────────────
+function renderModules() {
+  const grid = document.getElementById('modules-grid');
+  grid.innerHTML = MODULES.map(m => `
+    <div class="module-card" id="module-${m.id}" style="border-top: 3px solid ${getBorderColor(m.id)}">
+      <div class="module-header" onclick="toggleModule(${m.id})">
+        <span class="module-num">0${m.id < 10 ? m.id : m.id}</span>
+        <div class="module-icon" style="background:${m.iconBg}">${m.icon}</div>
+        <div class="module-title-wrap">
+          <div class="module-title">${m.title}</div>
+          <div class="module-tag">${m.label} · ${m.topics.length} topics</div>
+        </div>
+        <span class="module-chevron">▼</span>
+      </div>
+      <div class="module-body">
+        ${m.topics.map((t,ti) => renderTopic(m.id, ti, t)).join('')}
+      </div>
+    </div>
+  `).join('');
 }
 
-nodes.forEach(createNode);
+function getBorderColor(id) {
+  const colors = ['#27ae60','#8e44ad','#d4a017','#2980b9','#c0392b','#27ae60','#8e44ad','#2980b9','#d4a017','#27ae60','#c0392b'];
+  return colors[(id-1) % colors.length];
+}
 
-edges.forEach(([a,b])=>{
-    createEdge(
-        nodes.find(n=>n.id===a),
-        nodes.find(n=>n.id===b)
-    );
+function renderTopic(moduleId, topicIdx, t) {
+  const id = `m${moduleId}t${topicIdx}`;
+  return `
+  <div class="topic-item" id="${id}">
+    <div class="topic-header" onclick="toggleTopic('${id}')">
+      <div class="topic-dot" id="dot-${id}"></div>
+      <span id="name-${id}">${t.name}</span>
+      <span class="topic-chevron">▼</span>
+    </div>
+    <div class="topic-body">
+      <div class="topic-tabs">
+        <div class="topic-tab active" onclick="switchTopicTab('${id}','intuition',this)">💡 Intuition</div>
+        <div class="topic-tab" onclick="switchTopicTab('${id}','math',this)">📐 Math Mode</div>
+      </div>
+      <div class="topic-view active" id="${id}-intuition">
+        <p class="intuition-text">${t.intuition}</p>
+      </div>
+      <div class="topic-view" id="${id}-math">
+        ${t.math.map(m => `
+          <div class="math-block">
+            <div class="math-label">${m.label}</div>
+            <div>\\(${m.tex}\\)</div>
+          </div>
+        `).join('')}
+      </div>
+      ${t.connections ? `
+      <div class="connections-wrap">
+        <div class="connections-label">🔗 Connections</div>
+        <div class="conn-tags">
+          ${t.connections.map(c => `<div class="conn-tag"><span class="conn-type">${c.type}:</span>${c.name}</div>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function toggleModule(id) {
+  const card = document.getElementById('module-' + id);
+  card.classList.toggle('open');
+}
+
+function toggleTopic(id) {
+  const item = document.getElementById(id);
+  item.classList.toggle('open');
+  if (item.classList.contains('open')) {
+    markVisited('topic-' + id);
+    document.getElementById('dot-' + id).classList.add('topic-visited-dot');
+    document.getElementById('name-' + id).classList.add('topic-visited');
+    renderMath();
+  }
+}
+
+function switchTopicTab(topicId, view, btn) {
+  document.querySelectorAll(`#${topicId} .topic-tab`).forEach(t => t.classList.remove('active'));
+  document.querySelectorAll(`#${topicId} .topic-view`).forEach(v => v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`${topicId}-${view}`).classList.add('active');
+  if (view === 'math') renderMath();
+}
+
+// ──────────────────────────────────────────────
+// RENDER TIMELINE
+// ──────────────────────────────────────────────
+function renderTimeline() {
+  const container = document.getElementById('timeline-items');
+  const eraColors = { stats: '#2980b9', opt: '#8e44ad', deep: '#27ae60', found: '#d4a017' };
+  const eraLabels = { stats: 'Statistics Era', opt: 'Optimization Era', deep: 'Deep Learning', found: 'Foundation Models' };
+  const eraClasses = { stats: 'era-stats', opt: 'era-opt', deep: 'era-deep', found: 'era-found' };
+
+  let lastEra = null;
+  container.innerHTML = TIMELINE.map((e, i) => {
+    let eraBadge = '';
+    if (e.era !== lastEra) {
+      lastEra = e.era;
+      eraBadge = `<div class="era-badge ${eraClasses[e.era]}" style="margin-bottom:12px">${eraLabels[e.era]}</div>`;
+    }
+    const dotColor = eraColors[e.era] || 'var(--accent)';
+    return `
+    ${eraBadge}
+    <div class="tl-item" id="tl-${i}">
+      <div class="tl-dot" style="border-color:${dotColor}"></div>
+      <div class="tl-header" onclick="toggleTLItem(${i})">
+        <span class="tl-year">${e.year}</span>
+        <span class="tl-concept">${e.concept}</span>
+        <span class="tl-researcher">${e.researchers.split(',')[0]}</span>
+      </div>
+      <div class="tl-body">
+        <div class="tl-grid">
+          <div class="tl-cell">
+            <div class="tl-cell-icon">❓</div>
+            <div class="tl-cell-label">Problem Solved</div>
+            <div class="tl-cell-text">${e.problem}</div>
+          </div>
+          <div class="tl-cell">
+            <div class="tl-cell-icon">👤</div>
+            <div class="tl-cell-label">Key Researchers</div>
+            <div class="tl-cell-text">${e.researchers}</div>
+          </div>
+          <div class="tl-cell">
+            <div class="tl-cell-icon">🧠</div>
+            <div class="tl-cell-label">Intuition</div>
+            <div class="tl-cell-text">${e.intuition}</div>
+          </div>
+          <div class="tl-cell">
+            <div class="tl-cell-icon">📐</div>
+            <div class="tl-cell-label">Mathematical Idea</div>
+            <div class="tl-cell-text">${e.math}</div>
+          </div>
+        </div>
+        <div class="tl-modern">
+          <div class="tl-modern-label">🔗 Connection to Modern ML</div>
+          ${e.modern}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTLItem(i) {
+  const item = document.getElementById('tl-' + i);
+  item.classList.toggle('open');
+  if (item.classList.contains('open')) {
+    markVisited('tl-' + i);
+  }
+}
+
+// ──────────────────────────────────────────────
+// RENDER THEORY
+// ──────────────────────────────────────────────
+function renderTheory() {
+  const grid = document.getElementById('theory-grid');
+  grid.innerHTML = THEORY.map((t, i) => `
+    <div class="theory-card" id="theory-${i}" onclick="toggleTheory(${i})">
+      <div class="theory-card-header">
+        <div class="theory-icon" style="background:${t.iconBg}">${t.icon}</div>
+        <div>
+          <div class="theory-title">${t.title}</div>
+          <div class="theory-subtitle">${t.subtitle}</div>
+        </div>
+      </div>
+      <div class="theory-body">${t.body}</div>
+    </div>
+  `).join('');
+}
+
+function toggleTheory(i) {
+  const card = document.getElementById('theory-' + i);
+  card.classList.toggle('open');
+  if (card.classList.contains('open')) {
+    markVisited('theory-' + i);
+    renderMath();
+  }
+}
+
+// ──────────────────────────────────────────────
+// SECTION SWITCHING
+// ──────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  event.target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ──────────────────────────────────────────────
+// SEARCH
+// ──────────────────────────────────────────────
+const searchIndex = [];
+MODULES.forEach(m => {
+  m.topics.forEach((t, ti) => {
+    searchIndex.push({ module: m.title, topic: t.name, id: `m${m.id}t${ti}`, moduleId: m.id });
+  });
 });
 
-
-// PAN + ZOOM
-let isDragging = false;
-let startX, startY;
-
-canvas.addEventListener("mousedown", e=>{
-    isDragging = true;
-    startX = e.clientX - offsetX;
-    startY = e.clientY - offsetY;
-    canvas.style.cursor = "grabbing";
+document.getElementById('search-input').addEventListener('input', function() {
+  const q = this.value.trim().toLowerCase();
+  const results = document.getElementById('search-results');
+  if (!q) { results.style.display = 'none'; return; }
+  const matches = searchIndex.filter(s => s.topic.toLowerCase().includes(q) || s.module.toLowerCase().includes(q));
+  if (!matches.length) { results.style.display = 'none'; return; }
+  results.innerHTML = matches.slice(0, 8).map(m => `
+    <div class="search-result-item" onclick="jumpToTopic('${m.id}', ${m.moduleId})">
+      <div class="sri-module">${m.module}</div>
+      <div class="sri-topic">${m.topic}</div>
+    </div>`).join('');
+  results.style.display = 'block';
 });
 
-canvas.addEventListener("mouseup", ()=>{
-    isDragging = false;
-    canvas.style.cursor = "grab";
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-wrap')) {
+    document.getElementById('search-results').style.display = 'none';
+  }
 });
 
-canvas.addEventListener("mousemove", e=>{
-    if(!isDragging) return;
-    offsetX = e.clientX - startX;
-    offsetY = e.clientY - startY;
-    canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+function jumpToTopic(topicId, moduleId) {
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  showSectionDirect('modules');
+  setTimeout(() => {
+    const moduleCard = document.getElementById('module-' + moduleId);
+    if (!moduleCard.classList.contains('open')) moduleCard.classList.add('open');
+    const topicItem = document.getElementById(topicId);
+    if (topicItem) {
+      if (!topicItem.classList.contains('open')) topicItem.classList.add('open');
+      topicItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      markVisited('topic-' + topicId);
+      renderMath();
+    }
+  }, 100);
+}
+
+function showSectionDirect(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.querySelector('.nav-tab').classList.add('active');
+}
+
+// ──────────────────────────────────────────────
+// BACK TO TOP
+// ──────────────────────────────────────────────
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('back-top');
+  btn.classList.toggle('visible', window.scrollY > 300);
 });
 
-canvas.addEventListener("wheel", e=>{
-    e.preventDefault();
-    scale += e.deltaY * -0.001;
-    scale = Math.min(Math.max(.5, scale), 2);
-    canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
-});
+// ──────────────────────────────────────────────
+// KATEX RENDER
+// ──────────────────────────────────────────────
+function renderMath() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      { left: '\\(', right: '\\)', display: false },
+      { left: '\\[', right: '\\]', display: true }
+    ],
+    throwOnError: false
+  });
+}
 
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+renderModules();
+renderTimeline();
+renderTheory();
+renderMath();
 </script>
-
 </body>
 </html>
