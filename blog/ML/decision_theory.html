@@ -1,1 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Theory in Machine Learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+:root {
+  --bg: #f7f4ee;
+  --bg2: #edeae2;
+  --bg3: #e2ddd4;
+  --white: #ffffff;
+  --ink: #1c1917;
+  --ink2: #44403c;
+  --ink3: #78716c;
+  --red: #b91c1c;
+  --red-light: #fef2f2;
+  --amber: #b45309;
+  --amber-light: #fffbeb;
+  --teal: #0f766e;
+  --teal-light: #f0fdfa;
+  --blue: #1d4ed8;
+  --blue-light: #eff6ff;
+  --violet: #6d28d9;
+  --violet-light: #f5f3ff;
+  --green: #15803d;
+  --green-light: #f0fdf4;
+  --border: rgba(28,25,23,0.1);
+  --shadow: 0 1px 12px rgba(28,25,23,0.07);
+  --shadow-md: 0 4px 24px rgba(28,25,23,0.1);
+  --radius: 14px;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.7; min-height: 100vh; }
 
+/* PROGRESS */
+#prog-track { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--bg3); z-index: 999; }
+#prog-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--red), var(--amber)); transition: width 0.5s ease; }
+#prog-txt { position: fixed; top: 8px; right: 16px; font-family: var(--font-mono); font-size: 10px; color: var(--ink3); background: var(--bg); padding: 2px 10px; border-radius: 20px; border: 1px solid var(--border); z-index: 999; }
+
+/* HERO */
+.hero { max-width: 860px; margin: 0 auto; padding: 88px 32px 56px; }
+.hero-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--red); margin-bottom: 20px; }
+.hero h1 { font-family: var(--font-display); font-size: clamp(36px, 6vw, 64px); font-weight: 700; line-height: 1.08; color: var(--ink); margin-bottom: 18px; }
+.hero h1 em { font-style: italic; color: var(--red); font-weight: 300; }
+.hero-sub { font-size: 17px; color: var(--ink2); max-width: 520px; font-weight: 300; line-height: 1.65; margin-bottom: 32px; }
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font-family: var(--font-mono); font-size: 11px; padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--white); color: var(--ink3); }
+
+/* MAIN */
+main { max-width: 860px; margin: 0 auto; padding: 0 32px 100px; }
+
+/* SECTION */
+.sec { margin-bottom: 16px; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); transition: box-shadow 0.2s; }
+.sec:hover { box-shadow: var(--shadow-md); }
+
+.sec-hdr { padding: 22px 28px; cursor: pointer; display: flex; align-items: center; gap: 16px; user-select: none; transition: background 0.15s; }
+.sec-hdr:hover { background: var(--bg); }
+.sec.open .sec-hdr { background: var(--bg); border-bottom: 1.5px solid var(--border); }
+
+.sec-num { font-family: var(--font-mono); font-size: 12px; color: var(--ink3); min-width: 28px; }
+.sec-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.sec-info { flex: 1; }
+.sec-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--ink); }
+.sec-desc { font-size: 12px; color: var(--ink3); margin-top: 2px; font-family: var(--font-mono); }
+.sec-chev { color: var(--ink3); transition: transform 0.3s; font-size: 13px; }
+.sec.open .sec-chev { transform: rotate(180deg); }
+
+.sec-body { display: none; padding: 24px 28px 28px; }
+.sec.open .sec-body { display: block; }
+
+/* TOPIC */
+.topic { margin-bottom: 10px; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); }
+.topic-hdr { padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
+.topic-hdr:hover { background: var(--bg2); }
+.topic-bullet { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--ink3); flex-shrink: 0; transition: all 0.2s; }
+.topic.open .topic-bullet, .topic.visited .topic-bullet { background: var(--green); border-color: var(--green); }
+.topic-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.topic.visited .topic-name { color: var(--green); }
+.topic-chev { margin-left: auto; font-size: 10px; color: var(--ink3); transition: transform 0.3s; }
+.topic.open .topic-chev { transform: rotate(180deg); }
+
+.topic-body { display: none; padding: 16px 18px 18px; border-top: 1.5px solid var(--border); background: var(--white); }
+.topic.open .topic-body { display: block; }
+
+.mode-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.mode-tab { font-family: var(--font-mono); font-size: 11px; padding: 5px 16px; border-radius: 20px; border: 1.5px solid var(--border); cursor: pointer; background: var(--bg); color: var(--ink2); transition: all 0.15s; }
+.mode-tab.active { background: var(--ink); color: var(--white); border-color: var(--ink); }
+
+.view { display: none; }
+.view.active { display: block; }
+
+.int-text { font-size: 14px; line-height: 1.75; color: var(--ink2); }
+.int-text strong { color: var(--ink); font-weight: 600; }
+.int-text em { color: var(--red); font-style: normal; font-weight: 500; }
+
+.analogy { background: var(--amber-light); border-left: 3px solid var(--amber); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 12px 0; font-size: 13.5px; color: var(--ink2); }
+.analogy-label { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px; }
+
+.math-eq { background: var(--bg); border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 10px 0; }
+.eq-label { font-family: var(--font-mono); font-size: 10px; color: var(--red); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+.eq-body { font-size: 14px; overflow-x: auto; }
+
+.def-box { background: var(--blue-light); border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+.def-label { font-family: var(--font-mono); font-size: 10px; color: var(--blue); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+.def-body { font-size: 13.5px; color: var(--ink2); }
+
+.conn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.conn-chip { font-family: var(--font-mono); font-size: 11px; padding: 4px 12px; border-radius: 20px; background: var(--teal-light); color: var(--teal); border: 1px solid #99f6e4; cursor: default; }
+.conn-chip span { color: var(--ink3); margin-right: 4px; }
+
+/* SECTION DIVIDER */
+.sec-heading { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--ink3); letter-spacing: 0.08em; text-transform: uppercase; margin: 24px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+
+/* TIMELINE */
+#tl-section { margin-top: 48px; }
+.tl-hero { background: var(--ink); color: var(--white); border-radius: var(--radius); padding: 36px 40px; margin-bottom: 32px; position: relative; overflow: hidden; }
+.tl-hero::after { content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(180,83,9,0.25), transparent); }
+.tl-hero h2 { font-family: var(--font-display); font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.tl-hero p { color: rgba(255,255,255,0.65); font-size: 14px; max-width: 460px; font-style: italic; }
+
+.tl-wrap { position: relative; padding-left: 56px; }
+.tl-spine { position: absolute; left: 20px; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, var(--red), var(--amber), var(--teal), var(--blue)); border-radius: 2px; }
+
+.tl-row { position: relative; margin-bottom: 10px; }
+.tl-node { position: absolute; left: -47px; top: 15px; width: 14px; height: 14px; border-radius: 50%; background: var(--white); border: 2.5px solid var(--red); cursor: pointer; transition: transform 0.2s; z-index: 1; }
+.tl-node:hover, .tl-row.open .tl-node { transform: scale(1.5); }
+
+.tl-card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.tl-card-hdr { padding: 14px 22px; cursor: pointer; display: flex; align-items: center; gap: 16px; transition: background 0.15s; }
+.tl-card-hdr:hover { background: var(--bg); }
+.tl-row.open .tl-card-hdr { background: var(--ink); }
+.tl-yr { font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--red); min-width: 44px; }
+.tl-row.open .tl-yr { color: var(--amber); }
+.tl-cname { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink); }
+.tl-row.open .tl-cname { color: var(--white); }
+.tl-contrib { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink3); }
+.tl-row.open .tl-contrib { color: rgba(255,255,255,0.5); }
+
+.tl-card-body { display: none; padding: 20px 24px; border-top: 1.5px solid var(--border); }
+.tl-row.open .tl-card-body { display: block; }
+
+.tl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.tl-cell { background: var(--bg); border-radius: 8px; padding: 14px; }
+.tl-cell-icon { font-size: 16px; margin-bottom: 5px; }
+.tl-cell-lbl { font-family: var(--font-mono); font-size: 10px; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+.tl-cell-txt { font-size: 13px; color: var(--ink2); line-height: 1.6; }
+
+.tl-modern { background: var(--amber-light); border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--ink2); }
+.tl-modern-lbl { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+
+/* BACK TOP */
+#btt { position: fixed; bottom: 26px; right: 26px; width: 42px; height: 42px; border-radius: 50%; background: var(--ink); color: var(--white); border: none; cursor: pointer; font-size: 17px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md); opacity: 0; transition: opacity 0.3s, transform 0.2s; z-index: 99; }
+#btt.vis { opacity: 1; }
+#btt:hover { transform: scale(1.1); }
+
+.katex { font-size: 0.92em; }
+.katex-display { overflow-x: auto; }
+
+@media(max-width:640px) {
+  .hero, main { padding-left: 18px; padding-right: 18px; }
+  .tl-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="prog-track"><div id="prog-fill"></div></div>
+<div id="prog-txt">0% explored</div>
+
+<div class="hero">
+  <div class="hero-eyebrow">Decision Theory </div>
+  <h1>Decision Theory<br>in <em>Machine Learning</em></h1>
+  <p class="hero-sub">From optimal decisions under uncertainty to the mathematical backbone of learning algorithms.</p>
+  <div class="hero-chips">
+    <div class="chip">Bayes Risk</div>
+    <div class="chip">Loss Functions</div>
+    <div class="chip">ERM</div>
+    <div class="chip">Optimal Classifiers</div>
+    <div class="chip">Statistical Learning</div>
+  </div>
+</div>
+
+<main>
+  <div id="sections-wrap"></div>
+  <div id="tl-section">
+    <div class="tl-hero">
+      <h2>Historical Timeline</h2>
+      <p>How probability, statistics, and decision theory converged to create modern machine learning.</p>
+    </div>
+    <div class="tl-wrap">
+      <div class="tl-spine"></div>
+      <div id="tl-items"></div>
+    </div>
+  </div>
+</main>
+
+<button id="btt" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────
+const SECTIONS = [
+  {
+    icon: '🌱', color: '#dcfce7', id: 'learn',
+    title: 'What is Learning?',
+    desc: 'Supervised · Unsupervised · Generative · Decision Framing',
+    topics: [
+      {
+        name: 'Supervised vs Unsupervised vs Generative',
+        intuition: `<p class="int-text">Machine learning comes in three fundamental flavors:
+        <br><br>
+        <strong>Supervised learning</strong> — you have labeled examples (xᵢ, yᵢ). The goal is to learn a mapping f: 𝒳 → 𝒴 that generalizes.
+        <br><br>
+        <strong>Unsupervised learning</strong> — only inputs xᵢ, no labels. The goal is to discover structure: clusters, dimensions, densities.
+        <br><br>
+        <strong>Generative modeling</strong> — model the joint distribution P(X, Y) rather than P(Y|X) directly. This is richer but harder.</p>
+        <div class="analogy"><div class="analogy-label">🍎 Analogy</div>Supervised: a teacher marks your answers. Unsupervised: you sort a pile of unknown objects by similarity. Generative: you understand the world well enough to <em>create</em> new examples from scratch.</div>`,
+        math: [
+          { label: 'Supervised goal', tex: '\\text{Find } h: \\mathcal{X} \\to \\mathcal{Y} \\text{ minimizing } \\mathbb{E}_{(x,y)\\sim P}[\\ell(h(x), y)]' },
+          { label: 'Generative model', tex: 'P(X, Y) = P(Y \\mid X) \\cdot P(X) \\quad \\text{vs} \\quad P(Y \\mid X) \\text{ (discriminative)}' },
+          { label: 'Unsupervised', tex: 'P(X) = \\int P(X \\mid Z) P(Z)\\, dZ \\quad \\text{(latent variable model)}' }
+        ],
+        conns: [{ t: 'Foundation for', n: 'ERM' }, { t: 'Motivates', n: 'Density Estimation' }]
+      },
+      {
+        name: 'Learning as Decision Making Under Uncertainty',
+        intuition: `<p class="int-text">Every prediction is a <em>decision</em>. When you predict a label for a new input, you are making a choice under uncertainty — you don't know the true label.
+        <br><br>
+        Decision theory provides a principled framework: assign a <strong>cost (loss)</strong> to each possible decision, and choose the action that minimizes the <strong>expected cost</strong>.
+        <br><br>
+        This framing unifies classification, regression, and even reinforcement learning.</p>
+        <div class="analogy"><div class="analogy-label">🏥 Medical Analogy</div>A doctor diagnosing a patient is making a decision under uncertainty. Misdiagnosing cancer as benign (false negative) is far costlier than the reverse. Decision theory says: weight your choices by their expected consequences.</div>`,
+        math: [
+          { label: 'Decision problem', tex: 'a^* = \\arg\\min_{a \\in \\mathcal{A}}\\; \\mathbb{E}_{y \\sim P(Y|x)}[C(a, y)]' },
+          { label: 'Key insight', tex: '\\text{ML} = \\text{Estimate } P(Y|X) \\text{ or } P(X,Y), \\text{ then apply decision rule}' }
+        ],
+        conns: [{ t: 'Leads to', n: 'Bayes Decision Rule' }, { t: 'Formalizes', n: 'Risk Minimization' }]
+      }
+    ]
+  },
+  {
+    icon: '📉', color: '#fef3c7', id: 'loss',
+    title: 'Loss Functions & Risk',
+    desc: 'Loss · Expected Risk · Empirical Risk',
+    topics: [
+      {
+        name: 'Loss Functions',
+        intuition: `<p class="int-text">A <strong>loss function</strong> ℓ(ŷ, y) quantifies the cost of predicting ŷ when the truth is y. The choice of loss function encodes <em>what you care about</em>.
+        <br><br>
+        Common choices:
+        <br>• <strong>0-1 loss</strong>: penalizes any wrong prediction equally — natural for accuracy
+        <br>• <strong>Squared loss</strong>: penalizes large errors quadratically — pushes toward conditional mean
+        <br>• <strong>Cross-entropy</strong>: matches probabilistic predictions — the standard for classification</p>
+        <div class="analogy"><div class="analogy-label">⚖️ Analogy</div>The loss function is the "scoring rubric." Squared loss is an exacting teacher who squares mistakes; 0-1 loss is a pass/fail exam.</div>`,
+        math: [
+          { label: '0-1 Loss', tex: '\\ell_{01}(h(x), y) = \\mathbf{1}[h(x) \\neq y]' },
+          { label: 'Squared Loss', tex: '\\ell_{sq}(\\hat{y}, y) = (\\hat{y} - y)^2' },
+          { label: 'Cross-Entropy (log loss)', tex: '\\ell_{CE}(p, y) = -y\\log p - (1-y)\\log(1-p)' },
+          { label: 'Hinge Loss (SVM)', tex: '\\ell_{hinge}(\\hat{y}, y) = \\max(0,\\, 1 - y\\hat{y})' }
+        ],
+        conns: [{ t: 'Defines', n: 'Expected Risk' }, { t: 'Choice affects', n: 'Optimal predictor' }]
+      },
+      {
+        name: 'Expected Risk (True Risk)',
+        intuition: `<p class="int-text">The <strong>expected risk</strong> (or true risk) R(h) is the average loss of hypothesis h over the entire population — i.e., over the true data distribution P(X,Y).
+        <br><br>
+        This is the quantity we <em>actually want to minimize</em>, but we <strong>cannot compute it directly</strong> — we don't know P(X,Y). This is the fundamental challenge of ML.</p>
+        <div class="analogy"><div class="analogy-label">🎯 Analogy</div>Expected risk is your average performance across every possible exam question — but you only see a finite sample. You can only estimate it.</div>`,
+        math: [
+          { label: 'Expected (True) Risk', tex: 'R(h) = \\mathbb{E}_{(x,y)\\sim P}[\\ell(h(x), y)] = \\int_{\\mathcal{X}\\times\\mathcal{Y}} \\ell(h(x), y)\\, dP(x,y)' },
+          { label: 'Goal', tex: 'h^* = \\arg\\min_{h \\in \\mathcal{H}} R(h)' },
+          { label: 'Problem', tex: 'P(X, Y) \\text{ is unknown} \\Rightarrow R(h) \\text{ cannot be computed exactly}' }
+        ],
+        conns: [{ t: 'Approximated by', n: 'Empirical Risk' }, { t: 'Minimized by', n: 'Bayes Optimal h*' }]
+      },
+      {
+        name: 'Empirical Risk (ERM)',
+        intuition: `<p class="int-text"><strong>Empirical Risk Minimization (ERM)</strong>: since we can't compute R(h), we approximate it using our training data. The empirical risk is just the <em>sample average loss</em>.
+        <br><br>
+        By the law of large numbers, with enough data the empirical risk converges to the true risk. ERM is the cornerstone of ML algorithms — training a model is literally solving an ERM problem.</p>
+        <div class="analogy"><div class="analogy-label">📊 Analogy</div>You can't measure the average height of all humans (P unknown). But you can measure 10,000 people (your dataset) and get a very good estimate. ERM does the same for risk.</div>`,
+        math: [
+          { label: 'Empirical Risk', tex: '\\hat{R}_n(h) = \\frac{1}{n}\\sum_{i=1}^{n} \\ell(h(x_i), y_i)' },
+          { label: 'ERM Principle', tex: '\\hat{h}_{ERM} = \\arg\\min_{h \\in \\mathcal{H}} \\hat{R}_n(h)' },
+          { label: 'Law of Large Numbers', tex: '\\hat{R}_n(h) \\xrightarrow{\\;p\\;} R(h) \\quad \\text{as } n \\to \\infty' },
+          { label: 'Generalization gap', tex: 'R(\\hat{h}) \\leq \\hat{R}_n(\\hat{h}) + \\underbrace{\\text{complexity penalty}}_{\\sim \\sqrt{d/n}}' }
+        ],
+        conns: [{ t: 'Foundation of', n: 'All ML training' }, { t: 'Theory via', n: 'PAC / VC Dimension' }]
+      }
+    ]
+  },
+  {
+    icon: '🎯', color: '#ede9fe', id: 'bayes',
+    title: 'Bayes Optimal Classifier',
+    desc: 'Conditional Probability · Optimal Rule · 0-1 Loss',
+    topics: [
+      {
+        name: 'Conditional Probability & Posterior',
+        intuition: `<p class="int-text">The <strong>posterior P(Y=c|X=x)</strong> is the probability that the true class is c given observation x. It fully summarizes what we know about Y after seeing X.
+        <br><br>
+        All of Bayesian ML boils down to computing or estimating this posterior — then making decisions based on it.
+        <br><br>
+        Via <em>Bayes' theorem</em>: posterior ∝ likelihood × prior. The prior encodes beliefs before seeing data; the likelihood encodes how well the data fits each class.</p>
+        <div class="analogy"><div class="analogy-label">🔬 Analogy</div>Before seeing test results: P(disease) = 0.01 (prior). After a positive test: P(disease | positive) = 0.15 (posterior). The test updates your belief.</div>`,
+        math: [
+          { label: "Bayes' Theorem", tex: 'P(Y=c \\mid X=x) = \\frac{P(X=x \\mid Y=c)\\,P(Y=c)}{P(X=x)}' },
+          { label: 'Denominator (normalization)', tex: 'P(X=x) = \\sum_{c\'} P(X=x \\mid Y=c\')\\,P(Y=c\')' },
+          { label: 'Short-hand', tex: '\\text{posterior} \\propto \\text{likelihood} \\times \\text{prior}' }
+        ],
+        conns: [{ t: 'Used in', n: 'Naive Bayes, LDA, QDA' }, { t: 'Motivates', n: 'Density Estimation' }]
+      },
+      {
+        name: 'Bayes Optimal Decision Rule',
+        intuition: `<p class="int-text">The <strong>Bayes optimal classifier</strong> picks the class with the highest posterior probability. Under 0-1 loss, it is provably the best possible classifier — no algorithm can achieve lower expected error.
+        <br><br>
+        It is an <em>oracle</em>: it assumes perfect knowledge of P(X,Y). In practice we approximate it. Everything in ML is an approximation to this ideal.</p>
+        <div class="analogy"><div class="analogy-label">🏆 Analogy</div>If you somehow knew the true distribution of all possible emails, spam vs. ham, the Bayes classifier would be the theoretically perfect spam filter. Real filters try to approximate it.</div>`,
+        math: [
+          { label: 'Bayes Classifier', tex: 'h^*(x) = \\arg\\max_{c \\in \\mathcal{Y}} P(Y=c \\mid X=x)' },
+          { label: 'Bayes Error (irreducible noise)', tex: 'R^* = 1 - \\mathbb{E}_x\\!\\left[\\max_c P(Y=c \\mid X=x)\\right]' },
+          { label: 'Theorem', tex: '\\forall h:\\; R(h) \\geq R^* \\quad \\text{(Bayes error is a lower bound)}' }
+        ],
+        conns: [{ t: 'Lower bound for', n: 'All classifiers' }, { t: 'Approximated by', n: 'k-NN, logistic reg' }]
+      },
+      {
+        name: 'Zero-One Loss and Bayes Risk',
+        intuition: `<p class="int-text">Under <strong>0-1 loss</strong>, the Bayes classifier simply picks the most probable class — a majority vote weighted by posterior. The Bayes risk R* is the fraction of inputs where even an oracle would make errors (irreducible noise).
+        <br><br>
+        <em>R* = 0</em> means classes are perfectly separable. <em>R* = 0.5</em> (for binary) means the features carry zero information about the label — pure noise. Most real problems sit somewhere in between.</p>`,
+        math: [
+          { label: 'Expected 0-1 loss', tex: 'R(h) = \\mathbb{E}_x[P(Y \\neq h(x) \\mid X=x)] = \\mathbb{E}_x[1 - P(Y=h(x) \\mid X=x)]' },
+          { label: 'Minimized by MAP rule', tex: 'h^*(x) = \\arg\\max_c P(Y=c|x) \\Rightarrow R^* = 1 - \\mathbb{E}_x[\\max_c P(Y=c|x)]' },
+          { label: 'Binary case insight', tex: 'h^*(x) = \\mathbf{1}[P(Y=1|x) > 1/2]' }
+        ],
+        conns: [{ t: 'Special case of', n: 'Cost-sensitive classification' }, { t: 'Bounds', n: 'k-NN (2× Bayes error)' }]
+      }
+    ]
+  },
+  {
+    icon: '⚖️', color: '#fee2e2', id: 'bdt',
+    title: 'Bayes Decision Theory',
+    desc: 'Cost-sensitive · Risk Minimization · Decision Boundaries',
+    topics: [
+      {
+        name: 'Cost-Sensitive Classification',
+        intuition: `<p class="int-text">0-1 loss treats all errors equally. In practice, <strong>different errors have different costs</strong>. Missing a cancer diagnosis is far worse than a false alarm. Fraud detection: false negatives are costly; false positives are annoying.
+        <br><br>
+        Cost-sensitive classification replaces the uniform loss matrix with a general cost matrix C(ĉ, c) — the cost of predicting class ĉ when the true class is c.</p>
+        <div class="analogy"><div class="analogy-label">🏥 Medical Analogy</div>C(predict healthy | truly sick) = 100 (miss cancer). C(predict sick | truly healthy) = 5 (unnecessary follow-up). The asymmetry shifts the decision threshold significantly.</div>`,
+        math: [
+          { label: 'Conditional expected cost (risk)', tex: 'R(a \\mid x) = \\sum_{c} C(a, c)\\, P(Y=c \\mid X=x)' },
+          { label: 'Bayes decision', tex: 'a^*(x) = \\arg\\min_{a} R(a \\mid x)' },
+          { label: 'Binary case threshold', tex: '\\text{Predict 1 if } C_{10}\\, P(Y=0|x) < C_{01}\\, P(Y=1|x)' }
+        ],
+        conns: [{ t: 'Used in', n: 'Medical diagnosis, fraud' }, { t: 'Implemented via', n: 'Threshold tuning (ROC)' }]
+      },
+      {
+        name: 'Risk Minimization Framework',
+        intuition: `<p class="int-text">The full Bayesian decision theory framework: compute the <strong>posterior risk</strong> for each action given x, then choose the action that minimizes it. This is the <em>optimal</em> strategy.
+        <br><br>
+        The framework is completely general — it applies to classification, regression, structured prediction, and even reinforcement learning. The key difference between settings is the loss function and action space.</p>`,
+        math: [
+          { label: 'Posterior risk (conditional risk)', tex: 'R(a|x) = \\mathbb{E}_{y \\sim P(Y|x)}[\\ell(a, y)] = \\sum_y \\ell(a, y)P(y|x)' },
+          { label: 'Optimal action', tex: 'a^*(x) = \\arg\\min_{a \\in \\mathcal{A}} R(a|x)' },
+          { label: 'For regression (squared loss)', tex: 'a^*(x) = \\mathbb{E}[Y|X=x] \\quad \\text{(posterior mean)}' },
+          { label: 'For classification (0-1 loss)', tex: 'a^*(x) = \\arg\\max_c P(Y=c|X=x) \\quad \\text{(posterior mode)}' }
+        ],
+        conns: [{ t: 'Unifies', n: 'Classification & Regression' }, { t: 'Extends to', n: 'RL (Bellman equations)' }]
+      },
+      {
+        name: 'Decision Boundaries',
+        intuition: `<p class="int-text">A <strong>decision boundary</strong> is the set of points x where the optimal decision changes — where two classes have equal posterior risk. Everything on one side gets label A; the other side, label B.
+        <br><br>
+        Under 0-1 loss, the boundary is where <em>P(Y=1|x) = P(Y=0|x) = 0.5</em>. With asymmetric costs, the boundary shifts toward the class with higher misclassification cost.</p>
+        <div class="analogy"><div class="analogy-label">🗺️ Analogy</div>A weather boundary: regions where P(rain) = 0.5. Below the threshold → predict sun; above → predict rain. Shift the threshold if the cost of being unprepared for rain is high.</div>`,
+        math: [
+          { label: 'Decision boundary (0-1 loss, binary)', tex: '\\mathcal{B} = \\{x : P(Y=1|x) = P(Y=0|x) = 0.5\\}' },
+          { label: 'Boundary (cost-sensitive)', tex: '\\mathcal{B} = \\left\\{x : \\frac{P(Y=1|x)}{P(Y=0|x)} = \\frac{C_{10}}{C_{01}}\\right\\}' },
+          { label: 'LDA boundary (Gaussian classes, equal Σ)', tex: 'w^\\top x + b = 0, \\quad w = \\Sigma^{-1}(\\mu_1 - \\mu_0)' }
+        ],
+        conns: [{ t: 'Shape depends on', n: 'Likelihood model (Gaussian → linear/quadratic)' }, { t: 'Learned by', n: 'SVM, logistic regression' }]
+      }
+    ]
+  },
+  {
+    icon: '🔗', color: '#ecfdf5', id: 'conn',
+    title: 'Connection to Machine Learning',
+    desc: 'ERM · Distribution Estimation · What Comes Next',
+    topics: [
+      {
+        name: 'ERM as Approximation to True Risk Minimization',
+        intuition: `<p class="int-text">We want to minimize R(h) but can't — P is unknown. ERM replaces P with the empirical measure P̂ₙ. This is justified by the law of large numbers, but introduces a <strong>generalization gap</strong>.
+        <br><br>
+        The generalization gap R(ĥ) - R̂ₙ(ĥ) depends on both n (more data → smaller gap) and the complexity of ℋ (richer model → larger gap). This tension is the bias-variance tradeoff.</p>`,
+        math: [
+          { label: 'True risk vs ERM', tex: 'R(\\hat{h}) \\leq \\underbrace{R(h^*)}_{\\text{approximation error}} + \\underbrace{R(\\hat{h}) - R(h^*)}_{\\text{estimation error}}' },
+          { label: 'Uniform convergence bound', tex: 'P\\!\\left(\\sup_{h\\in\\mathcal{H}}|R(h)-\\hat{R}_n(h)| > \\epsilon\\right) \\leq 2|\\mathcal{H}|e^{-2n\\epsilon^2}' },
+          { label: 'VC bound (informal)', tex: 'R(\\hat{h}) \\lesssim \\hat{R}_n(\\hat{h}) + \\sqrt{\\frac{d_{VC}\\ln n}{n}}' }
+        ],
+        conns: [{ t: 'Analyzed by', n: 'PAC Learning Theory' }, { t: 'Controls via', n: 'Regularization' }]
+      },
+      {
+        name: 'Why We Need to Estimate Distributions',
+        intuition: `<p class="int-text">The Bayes optimal rule requires P(Y|X). We have two strategies:
+        <br><br>
+        <strong>Generative:</strong> model P(X,Y) = P(X|Y)·P(Y), then derive P(Y|X). Requires estimating densities (next module!). Examples: Naive Bayes, LDA, Gaussian mixtures.
+        <br><br>
+        <strong>Discriminative:</strong> model P(Y|X) directly without P(X). More efficient in high dimensions. Examples: logistic regression, neural networks, SVMs.
+        <br><br>
+        Both approaches approximate the Bayes optimal classifier — they just take different routes.</p>`,
+        math: [
+          { label: 'Generative approach', tex: 'P(Y=c|x) = \\frac{P(x|Y=c)\\,P(Y=c)}{\\sum_{c\'} P(x|Y=c\')P(Y=c\')}' },
+          { label: 'Discriminative approach', tex: 'P(Y=c|x;\\theta) = \\text{softmax}(W_c^\\top x) \\quad \\text{(e.g. logistic reg.)}' },
+          { label: 'Bias-efficiency tradeoff', tex: '\\text{Generative: more assumptions, better with small } n' }
+        ],
+        conns: [{ t: 'Generative needs', n: 'Density Estimation (Module 2)' }, { t: 'Discriminative leads to', n: 'Linear Models (Module 3)' }]
+      },
+      {
+        name: 'Link to Density Estimation (Next Module)',
+        intuition: `<p class="int-text">To use a generative classifier, we need to estimate the class-conditional densities P(X|Y=c). This is the <strong>density estimation problem</strong> — the subject of Module 2.
+        <br><br>
+        Parametric approaches (Gaussian, Multinomial) assume a form for P(X|Y=c) and estimate parameters via MLE. Non-parametric approaches (KDE, k-NN density) estimate density directly from data without strong assumptions.
+        <br><br>
+        Decision theory → density estimation → back to classification: the modules form a coherent circle.</p>`,
+        math: [
+          { label: 'Parametric density (Gaussian)', tex: 'P(x|Y=c) = \\mathcal{N}(x;\\mu_c, \\Sigma_c)' },
+          { label: 'MLE for parameters', tex: '\\hat{\\mu}_c = \\frac{1}{n_c}\\sum_{i:y_i=c} x_i, \\quad \\hat{\\Sigma}_c = \\frac{1}{n_c}\\sum_{i:y_i=c}(x_i-\\hat{\\mu}_c)(x_i-\\hat{\\mu}_c)^\\top' },
+          { label: 'Plug-in Bayes classifier', tex: '\\hat{h}(x) = \\arg\\max_c \\log \\hat{P}(x|c) + \\log \\hat{P}(c)' }
+        ],
+        conns: [{ t: 'Directly motivates', n: 'Module 2: Density Estimation' }, { t: 'Foundation for', n: 'Naive Bayes, LDA, GMM' }]
+      }
+    ]
+  }
+];
+
+// ─── TIMELINE DATA ───────────────────────────────────────
+const TL = [
+  {
+    year: 1713, concept: "Ars Conjectandi (Bernoulli)", contrib: "Jakob Bernoulli",
+    dot: 'var(--red)',
+    problem: "How to reason quantitatively about uncertain outcomes?",
+    intuition: "Formalized the law of large numbers: empirical frequencies converge to true probabilities. This is the mathematical foundation of ERM.",
+    math: "P(|X̄ₙ - μ| > ε) → 0 as n → ∞ (weak law of large numbers)",
+    modern: "The LLN justifies why training on finite data generalizes — the empirical risk converges to true risk."
+  },
+  {
+    year: 1763, concept: "Bayes' Theorem", contrib: "Thomas Bayes, Richard Price",
+    dot: 'var(--red)',
+    problem: "How to update beliefs given new evidence?",
+    intuition: "Probability can represent degrees of belief, not just frequencies. Prior beliefs + data → posterior beliefs. This inverts the usual direction of reasoning.",
+    math: "P(H|E) = P(E|H)·P(H) / P(E)",
+    modern: "Bayes' theorem is the backbone of every Bayesian classifier, probabilistic model, and variational inference method."
+  },
+  {
+    year: 1805, concept: "Least Squares (Legendre, Gauss)", contrib: "Legendre, Gauss",
+    dot: 'var(--amber)',
+    problem: "How to fit a model to noisy astronomical observations?",
+    intuition: "Minimize the sum of squared residuals. This is the first instance of empirical risk minimization under squared loss — used to predict planet orbits.",
+    math: "min_w Σᵢ (yᵢ - wᵀxᵢ)² — the first ERM problem solved",
+    modern: "Least squares is linear regression. Normal equations give the closed-form ERM solution. Still the foundation of linear models."
+  },
+  {
+    year: 1933, concept: "Kolmogorov's Probability Axioms", contrib: "Andrei Kolmogorov",
+    dot: 'var(--amber)',
+    problem: "What is a rigorous foundation for probability theory?",
+    intuition: "Probability is a measure on a sigma-algebra. This gave mathematics a rigorous foundation for all statistical reasoning, enabling the formalization of risk, expectations, and learning theory.",
+    math: "P: Ω → [0,1] satisfying non-negativity, normalization, countable additivity",
+    modern: "All of learning theory (PAC learning, VC theory, Rademacher complexity) is built on measure-theoretic probability."
+  },
+  {
+    year: 1950, concept: "Statistical Decision Theory", contrib: "Abraham Wald",
+    dot: 'var(--teal)',
+    problem: "How to make optimal decisions given statistical evidence?",
+    intuition: "Wald's minimax theory: choose the decision rule that minimizes worst-case risk. Introduced the formal framework of loss functions, risk, and admissibility — the direct ancestor of modern ML.",
+    math: "Minimax risk: min_h max_P R(h, P). Formalized loss L(θ, a), risk R = E[L]",
+    modern: "Statistical decision theory IS decision theory in ML. Every ERM algorithm is a decision rule in Wald's framework."
+  },
+  {
+    year: 1957, concept: "Perceptron", contrib: "Frank Rosenblatt",
+    dot: 'var(--teal)',
+    problem: "Can a machine learn to classify patterns from examples?",
+    intuition: "The Perceptron Learning Algorithm: update weights on misclassifications. Converges if data is linearly separable. First practical implementation of ERM for classification.",
+    math: "w ← w + η·yᵢ·xᵢ when yᵢ(wᵀxᵢ) ≤ 0 (Perceptron Convergence Theorem)",
+    modern: "The perceptron is a one-layer neural network with 0-1 loss. The update rule is a special case of stochastic gradient descent."
+  },
+  {
+    year: 1967, concept: "Nearest Neighbor Algorithm", contrib: "Cover & Hart",
+    dot: 'var(--blue)',
+    problem: "Can we build a classifier without explicit density estimation?",
+    intuition: "Assign the label of the closest training point. No training — all computation deferred to test time. Provably achieves error ≤ 2× Bayes error as n → ∞.",
+    math: "h(x) = y_{i*}, i* = argmin ||x - xᵢ||. Theorem: R_{1-NN} ≤ 2R*(1 - R*)",
+    modern: "k-NN is the prototypical non-parametric method. Its analysis introduced the concept of consistency — convergence to Bayes optimal — still key in learning theory."
+  },
+  {
+    year: 1992, concept: "Vapnik-Chervonenkis Theory & SVM", contrib: "Vapnik, Chervonenkis",
+    dot: 'var(--blue)',
+    problem: "When does ERM generalize? How complex can our hypothesis class be?",
+    intuition: "VC dimension measures the expressiveness of a hypothesis class. ERM generalizes when VC dimension is finite. SVMs maximize margin, giving direct control over VC dimension.",
+    math: "R(ĥ) ≤ R̂ₙ(ĥ) + O(√(d_VC·log(n)/n)) — the fundamental theorem of PAC learning",
+    modern: "VC theory explains generalization for any learning algorithm. SVMs remain competitive on small datasets. The margin idea reappears in large language model alignment."
+  }
+];
+
+// ─── STATE ───────────────────────────────────────────────
+const visited = new Set();
+const totalItems = SECTIONS.reduce((s, sec) => s + sec.topics.length, 0) + TL.length;
+
+function markVisited(id) {
+  visited.add(id);
+  const pct = Math.round(visited.size / totalItems * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-txt').textContent = pct + '% explored';
+}
+
+// ─── RENDER SECTIONS ─────────────────────────────────────
+function renderSections() {
+  const wrap = document.getElementById('sections-wrap');
+  wrap.innerHTML = SECTIONS.map((sec, si) => `
+    <div class="sec" id="sec-${sec.id}">
+      <div class="sec-hdr" onclick="toggleSec('${sec.id}')">
+        <span class="sec-num">0${si + 1}</span>
+        <div class="sec-icon" style="background:${sec.color}">${sec.icon}</div>
+        <div class="sec-info">
+          <div class="sec-title">${sec.title}</div>
+          <div class="sec-desc">${sec.desc}</div>
+        </div>
+        <span class="sec-chev">▼</span>
+      </div>
+      <div class="sec-body">
+        ${sec.topics.map((t, ti) => renderTopic(sec.id, ti, t)).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderTopic(secId, ti, t) {
+  const id = `${secId}-t${ti}`;
+  return `
+  <div class="topic" id="${id}">
+    <div class="topic-hdr" onclick="toggleTopic('${id}')">
+      <div class="topic-bullet" id="bull-${id}"></div>
+      <span class="topic-name" id="tname-${id}">${t.name}</span>
+      <span class="topic-chev">▼</span>
+    </div>
+    <div class="topic-body">
+      <div class="mode-tabs">
+        <div class="mode-tab active" onclick="switchMode('${id}','int',this)">💡 Intuition</div>
+        <div class="mode-tab" onclick="switchMode('${id}','math',this)">📐 Math</div>
+      </div>
+      <div class="view active" id="${id}-int">${t.intuition}</div>
+      <div class="view" id="${id}-math">
+        ${t.math.map(m => `
+          <div class="math-eq">
+            <div class="eq-label">${m.label}</div>
+            <div class="eq-body">\\(${m.tex}\\)</div>
+          </div>
+        `).join('')}
+      </div>
+      ${t.conns ? `<div class="conn-row">${t.conns.map(c => `<div class="conn-chip"><span>${c.t}:</span>${c.n}</div>`).join('')}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function toggleSec(id) {
+  const el = document.getElementById('sec-' + id);
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) markVisited('sec-' + id);
+}
+
+function toggleTopic(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) {
+    el.classList.add('visited');
+    markVisited('topic-' + id);
+    renderMath();
+  }
+}
+
+function switchMode(id, mode, btn) {
+  document.querySelectorAll(`#${id} .mode-tab`).forEach(t => t.classList.remove('active'));
+  document.querySelectorAll(`#${id} .view`).forEach(v => v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`${id}-${mode}`).classList.add('active');
+  if (mode === 'math') renderMath();
+}
+
+// ─── RENDER TIMELINE ─────────────────────────────────────
+function renderTimeline() {
+  const wrap = document.getElementById('tl-items');
+  wrap.innerHTML = TL.map((e, i) => `
+    <div class="tl-row" id="tl-${i}">
+      <div class="tl-node" style="border-color:${e.dot}"></div>
+      <div class="tl-card">
+        <div class="tl-card-hdr" onclick="toggleTL(${i})">
+          <span class="tl-yr">${e.year}</span>
+          <span class="tl-cname">${e.concept}</span>
+          <span class="tl-contrib">${e.contrib.split(',')[0]}</span>
+        </div>
+        <div class="tl-card-body">
+          <div class="tl-grid">
+            <div class="tl-cell"><div class="tl-cell-icon">❓</div><div class="tl-cell-lbl">Problem</div><div class="tl-cell-txt">${e.problem}</div></div>
+            <div class="tl-cell"><div class="tl-cell-icon">👤</div><div class="tl-cell-lbl">Contributors</div><div class="tl-cell-txt">${e.contrib}</div></div>
+            <div class="tl-cell"><div class="tl-cell-icon">🧠</div><div class="tl-cell-lbl">Intuition</div><div class="tl-cell-txt">${e.intuition}</div></div>
+            <div class="tl-cell"><div class="tl-cell-icon">📐</div><div class="tl-cell-lbl">Math Idea</div><div class="tl-cell-txt">${e.math}</div></div>
+          </div>
+          <div class="tl-modern"><div class="tl-modern-lbl">🔗 Connection to Modern ML</div>${e.modern}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleTL(i) {
+  const el = document.getElementById('tl-' + i);
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) markVisited('tl-' + i);
+}
+
+// ─── MATH ────────────────────────────────────────────────
+function renderMath() {
+  renderMathInElement(document.body, {
+    delimiters: [{ left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }],
+    throwOnError: false
+  });
+}
+
+// ─── BACK TO TOP ─────────────────────────────────────────
+window.addEventListener('scroll', () => {
+  document.getElementById('btt').classList.toggle('vis', window.scrollY > 300);
+});
+
+// ─── INIT ────────────────────────────────────────────────
+renderSections();
+renderTimeline();
+renderMath();
+</script>
+</body>
+</html>
