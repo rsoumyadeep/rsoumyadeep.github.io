@@ -844,11 +844,11 @@ function toggleProjects() {
     const more = document.getElementById("more-projects");
     const btn = document.getElementById("toggle-btn");
 
-    if (more.style.display === "none" || more.style.display === "") {
-        more.style.display = "grid";
+    if (!more.classList.contains("show")) {
+        more.classList.add("show");
         btn.innerText = "See Less";
     } else {
-        more.style.display = "none";
+        more.classList.remove("show");
         btn.innerText = "See More";
     }
 }
