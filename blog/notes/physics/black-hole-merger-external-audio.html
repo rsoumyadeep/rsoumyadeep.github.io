@@ -397,77 +397,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-// ═══════════════════════════════════════════════════════════════
-//  AUDIO ENGINE (GW CHIRP)
-// ═══════════════════════════════════════════════════════════════
-class GWAudio {
-  constructor() {
-    this.ctx = null;
-    this.osc = null;
-    this.gain = null;
-    this.filter = null;
-    this.started = false;
-  }
-
-  init() {
-    if (this.started) return;
-
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-    this.osc = this.ctx.createOscillator();
-    this.gain = this.ctx.createGain();
-    this.filter = this.ctx.createBiquadFilter();
-
-    this.osc.type = "sine";
-
-    // Soft low-pass filter → cinematic feel
-    this.filter.type = "lowpass";
-    this.filter.frequency.value = 1200;
-
-    this.gain.gain.value = 0;
-
-    this.osc.connect(this.filter);
-    this.filter.connect(this.gain);
-    this.gain.connect(this.ctx.destination);
-
-    this.osc.start();
-    this.started = true;
-  }
-
-  update(sim) {
-    if (!this.started) return;
-
-    // Frequency increases as separation decreases
-    let freq = 40 + 600 * (1 / sim.sep);
-
-    // Clamp for stability
-    freq = Math.min(freq, 1200);
-
-    this.osc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.05);
-
-    // Volume based on strain amplitude
-    let amp = Math.abs(sim.strainAmplitude());
-    let volume = Math.min(amp * 1.5, 0.3);
-
-    // Merger spike
-    if (sim.phase === "merger") {
-      volume = 0.5;
-    }
-
-    if (sim.phase === "merged") {
-      volume *= 0.2;
-    }
-
-    this.gain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.05);
-  }
-}
-
-const audio = new GWAudio();
-  
-  window.addEventListener("click", () => {
-    audio.init();
-  }, { once: true });
-
 
 // ═══════════════════════════════════════════════════════════════
 //  CONSTANTS & HELPERS
@@ -1274,5 +1203,71 @@ window.addEventListener('resize', () => {
 });
 
 </script>
+
+<!-- Notes navigation (Home › Notes › Category) -->
+<script src="../notes-index.js"></script>
+<script src="../notes-nav.js" data-position="br"></script>
+  <!-- ── AUDIO SYSTEM ── -->
+<audio id="chirp-audio" loop preload="auto"></audio>
+<audio id="merger-boom" preload="auto"></audio>
+
+<script>
+// Audio setup
+const chirpAudio = document.getElementById('chirp-audio');
+const mergerBoom = document.getElementById('merger-boom');
+
+// Free high-quality public domain / CC0 sounds (you can replace with your own)
+chirpAudio.src = "https://freesound.org/data/previews/612/612095_5674468-lq.mp3";           // rising chirp (you'll replace this)
+mergerBoom.src = "https://freesound.org/people/kwahmah_02/sounds/256419/";         // deep boom
+
+// Better free options (recommended):
+// Chirp: https://freesound.org/people/InspectorJ/sounds/398706/  (sci-fi rising tone)
+// Merger boom: deep sub-bass impact
+
+let isPlayingChirp = false;
+let lastFreq = 0;
+
+// Add this inside your animate() function, right after `if (!paused) { ... }` block (near the end of the simulation update):
+
+    // ── AUDIO CONTROL ──
+    if (!paused) {
+        const strain = sim.strainAmplitude();
+        const freq = sim.omega ? sim.omega * 180 : 20;   // map orbital frequency to audible range
+
+        // Dynamic chirp pitch + volume
+        if (sim.phase === 'inspiral') {
+            if (!isPlayingChirp) {
+                chirpAudio.play().catch(() => {});
+                isPlayingChirp = true;
+            }
+
+            // Map frequency from ~low to high as they approach merger
+            const targetFreq = Math.min(1200, 80 + freq * 18);
+            const volume = Math.min(0.75, 0.15 + (sim.sep / sim.initSep) * 0.6);
+
+            chirpAudio.playbackRate = targetFreq / 440;   // 440 Hz = reference A note
+            chirpAudio.volume = volume;
+        } 
+        else if (sim.phase === 'merger' && sim.mergerT < 0.3) {
+            // Play the big merger sound once
+            if (mergerBoom.paused) {
+                mergerBoom.currentTime = 0;
+                mergerBoom.volume = 0.9;
+                mergerBoom.play().catch(() => {});
+            }
+            // Fade out chirp during merger
+            if (chirpAudio.volume > 0.05) chirpAudio.volume *= 0.92;
+        } 
+        else if (sim.phase === 'merged') {
+            if (isPlayingChirp) {
+                chirpAudio.volume = Math.max(0, chirpAudio.volume - 0.04);
+                if (chirpAudio.volume < 0.01) {
+                    chirpAudio.pause();
+                    isPlayingChirp = false;
+                }
+            }
+        }
+    }
+      
 </body>
 </html>
